@@ -23,19 +23,7 @@
   height: 2rem;
   padding-left: 2rem;
 }
-@media (max-width:400px) {
-  .iBox_SearchBar{
-    width: 5rem;
-  }
-  .Mic_SearchBar{
-    display: none;
-  }
-}
-@media (min-width:400px) and (max-width:768) {
-  .iBox_SearchBar{
-    width: 10rem;
-  }
-}
+
 .searchIcon_SearchBar {
   cursor: pointer;
   padding: 0.75rem;
@@ -57,4 +45,23 @@
 .Mic_SearchBar {
   color: whitesmoke;
   margin: auto 0.7rem;
+}
+@media (max-width:400px) {
+  .iBox_SearchBar{
+    width: 7rem;
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+  }
+  .Mic_SearchBar{
+    display: none;
+  }
+  .searchIcon_SearchBar{
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+  }
+}
+@media (min-width:400px) and (max-width:768) {
+  .iBox_SearchBar{
+    width: 10rem;
+  }
 }

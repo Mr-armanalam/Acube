@@ -77,3 +77,21 @@
       width: calc(100vw - 4.5rem - 70vw);
       padding: 0 1rem;
   }
+  @media (max-width:768px) {
+    .container2_videoPage{
+      margin:1.5rem 0;
+      flex-direction: column;
+    }
+    .video_display_screen_videoPage{
+      width: 90vw;
+    }
+    .video_ShowVideo_videoPage{
+      height: 100%;
+    }
+    .container_videoPage::-webkit-scrollbar{
+      display:none
+    }
+    /* .views_date_btns_VideoPage{
+      overflow-x: auto;  
+    } */
+  }

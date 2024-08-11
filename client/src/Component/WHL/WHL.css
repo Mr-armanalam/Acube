@@ -38,3 +38,12 @@
   .whl_list{
       overflow-y: auto;
   }
+  @media (max-width:768px) {
+    .conatiner_whl{
+      flex-direction: column;
+    }
+    .leftside_whl{
+      width: 80vw;
+      height: 60vh;
+    }
+  }

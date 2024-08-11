@@ -75,7 +75,11 @@
 }
 
 @media (max-width:768px) {
-    .apps_Box, .vid_bell_Navbar, .logo_title_navbar, .display_none{
+    .apps_Box, 
+    .vid_bell_Navbar,
+    .logo_div_Navbar, 
+    .logo_title_navbar, 
+    .display_none{
         display: none;
     }
     .Auth_Btn{
