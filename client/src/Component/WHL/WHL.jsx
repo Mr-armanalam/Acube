@@ -38,7 +38,7 @@ const WHL = ({page,videolist}) => {
             <div className="whl_list">
               <WHLvideolist
                 page={page}
-                currentuser={currentuser.result._id}
+                currentuser={currentuser?.result._id}
                 videolist={videolist}
               />
             </div>

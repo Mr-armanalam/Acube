@@ -88,10 +88,19 @@
     .video_ShowVideo_videoPage{
       height: 100%;
     }
-    .container_videoPage::-webkit-scrollbar{
+    
+    .views_date_btns_VideoPage{
+      flex-direction: column;
+    }
+    .views_videoPage{
+      width:100vw;
+    }
+  }
+  .container_videoPage::-webkit-scrollbar{
       display:none
     }
-    /* .views_date_btns_VideoPage{
-      overflow-x: auto;  
-    } */
-  }
+    .moreVideoBar >h1{
+    text-decoration: underline;
+    color: white;
+    }
+    

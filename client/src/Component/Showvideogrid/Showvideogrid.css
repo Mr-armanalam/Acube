@@ -1,5 +1,6 @@
 .Container_ShowVideoGrid{
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-around;
+    justify-content: space-evenly;   
+    gap:1rem;
 }

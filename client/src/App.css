@@ -46,8 +46,10 @@ video {
   .at_small_sizel {
     display: none;
   }
-  .container2_Pages_App::-webkit-scrollbar{
+  /* .container2_Pages_App::-webkit-scrollbar{
+    display: none;
+  } */
+}
+.container2_Pages_App::-webkit-scrollbar{
     display: none;
   }
-}
-

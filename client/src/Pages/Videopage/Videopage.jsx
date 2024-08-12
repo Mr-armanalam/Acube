@@ -8,6 +8,7 @@ import Comment from '../../Component/Comment/Comment'
 import { viewvideo } from '../../action/video'
 import { addtohistory } from '../../action/history'
 import { useSelector,useDispatch } from 'react-redux'
+import Showvideogrid from '../../Component/Showvideogrid/Showvideogrid'
 const Videopage = () => {
     const { vid } = useParams();
     const dispatch=useDispatch()
@@ -55,7 +56,8 @@ const Videopage = () => {
     //     },
     // ]
     // console.log( vids)
-    const vv = vids?.data.filter((q) => q._id === vid)[0]
+    const viDs=vids?.data?.filter(q=>q).reverse();
+    const vv = vids?.data?.filter((q) => q._id === vid)[0]
    
     const currentuser = useSelector(state => state.currentuserreducer);
     const handleviews=()=>{
@@ -74,41 +76,48 @@ const Videopage = () => {
         handleviews()
     },[])
     return (
-        <>
-            <div className="container_videoPage">
-                <div className="container2_videoPage">
-                    <div className="video_display_screen_videoPage">
-                        <video src={`${vv?.filepath}`} className="video_ShowVideo_videoPage" controls></video>
-                        <div className="video_details_videoPage">
-                            <div className="video_btns_title_VideoPage_cont">
-                                <p className="video_title_VideoPage">{vv?.title}</p>
-                                <div className="views_date_btns_VideoPage">
-                                    <div className="views_videoPage">
-                                        {vv?.views} views <div className="dot"></div>{" "}
-                                        {moment(vv?.createdat).fromNow()}
-                                    </div>
-                                    <Likewatchlatersavebtns vv={vv} vid={vid} />
-                                </div>
-                            </div>
-                            <Link to={'/'} className='chanel_details_videoPage'>
-                                <b className="chanel_logo_videoPage">
-                                    <p>{vv?.uploader.charAt(0).toUpperCase()}</p>
-                                </b>
-                                <p className="chanel_name_videoPage">{vv.uploader}</p>
-                            </Link>
-                            <div className="comments_VideoPage">
-                                <h2>
-                                    <u>Comments</u>
-                                </h2>
-                                <Comment videoid={vv._id}/>
-                            </div>
-                        </div>
+      <>
+        <div className="container_videoPage">
+          <div className="container2_videoPage">
+            <div className="video_display_screen_videoPage">
+              <video
+                src={`${vv?.filepath}`}
+                className="video_ShowVideo_videoPage"
+                controls
+              ></video>
+              <div className="video_details_videoPage">
+                <div className="video_btns_title_VideoPage_cont">
+                  <p className="video_title_VideoPage">{vv?.videotitle}</p>
+                  <div className="views_date_btns_VideoPage">
+                    <div className="views_videoPage">
+                      {vv?.views} views <div className="dot"></div>{" "}
+                      {moment(vv?.createdat).fromNow()}
                     </div>
-                    <div className="moreVideoBar">More videos</div>
+                    <Likewatchlatersavebtns vv={vv} vid={vid} />
+                  </div>
                 </div>
+                <Link to={"/"} className="chanel_details_videoPage">
+                  <b className="chanel_logo_videoPage">
+                    <p>{vv?.uploader.charAt(0).toUpperCase()}</p>
+                  </b>
+                  <p className="chanel_name_videoPage">{vv?.uploader}</p>
+                </Link>
+                <div className="comments_VideoPage">
+                  <h2>
+                    <u>Comments</u>
+                  </h2>
+                  <Comment videoid={vv?._id} />
+                </div>
+              </div>
             </div>
-        </>
-    )
+            <div className="moreVideoBar">
+              <h1>More videos</h1>
+              <Showvideogrid vid={viDs} />
+            </div>
+          </div>
+        </div>
+      </>
+    );
 }
 
 export default Videopage

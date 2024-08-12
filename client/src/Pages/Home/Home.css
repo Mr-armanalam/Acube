@@ -17,3 +17,11 @@
 .btn_nav_home:hover{
     background-color: rgb(128,128,128);
 }
+/* @media (max-width:768px) {
+    .navigation_Home::-webkit-scrollbar {
+        display: none;
+    }
+} */
+.navigation_Home::-webkit-scrollbar {
+    display: none;
+}

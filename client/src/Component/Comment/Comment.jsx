@@ -48,7 +48,7 @@ const Comment = ({ videoid }) => {
                 <input type="submit" value="add" className='comment_add_btn_comments' />
             </form>
             <div className="display_comment_container">
-                {commentlist?.data.filter((q) => videoid === q?.videoid)
+                {commentlist?.data?.filter((q) => videoid === q?.videoid)
                     .reverse()
                     .map((m) => {
 
