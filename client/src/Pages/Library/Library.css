@@ -1,6 +1,6 @@
 .container_libraryPage{
     border-bottom:1px solid grey ;
-    padding: 1rem 2rem;
+    /* padding: 1rem 2rem; */
     color: aliceblue;
 }
 
@@ -15,11 +15,15 @@
 }
 .container_videoList_LibraryPage{
     display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around;
-    margin: 0;
-    max-height: 80vh;
+    margin-bottom: 2rem;
+    /* max-height: 80vh; */
+    height: auto;
+    width: 90vw;
     overflow-y: auto;
+    /* flex-wrap: wrap; */
+    /* justify-content: space-around; */
+  /* height: 100vh; */
+    /* border-top: 2px solid rgb(128, 128, 128, 0.45); */
 }
 .container_videoList_LibraryPage::-webkit-scrollbar{
      display: none;
