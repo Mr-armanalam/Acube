@@ -27,10 +27,14 @@
 }
 
 .video_box_app {
-  width: 21rem;
-  height: 17rem;
-  margin-bottom: 1rem;
+  min-width: 21rem;
+  max-width: 31rem;
+  height: auto;
   border: 2px solid transparent;
+  flex: 1;
+  /* margin-bottom: 1rem; */
+  /* width: 21rem; */
+  /* height: 17rem; */
 }
 video {
   background-color: rgba(8, 8, 8, 0.662);
@@ -52,4 +56,9 @@ video {
 }
 .container2_Pages_App::-webkit-scrollbar{
     display: none;
+}
+@media (max-width: 375px){
+  .video_box_app{
+    width: 100vh;
   }
+}

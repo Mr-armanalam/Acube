@@ -20,8 +20,7 @@ const WHLvideolist = ({ page, currentuser, videolist }) => {
                 </>
             ) : (
                 <>
-
-                    <h2 style={{ color: "white" }}>Plz login to Watch your {page}</h2>
+                    <h2 style={{ "color": "white", "margin":"0 1rem" }}>Plz login to Watch your {page}</h2>
                 </>
             )}
         </>
