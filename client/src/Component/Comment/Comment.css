@@ -10,6 +10,7 @@
     border: 0;
     color: wheat;
     border-bottom: 2px solid grey;
+    outline: none;
   }
   .comment_add_btn_comments {
     cursor: pointer;

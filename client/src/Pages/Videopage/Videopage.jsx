@@ -4,11 +4,11 @@ import moment from 'moment'
 import Likewatchlatersavebtns from './Likewatchlatersavebtns'
 import { useParams, Link } from 'react-router-dom'
 import Comment from '../../Component/Comment/Comment'
-// import vidd from "../../Component/Video/vid.mp4"
 import { viewvideo } from '../../action/video'
 import { addtohistory } from '../../action/history'
 import { useSelector,useDispatch } from 'react-redux'
 import Showvideogrid from '../../Component/Showvideogrid/Showvideogrid'
+import VideoPlayer from '../../Component/videoPlayer/videoPlayer'
 const Videopage = () => {
     const { vid } = useParams();
     const dispatch=useDispatch()
@@ -80,11 +80,12 @@ const Videopage = () => {
         <div className="container_videoPage">
           <div className="container2_videoPage">
             <div className="video_display_screen_videoPage">
-              <video
+              {/* <video
                 src={`${vv?.filepath}`}
                 className="video_ShowVideo_videoPage"
                 controls
-              ></video>
+              ></video> */}
+              <VideoPlayer video={vv?.filepath} />
               <div className="video_details_videoPage">
                 <div className="video_btns_title_VideoPage_cont">
                   <p className="video_title_VideoPage">{vv?.videotitle}</p>

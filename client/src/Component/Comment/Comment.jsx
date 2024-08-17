@@ -9,7 +9,7 @@ const Comment = ({ videoid }) => {
     const [commenttext, setcommentext] = useState("")
     const currentuser = useSelector(state => state.currentuserreducer);
     const commentlist = useSelector(state => state.commentreducer)
-    console.log(commentlist)
+   // console.log(commentlist)
     // const commentlist=[{
     //     _id:1,
     //     commentbody:"hello",

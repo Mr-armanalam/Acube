@@ -90,7 +90,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
               <p></p>
             </div>
             <Link to={"/"} className="logo_div_Navbar">
-              <img src={logo} alt="logo"/>
+              <img src={logo} className="logo-size" alt="logo" />
               <p className="logo_title_navbar">Your-Tube</p>
             </Link>
           </div>
@@ -128,7 +128,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
             ) : (
               <>
                 <p className="Auth_Btn" onClick={() => google_login()}>
-                  <BiUserCircle  className={"at_small_size"} />
+                  <BiUserCircle className={"at_small_size"} />
                   <b className="display_none">Sign in</b>
                 </p>
               </>

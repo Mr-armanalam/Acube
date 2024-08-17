@@ -4,6 +4,7 @@
     height: calc(3.5rem - 2px);
     background-color: rgb(33, 33, 33);
     justify-content: space-between;
+    align-items: center;
 }
 .Burger_Logo_Navbar{
     display: flex;
@@ -30,6 +31,15 @@
 .logo_div_Navbar{
     display: flex;
     text-decoration: none;
+}
+.logo_div_Navbar{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+ .logo-size{
+        width: 40px;
+        height: 40px;
 }
 .logo_title_navbar{
     margin: auto;
@@ -72,12 +82,15 @@
     margin: 0;
     padding: 0.5rem;
     border-radius: 0.1rem;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
 }
 
 @media (max-width:768px) {
     .apps_Box, 
     .vid_bell_Navbar,
-    .logo_div_Navbar, 
+    /* .logo_div_Navbar,  */
     .logo_title_navbar, 
     .display_none{
         display: none;
@@ -92,5 +105,11 @@
     }
     .burger{
         margin-right: 0;
+    }
+}
+
+@media (min-width:768px) and (max-width:1024px) {
+    .vid_bell_Navbar{
+     display: none;
     }
 }
