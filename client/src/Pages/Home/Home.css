@@ -25,3 +25,30 @@
 .navigation_Home::-webkit-scrollbar {
     display: none;
 }
+
+
+@keyframes shine {
+    to {
+      background-position-x: -200%;
+    }
+  }
+
+.card.is-loading {
+    height: 100vh;
+    background: #252525;
+    background: linear-gradient(110deg, #0f0f0f 8%, #181818 18%, #0f0f0f 33%);
+    border-radius: 5px;
+    background-size: 200% 100%;
+    animation: 1.5s shine linear infinite;
+}
+ 
+.card {
+    display: flex;
+    color: white !important;
+    background-color: transparent;
+    align-items: center;
+    justify-content: center;
+    font-size: x-large;
+    font-weight: bolder;
+}
+   

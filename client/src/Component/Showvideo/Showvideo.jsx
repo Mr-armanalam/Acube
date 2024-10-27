@@ -1,14 +1,18 @@
-import React from 'react'
+import React, { useState } from 'react'
 import './Showvideo.css'
 import { Link } from 'react-router-dom'
 import moment from "moment"
 const Showvideo = ({vid}) => {
     // console.log(vid)
+    let isloading = "loading"
+    if (vid !== undefined) {
+    isloading = null;
+    }
   return (
     <>
       <Link to={`/videopage/${vid._id}`}>
         {/* <video src={`http://localhost:5000/${vid.filepath}`} className='video_ShowVideo'/> */}
-        <video src={`${vid.filepath}`}  className='video_ShowVideo'/>
+        <video src={`${vid.filepath}`}  className={`${vid== null ? isloading :null} video_ShowVideo`}/>
       </Link>
       <div className="video_description">
         <div className="Chanel_logo_App">

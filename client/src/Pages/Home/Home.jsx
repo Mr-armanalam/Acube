@@ -48,6 +48,8 @@ const Home = () => {
   //     description:"description of video 4"
   //   },
   // ]
+  console.log(vids==null);
+  
   const navlist=[
     "All",
     "Python",
@@ -74,7 +76,9 @@ const Home = () => {
             );
           })}
         </div>
-        <Showvideogrid vid={vids} />
+        {vids == null ? (<div className='card is-loading'>Please Wait ...</div>): (<Showvideogrid vid={vids} />)}
+        
+        {/* <Showvideogrid vid={vids} /> */}
       </div>
     </div>
   );
