@@ -1,56 +1,16 @@
-import React from 'react'
-import Leftsidebar from '../../Component/Leftsidebar/Leftsidebar'
-import "./Home.css"
-import Showvideogrid from '../../Component/Showvideogrid/Showvideogrid'
-// import vid from "../../Component/Video/vid.mp4"
-import { useSelector } from 'react-redux'
+import React from "react";
+import Leftsidebar from "../../Component/Leftsidebar/Leftsidebar";
+import "./Home.css";
+import Showvideogrid from "../../Component/Showvideogrid/Showvideogrid";
+import { useSelector } from "react-redux";
+import LoadingCard from "../../Component/LoadingCard";
 const Home = () => {
-  const vids=useSelector(state=>state.videoreducer)?.data?.filter(q=>q).reverse();
-  // const vids=[
-  //   {
-  //     _id:1,
-  //     video_src:vid,
-  //     chanel:"wvjwenfj3njfwef",
-  //     title:"video 1",
-  //     uploader:"abc",
-  //     description:"description of video 1"
-  //   },
-  //   {
-  //     _id:1,
-  //     video_src:vid,
-  //     chanel:"wvjwenfj3njfwef",
-  //     title:"video 1",
-  //     uploader:"abc",
-  //     description:"description of video 1"
-  //   },
-  //   {
-  //     _id:2,
-  //     video_src:vid,
-  //     chanel:"wvjwenfj3njfwef",
-  //     title:"video 2",
-  //     uploader:"abc",
-  //     description:"description of video 2"
-  //   },
-  //   {
-  //     _id:3,
-  //     video_src:vid,
-  //     chanel:"wvjwenfj3njfwef",
-  //     title:"video 3",
-  //     uploader:"abc",
-  //     description:"description of video 3"
-  //   },
-  //   {
-  //     _id:4,
-  //     video_src:vid,
-  //     chanel:"wvjwenfj3njfwef",
-  //     title:"video 4",
-  //     uploader:"abc",
-  //     description:"description of video 4"
-  //   },
-  // ]
-  console.log(vids==null);
-  
-  const navlist=[
+  const vids = useSelector((state) => state.videoreducer)
+    ?.data?.filter((q) => q)
+    .reverse();
+  console.log(vids == null);
+
+  const navlist = [
     "All",
     "Python",
     "Java",
@@ -59,7 +19,7 @@ const Home = () => {
     "Science",
     "Animation",
     "Gaming",
-    "Comedy"
+    "Comedy",
   ];
   return (
     <div className="container_Pages_App">
@@ -76,12 +36,10 @@ const Home = () => {
             );
           })}
         </div>
-        {vids == null ? (<div className='card is-loading'>Please Wait ...</div>): (<Showvideogrid vid={vids} />)}
-        
-        {/* <Showvideogrid vid={vids} /> */}
+        {vids == null ? <LoadingCard /> : <Showvideogrid vid={vids} />}
       </div>
     </div>
   );
-}
+};
 
-export default Home
+export default Home;
