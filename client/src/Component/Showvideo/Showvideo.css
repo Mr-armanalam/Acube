@@ -4,10 +4,13 @@
     margin-bottom: 0;
     width: calc(100% - 0.8rem);
     margin: 1rem 0;
+    min-height: 220px;
     height: auto;
-    border-radius: 15px;
-    border: 1px solid rgba(128,128,128,0.532);
-    /* height: 70%; */
+    border: 2px solid #1f1f1f;
+    border-radius: 20px;
+    background: linear-gradient(110deg, #1a1a1a 8%, #212121 18%, #1a1a1a 33%);
+    background-size: 200% 100%;
+    animation: 3s shine linear infinite;
 }
 
 .video_description{

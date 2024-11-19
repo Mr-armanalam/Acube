@@ -27,6 +27,7 @@
 }
 
 .video_box_app {
+  height: 220px;
   min-width: 21rem;
   max-width: 31rem;
   height: auto;
