@@ -3,7 +3,7 @@ import * as api from "../Api";
 export const uploadvideo = (videodata) => async (dispatch) => {
     try {
         const { filedata, fileoption } = videodata;
-        console.log(filedata,fileoption)
+        // console.log(filedata,fileoption)
         const { data } = await api.uploadvideo(filedata, fileoption)
         dispatch({ type: 'POST_VIDEO', data })
         dispatch(getallvideo())
@@ -24,7 +24,7 @@ export const getallvideo = () => async (dispatch) => {
 export const likevideo = (likedata) => async (dispatch) => {
     try {
         const { id, Like } = likedata;
-        console.log(likedata)
+        // console.log(likedata)
         const { data } = await api.likevideo(id, Like);
         dispatch({ type: "POST_LIKE", payload: data })
         dispatch(getallvideo())
@@ -36,7 +36,7 @@ export const likevideo = (likedata) => async (dispatch) => {
 export const viewvideo=(viewdata)=>async(dispatch)=>{
     try {
         const{id}=viewdata;
-        console.log(id)
+        // console.log(id)
         const {data}=await api.viewsvideo(id)
         dispatch({type:"POST_VIEWS",data})
         dispatch(getallvideo())

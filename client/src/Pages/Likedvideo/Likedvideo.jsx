@@ -4,7 +4,7 @@ import WHL from '../../Component/WHL/WHL'
 import { useSelector } from 'react-redux'
 const Likedvideo = () => {
   const likedvideolist=useSelector((state)=>state.likedvideoreducer)
-  console.log(likedvideolist)
+  // console.log(likedvideolist)
     // const likedvideolist=[
     //     {
     //       _id:1,
