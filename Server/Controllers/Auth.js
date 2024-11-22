@@ -1,19 +1,29 @@
 import users from "../Models/Auth.js"
 import jwt from "jsonwebtoken"
 export const login = async (req, res) => {
-    const { email } = req.body;
-    // console.log(email)
+    const { email, picture } = req.body;
+    // console.log(req.body)
     try {
         const extinguser = await users.findOne({ email })
         if (!extinguser) {
             try {
-                const newuser = await users.create({ email });
+                const newuser = await users.create({
+                     email ,
+                     picture
+                    });
                 const token = jwt.sign({
                     email: newuser.email, id: newuser._id
                 }, process.env.JWT_SECERT, {
                     expiresIn: "1h"
-                }
-                )
+                })
+                
+                res.cookie("jwt_01", token, {
+                    maxAge: 1 * 24 * 60 * 60 * 1000, //ms
+                    httpOnly: true, //prevent XSS attacks cross-site scripting attacks
+                    sameSite: "strict", // CSRF attacks cross-site request forgery attacks
+                    secure: process.env.NODE_ENV !== "development", // cookie only works in https
+                });
+                // console.log(newuser);
                 res.status(200).json({ result: newuser, token })
             } catch (error) {
                 res.status(500).json({ mess: "something went wrong..." })
@@ -25,8 +35,15 @@ export const login = async (req, res) => {
                 email: extinguser.email, id: extinguser._id
             }, process.env.JWT_SECERT, {
                 expiresIn: "1h"
-            }
-            )
+            });
+
+            res.cookie("jwt_01", token, {
+                maxAge: 1 * 24 * 60 * 60 * 1000, //ms
+                httpOnly: true, //prevent XSS attacks cross-site scripting attacks
+                sameSite: "strict", // CSRF attacks cross-site request forgery attacks
+                secure: process.env.NODE_ENV !== "development", // cookie only works in https
+            });
+
             res.status(200).json({ result: extinguser ,token})
         }
     } catch (error) {

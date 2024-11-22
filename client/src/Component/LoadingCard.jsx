@@ -7,7 +7,7 @@ const LoadingCard = () => {
         <div className='cardblock1'>
             {
                [...Array(6)].map((item, index) =>(
-                <div className='cardblock'>
+                <div className='cardblock' key={index}>
                     <div key={index} className="cardImage " />
                     <div className='description'>
                         <span className='picture'/>

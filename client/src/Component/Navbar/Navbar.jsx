@@ -22,14 +22,17 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
    
 
     const currentuser = useSelector(state => state.currentuserreducer);
-    // console.log(currentuser)
+    // console.log(profile.name, profile.picture)
     const successlogin = () => {
         if (profile.email) {
-            dispatch(login({ email: profile.email }))
+            dispatch(login({
+               email: profile.email ,
+               picture: profile.picture
+              }))
             // console.log(profile.email)
         }
     }
-    // console.log(currentuser)
+    // console.log(currentuser?.token)
     // const currentuser={
     //     result:{
     //         _id:1,
