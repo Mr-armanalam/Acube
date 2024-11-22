@@ -4,6 +4,8 @@ import shorts from "./shorts.png"
 import {AiOutlineHome} from "react-icons/ai"
 import {MdOutlineExplore, MdOutlineSubscriptions, MdOutlineVideoLibrary} from "react-icons/md"
 import { NavLink } from 'react-router-dom'
+import { PiChatDotsBold } from "react-icons/pi";
+
 const Leftsidebar = () => {
   return (
     <div className="container_leftSidebar">
@@ -16,7 +18,7 @@ const Leftsidebar = () => {
             <div className="text_sidebar_icon">Explore</div>
         </div>
         <div className="icon_sidebar_div">
-            <img src={shorts} width={22} className='icon_sidebar'/>
+            <img src={shorts} width={22} alt='short' className='icon_sidebar'/>
             <div className="text_sidebar_icon">Shorts</div>
         </div>
         <div className="icon_sidebar_div">
@@ -26,6 +28,10 @@ const Leftsidebar = () => {
         <NavLink to={'/Library'} className="icon_sidebar_div">
             <MdOutlineVideoLibrary size={22} className='icon_sidebar'/>
             <div className="text_sidebar_icon">Library</div>
+        </NavLink>
+        <NavLink to={'/chat'} className="icon_sidebar_div">
+            <PiChatDotsBold size={22} className='icon_sidebar'/>
+            <div className="text_sidebar_icon">Chat</div>
         </NavLink>
     </div>
   )

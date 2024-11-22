@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-globals */
 import React from "react";
 import Leftsidebar from "../../Component/Leftsidebar/Leftsidebar";
 import "./Home.css";
@@ -8,7 +9,17 @@ const Home = () => {
   const vids = useSelector((state) => state.videoreducer)
     ?.data?.filter((q) => q)
     .reverse();
-  console.log(vids == null);
+  console.log(vids);
+
+
+  if (vids?.length === 0) {
+  setTimeout(() =>
+    {  
+      location.reload();
+    }, 5000)
+    clearTimeout()
+  };
+    
 
   const navlist = [
     "All",

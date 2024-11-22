@@ -13,8 +13,10 @@ code {
 }
 
 ::-webkit-scrollbar{
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 2px;
+  height: 12px;
+  /* width: 0.5rem;
+  height: 0.5rem; */
 }
 ::-webkit-scrollbar-thumb{
   background-color: grey;
