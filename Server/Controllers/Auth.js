@@ -37,7 +37,9 @@ export const login = async (req, res) => {
                 expiresIn: "1h"
             });
 
-            res.cookie("jwt_01", token, {
+            const tokenString = JSON.stringify(token);
+
+            res.cookie("jwt_01", tokenString, {
                 maxAge: 1 * 24 * 60 * 60 * 1000, //ms
                 httpOnly: true, //prevent XSS attacks cross-site scripting attacks
                 sameSite: "strict", // CSRF attacks cross-site request forgery attacks

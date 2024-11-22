@@ -1,7 +1,7 @@
 import User from "../Models/Auth.js";
 
 export const getChatUser = async (req, res) => {
-  try {
+  try {   
     const loggedInUserId = req.user.id;
     const filteredUsers = await User.find({_id: {$ne: loggedInUserId}});
 
