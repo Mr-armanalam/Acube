@@ -27,6 +27,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
         if (profile.email) {
             dispatch(login({
                email: profile.email ,
+               username: profile.name,
                picture: profile.picture
               }))
             // console.log(profile.email)

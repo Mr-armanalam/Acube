@@ -1,17 +1,21 @@
-import React from "react";
+import React, { useState } from "react";
 import "./chat.css";
 import { MdOutlineSettings } from "react-icons/md";
 import NoChatMain from "../../Component/chat/No_Chat_main";
 import ChatMain from "../../Component/chat/ChatMain";
-import { useDispatch, useSelector } from "react-redux";
-import { get_all_chat_user } from "../../action/get_all_chat_user";
+import { useSelector } from "react-redux";
+
 
 const Chat = () => {
-  let chat = ["Hello"];
-  // console.log(chat);
-
+  const [selectedUser, setSelectedUser] = useState({});
+  
   const users = useSelector((state) => state.get_all_chat_user_reducer);
-  console.log(users);
+  // console.log(selectedUser);
+
+  const handleSelectedUser = (user) => {
+    setSelectedUser(user);
+  }
+  
   return (
     <main className="chat_container">
       {/* /////////////////////// Sidebar /////////////////////////// */}
@@ -26,12 +30,15 @@ const Chat = () => {
           </div>
         </div>
         <div className="s_chat_box_container">
-          {users?.map((_, index) => (
-            <div key={index} className="s_chat_box">
-              <div className="s_avatar">A</div>
+          {users !== undefined && users?.map((item, index) => (
+            <div key={index} className={`s_chat_box ${selectedUser.email === item.email ? "selected":'' }`}  onClick={() => handleSelectedUser(item)}>
+              <div className="s_avatar">
+                {item?.picture ? <img src={item.picture} alt="user avatar" className="s_avatar_img" />
+                : item.username.charAt(0).toUpperCase()}
+              </div>
               <div className="chat_owner">
                 <div>
-                  <h4>Arman Alam</h4>
+                  <h4>{item.username}</h4>
                   <p>Keep consestency, focus on goal & get success</p>
                 </div>
                 <span>11-10-2024</span>
@@ -39,26 +46,19 @@ const Chat = () => {
             </div>
           ))}
         </div>
-        {/* <div className="s_chat_box_container">
-          {[...Array(8)].map((_, index) => (
-            <div key={index} className="s_chat_box">
-              <div className="s_avatar">A</div>
-              <div className="chat_owner">
-                <div>
-                  <h4>Arman Alam</h4>
-                  <p>Keep consestency, focus on goal & get success</p>
-                </div>
-                <span>11-10-2024</span>
-              </div>
-            </div>
-          ))}
-        </div> */}
+        
       </div>
 
       {/* /////////////////////// Main Chat /////////////////////////// */}
 
       <div className="main_chat_container">
-        {chat.length === 0 ? <NoChatMain /> : <ChatMain />}
+        {
+          Object.keys(selectedUser).length === 0 ? 
+          <NoChatMain /> : 
+          <ChatMain 
+            selectedUser={selectedUser}
+          />
+        }
       </div>
     </main>
   );

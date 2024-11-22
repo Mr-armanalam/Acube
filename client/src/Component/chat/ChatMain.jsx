@@ -2,13 +2,18 @@ import React from "react";
 import "./chat_main.css";
 import { IoMdSend } from "react-icons/io";
 
-const ChatMain = () => {
+const ChatMain = ({selectedUser}) => {
   return (
     <section className="c_section">
       <div className="c_nav">
         <div>
-          <div>A</div>
-          <p>Arman Alam</p>
+          <div>
+            {
+            selectedUser.picture ? <img src="/demo_pic.jpeg" alt="avatar" className="s_avatar_img" />
+            : selectedUser.username.charAt(0).toUpperCase()
+            }
+          </div>
+          <p>{selectedUser.username}</p>
         </div>
       </div>
 

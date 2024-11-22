@@ -57,7 +57,15 @@
     align-items: center;
     justify-content: center;
     border: 1px solid #3c3c3c;
+    object-fit: contain;
+   font-weight: 700;
 }
+.s_avatar_img {
+    width: 100%;
+    height: 100%;
+    object-fit:cover;
+    border-radius: 50%;
+  }
 .c_nav>div>p{
     color: #ffffff;
     font-size:large;

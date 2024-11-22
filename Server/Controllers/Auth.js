@@ -1,7 +1,7 @@
 import users from "../Models/Auth.js"
 import jwt from "jsonwebtoken"
 export const login = async (req, res) => {
-    const { email, picture } = req.body;
+    const { email,username, picture } = req.body;
     // console.log(req.body)
     try {
         const extinguser = await users.findOne({ email })
@@ -9,6 +9,7 @@ export const login = async (req, res) => {
             try {
                 const newuser = await users.create({
                      email ,
+                     username,
                      picture
                     });
                 const token = jwt.sign({
