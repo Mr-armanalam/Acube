@@ -12,13 +12,13 @@ const Home = () => {
   // console.log(vids);
 
 
-  // if (vids?.length === 0) {
-  // setTimeout(() =>
-  //   {  
-  //     location.reload();
-  //   }, 5000)
-  //   clearTimeout()
-  // };
+  if (vids?.length === 0) {
+  setTimeout(() =>
+    {  
+      location.reload();
+    }, 5000)
+    clearTimeout()
+  };
     
 
   const navlist = [

@@ -2,46 +2,36 @@ import Conversation from "../Models/conversation.model.js";
 import Message from "../Models/message.model.js";
 
 
+
 export const sendMessage = async (req, res) =>{
     try {
-        const {message} = req.body;
-        const {id: receiverId} = req.params;
+        const {message, recieverId} = req.body;
         const senderId = req.user._id;
+        // console.log(recieverId)
+        // console.log(senderId)
 
         let conversation = await Conversation.findOne({
-            participants: {$all : [senderId, receiverId]}
+            participants: {$all : [senderId, recieverId]}
         })
 
         if (!conversation) {
             conversation = await Conversation.create({
-                participants: [senderId, receiverId]
+                participants: [senderId, recieverId]
             })
         }
 
         const newMessage = new Message({
             sender: senderId,
-            receiver: receiverId,
+            receiver: recieverId,
             content: message
         })
 
         if (newMessage) {
             conversation.messages.push(newMessage);
         }
-
         
-        // await conversation.save();
-        // await newMessage.save();
-        
-        // this will run is parallel
+        // // this will run is parallel
         await Promise.all([conversation.save(), newMessage.save()]);
-        // SOCKET IO FUNCTIONALITY WILL GO HERE
-        const receiverSocketId = getReceiverSocketId(receiverId);
-        if (receiverSocketId) {
-            // io.to(<socket_id>).emit() used to send events to specivic client
-            io.to(receiverSocketId).emit("newMessage", newMessage);
-        } else {
-            console.log("receiver socket id not found");
-        }
 
         res.status(201).json(newMessage)
     } catch (error) {
@@ -52,10 +42,14 @@ export const sendMessage = async (req, res) =>{
 
 export const getMessage = async (req, res) => {
     try {
-        const {id: userToChatId} = req.params;
+        const {selectedUser} = req.body;
         const senderId = req.user._id;
+        // console.log(selectedUser)
+        // console.log(senderId);
+        
+
         const conversation = await Conversation.findOne({
-            participants: {$all: [senderId, userToChatId]}
+            participants: {$all: [senderId, selectedUser]}
         }).populate("messages");
 
         if (!conversation) return res.status(404).json([]);

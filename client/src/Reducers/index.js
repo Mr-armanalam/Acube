@@ -8,6 +8,8 @@ import historyreducer from "./history";
 import likedvideoreducer from "./likedvideo";
 import watchlaterreducer from "./watchlater";
 import get_all_chat_user_reducer from "./get_all_chat_user";
+import send_chat_messages_reducer from "./send_chat_messages_reducer";
+import get_messages_reducer from "./get_messages_reducer";
 export default combineReducers({
     authreducer,
     currentuserreducer,
@@ -17,5 +19,7 @@ export default combineReducers({
     historyreducer,
     likedvideoreducer,
     watchlaterreducer,
-    get_all_chat_user_reducer
+    get_all_chat_user_reducer,
+    send_chat_messages_reducer,
+    get_messages_reducer
 });

@@ -5,8 +5,7 @@ import protectRoute from "../middleware/protectRoute.middleware.js";
 const routes=express.Router();
 
 routes.get('/chat_user/:token',protectRoute, getChatUser);
-// routes.get('/chat_user',protectRoute, getChatUser);
-// routes.get('/:id',getMessage)
-// routes.post('/send/:id',sendMessage)
+routes.post('/message/:token',protectRoute,getMessage)
+routes.post('/send/:token',protectRoute,sendMessage)
 
 export default routes;

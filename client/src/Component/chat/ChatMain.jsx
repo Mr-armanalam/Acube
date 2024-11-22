@@ -1,46 +1,83 @@
-import React from "react";
+import React, { useState } from "react";
 import "./chat_main.css";
 import { IoMdSend } from "react-icons/io";
+import { useDispatch, useSelector } from "react-redux";
+import { send_chat_messages } from "../../action/send_chat_messages";
 
-const ChatMain = ({selectedUser}) => {
+const ChatMain = ({ selectedUser }) => {
+  const dispatch = useDispatch();
+  // const newMessage = useSelector((state) => state.send_chat_messages_reducer);
+  const getmessages = useSelector((state) => state.get_messages_reducer);
+  // console.log(newMessage);
+
+  const [sendingMessages, setSendingMessages] = useState("");
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    dispatch(
+      send_chat_messages({
+        message: sendingMessages,
+        recieverId: selectedUser._id,
+      })
+    );
+    setSendingMessages("");
+  };
+
   return (
     <section className="c_section">
       <div className="c_nav">
         <div>
           <div>
-            {
-            selectedUser.picture ? <img src="/demo_pic.jpeg" alt="avatar" className="s_avatar_img" />
-            : selectedUser.username.charAt(0).toUpperCase()
-            }
+            {selectedUser.picture ? (
+              <img
+                src={selectedUser.picture}
+                alt="avatar"
+                className="s_avatar_img"
+              />
+            ) : (
+              selectedUser.username.charAt(0).toUpperCase()
+            )}
           </div>
           <p>{selectedUser.username}</p>
         </div>
       </div>
 
-      <div className="c_main_container">
-        <div className="c_left_message">
-          <div className="c_message_box">
-            <div className="message_cut_left" />
-            <div className="message_cut_right">
-              hff Hi there I'm arman alam lorem1
-            </div>
-          </div>
-          <div className="c_message_box box_right_message">
-            <div className="message_cut_right">
-              hff Hi there I'm arman alam lorem
-            </div>
-            <div className="message_cut_left right_cut_message" />
-          </div>
-
+      <div className="c_main1_conainer">
+        <div className="c_main_container">
+          {getmessages.map(
+            (item, index) =>
+              item.receiver === selectedUser._id && (
+                <div key={index} className="c_left_message">
+                  {item.receiver === selectedUser._id ? (
+                    <div className="c_message_box">
+                      <div className="message_cut_left" />
+                      <div className="message_cut_right">{item.content}</div>
+                    </div>
+                  ) : (
+                    <div className="c_message_box box_right_message">
+                      <div className="message_cut_right">{item.content}</div>
+                      <div className="message_cut_left right_cut_message" />
+                    </div>
+                  )}
+                </div>
+              )
+          )}
         </div>
       </div>
 
       <div className="c_buttom">
         <form>
-          <input type="text" placeholder="Type a message" />
-          <button type="submit">
-            <IoMdSend className="C_searchIcon" />
-          </button>
+          <input
+            type="text"
+            placeholder="Type a message"
+            value={sendingMessages}
+            onChange={(e) => setSendingMessages(e.target.value)}
+          />
+          {sendingMessages === "" ? null : (
+            <button type="submit" onClick={(e) => handleSubmit(e)}>
+              <IoMdSend className="C_searchIcon" />
+            </button>
+          )}
         </form>
       </div>
     </section>

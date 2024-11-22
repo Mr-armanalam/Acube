@@ -38,3 +38,5 @@ export const getallwatchlater=()=>API.get('/video/getallwatchlater')
 export const deletewatchlater=(videoid,viewer)=>API.delete(`/video/deletewatchlater/${videoid}/${viewer}`)
 
 export const all_chat_user_sidebar = ()=>API.get(`/chat/chat_user/${JSON.parse(localStorage.getItem("Profile")).token}`);
+export const send_chat_Messages = (sendMessages)=>API.post(`/chat/send/${JSON.parse(localStorage.getItem("Profile")).token}`, sendMessages);
+export const get_chat_Messages = (selectedId)=>API.post(`/chat/message/${JSON.parse(localStorage.getItem("Profile")).token}`, selectedId);

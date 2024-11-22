@@ -3,18 +3,23 @@ import "./chat.css";
 import { MdOutlineSettings } from "react-icons/md";
 import NoChatMain from "../../Component/chat/No_Chat_main";
 import ChatMain from "../../Component/chat/ChatMain";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { get_messages } from "../../action/get_messages";
+import getCookie from "../../utils/getCookie";
 
 
 const Chat = () => {
+  const dispatch = useDispatch();
   const [selectedUser, setSelectedUser] = useState({});
-  
+  const newMessage = useSelector((state) => state.send_chat_messages_reducer);
   const users = useSelector((state) => state.get_all_chat_user_reducer);
-  // console.log(selectedUser);
+  // console.log(getCookie("Date"));
 
   const handleSelectedUser = (user) => {
+    dispatch(get_messages({selectedUser: user._id}))
     setSelectedUser(user);
   }
+
   
   return (
     <main className="chat_container">
@@ -41,7 +46,8 @@ const Chat = () => {
                   <h4>{item.username}</h4>
                   <p>Keep consestency, focus on goal & get success</p>
                 </div>
-                <span>11-10-2024</span>
+                <span>{getCookie("Date")}</span>
+                {/* <span>{newMessage.createdAt}</span> */}
               </div>
             </div>
           ))}

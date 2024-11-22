@@ -15,15 +15,15 @@ export const login = async (req, res) => {
                 const token = jwt.sign({
                     email: newuser.email, id: newuser._id
                 }, process.env.JWT_SECERT, {
-                    expiresIn: "1h"
+                    expiresIn: "12h"
                 })
                 
-                res.cookie("jwt_01", token, {
-                    maxAge: 1 * 24 * 60 * 60 * 1000, //ms
-                    httpOnly: true, //prevent XSS attacks cross-site scripting attacks
-                    sameSite: "strict", // CSRF attacks cross-site request forgery attacks
-                    secure: process.env.NODE_ENV !== "development", // cookie only works in https
-                });
+                // res.cookie("jwt_01", token, {
+                //     maxAge: 1 * 24 * 60 * 60 * 1000, //ms
+                //     httpOnly: true, //prevent XSS attacks cross-site scripting attacks
+                //     sameSite: "strict", // CSRF attacks cross-site request forgery attacks
+                //     secure: process.env.NODE_ENV !== "development", // cookie only works in https
+                // });
                 // console.log(newuser);
                 res.status(200).json({ result: newuser, token })
             } catch (error) {
@@ -35,17 +35,17 @@ export const login = async (req, res) => {
             const token = jwt.sign({
                 email: extinguser.email, id: extinguser._id
             }, process.env.JWT_SECERT, {
-                expiresIn: "1h"
+                expiresIn: "12h"
             });
 
-            const tokenString = JSON.stringify(token);
+            // const tokenString = JSON.stringify(token);
 
-            res.cookie("jwt_01", tokenString, {
-                maxAge: 1 * 24 * 60 * 60 * 1000, //ms
-                httpOnly: true, //prevent XSS attacks cross-site scripting attacks
-                sameSite: "strict", // CSRF attacks cross-site request forgery attacks
-                secure: process.env.NODE_ENV !== "development", // cookie only works in https
-            });
+            // res.cookie("jwt_01", tokenString, {
+            //     maxAge: 1 * 24 * 60 * 60 * 1000, //ms
+            //     httpOnly: true, //prevent XSS attacks cross-site scripting attacks
+            //     sameSite: "strict", // CSRF attacks cross-site request forgery attacks
+            //     secure: process.env.NODE_ENV !== "development", // cookie only works in https
+            // });
 
             res.status(200).json({ result: extinguser ,token})
         }
