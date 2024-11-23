@@ -2,12 +2,15 @@ import React from 'react'
 import { MdOutlineSettings } from "react-icons/md";
 import { get_messages } from "../../action/get_messages";
 import { useDispatch, useSelector } from 'react-redux';
+import formatDate from '../../utils/getDateformate';
+import { formatNewDate } from '../../utils/getnewDate';
 
 
 const ChatSidebar = ({ setSelectedUser, selectedUser, setloading}) => {
     const dispatch = useDispatch();
-    const users = useSelector((state) => state.get_all_chat_user_reducer);
-
+    const {filteredUsers: users, currentMessages} = useSelector((state) => state.get_all_chat_user_reducer);
+    // console.log(new Date());
+    
     const handleSelectedUser = (user) => {
       dispatch(get_messages({selectedUser: user._id}))
       setSelectedUser(user);
@@ -34,9 +37,9 @@ const ChatSidebar = ({ setSelectedUser, selectedUser, setloading}) => {
               <div className="chat_owner">
                 <div>
                   <h4>{item.username}</h4>
-                  <p>Keep consestency, focus on goal & get success</p>
+                  <p>{currentMessages[index]?.message === undefined ? "Let's talk with someone " : currentMessages[index]?.message}</p>
                 </div>
-                <span>21-11-2024</span>
+                <span>{currentMessages[index]?.date === undefined ? formatNewDate(new Date()) : formatDate(currentMessages[index]?.date)}</span>
               
               </div>
             </div>

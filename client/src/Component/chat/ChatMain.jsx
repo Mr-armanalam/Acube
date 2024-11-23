@@ -4,6 +4,7 @@ import { IoMdSend } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
 import { send_chat_messages } from "../../action/send_chat_messages";
 import { get_messages } from "../../action/get_messages";
+import { get_all_chat_user } from "../../action/get_all_chat_user";
 
 const ChatMain = ({ selectedUser, loading=false, setloading}) => {
   const contentRef = useRef(null);
@@ -22,10 +23,12 @@ const ChatMain = ({ selectedUser, loading=false, setloading}) => {
         recieverId: selectedUser._id,
       })
     );
+    
     setSendingMessages("");
   };
 
   useEffect(() => { 
+    dispatch(get_all_chat_user());
     dispatch(get_messages({selectedUser: selectedUser._id}))
     contentRef.current.scrollTop = contentRef.current.scrollHeight; 
     setloading(true)
