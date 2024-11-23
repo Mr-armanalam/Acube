@@ -6,9 +6,10 @@ import { send_chat_messages } from "../../action/send_chat_messages";
 
 const ChatMain = ({ selectedUser }) => {
   const dispatch = useDispatch();
-  // const newMessage = useSelector((state) => state.send_chat_messages_reducer);
   const getmessages = useSelector((state) => state.get_messages_reducer);
-  // console.log(newMessage);
+  // console.log(getmessages);
+  // console.log(selectedUser);
+  
 
   const [sendingMessages, setSendingMessages] = useState("");
   const handleSubmit = (e) => {
@@ -44,23 +45,21 @@ const ChatMain = ({ selectedUser }) => {
 
       <div className="c_main1_conainer">
         <div className="c_main_container">
-          {getmessages.map(
-            (item, index) =>
-              item.receiver === selectedUser._id && (
-                <div key={index} className="c_left_message">
-                  {item.receiver === selectedUser._id ? (
-                    <div className="c_message_box">
-                      <div className="message_cut_left" />
-                      <div className="message_cut_right">{item.content}</div>
-                    </div>
-                  ) : (
-                    <div className="c_message_box box_right_message">
+          {getmessages.map((item, index) =>(
+              <div key={index} className="c_left_message">
+                {item.receiver === selectedUser._id ? (
+                  <div className="c_message_box">
+                    <div className="message_cut_left" />
+                    <div className="message_cut_right">{item.content}</div>
+                  </div>
+                ) : item.sender === selectedUser._id ? (
+                  <div className="c_message_box box_right_message">
                       <div className="message_cut_right">{item.content}</div>
                       <div className="message_cut_left right_cut_message" />
                     </div>
-                  )}
-                </div>
-              )
+                ):null}
+              </div>
+            )
           )}
         </div>
       </div>
