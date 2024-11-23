@@ -6,13 +6,14 @@ import { useDispatch, useSelector } from 'react-redux';
 
 
 
-const ChatSidebar = ({ setSelectedUser, selectedUser}) => {
+const ChatSidebar = ({ setSelectedUser, selectedUser, setloading}) => {
     const dispatch = useDispatch();
     const users = useSelector((state) => state.get_all_chat_user_reducer);
 
     const handleSelectedUser = (user) => {
         dispatch(get_messages({selectedUser: user._id}))
         setSelectedUser(user);
+        setloading(true);
       }
         // console.log(getCookie("Date"));
 

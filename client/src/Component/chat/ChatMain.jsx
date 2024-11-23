@@ -1,14 +1,17 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./chat_main.css";
 import { IoMdSend } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
 import { send_chat_messages } from "../../action/send_chat_messages";
 
-const ChatMain = ({ selectedUser }) => {
+const ChatMain = ({ selectedUser, loading=false, setloading}) => {
+  const contentRef = useRef(null);
   const dispatch = useDispatch();
   const getmessages = useSelector((state) => state.get_messages_reducer);
+  const newMessages = useSelector((state) => state.send_chat_messages_reducer);
   // console.log(getmessages);
   // console.log(selectedUser);
+  setloading(false)
   
 
   const [sendingMessages, setSendingMessages] = useState("");
@@ -23,6 +26,12 @@ const ChatMain = ({ selectedUser }) => {
     );
     setSendingMessages("");
   };
+
+  useEffect(() => { 
+    contentRef.current.scrollTop = contentRef.current.scrollHeight; 
+    setloading(true)
+    
+  },[setloading,loading, selectedUser,newMessages, sendingMessages]);
 
   return (
     <section className="c_section">
@@ -43,7 +52,7 @@ const ChatMain = ({ selectedUser }) => {
         </div>
       </div>
 
-      <div className="c_main1_conainer">
+      <div className="c_main1_conainer" ref={contentRef}>
         <div className="c_main_container">
           {getmessages.map((item, index) =>(
               <div key={index} className="c_left_message">

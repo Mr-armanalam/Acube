@@ -130,7 +130,7 @@
     width: 100%;
     height: auto;
     margin-block: 48px;
-    overflow-y: auto;
+    /* overflow-y: auto; */
     display: flex;
     flex-direction: column;
     justify-content:end;

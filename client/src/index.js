@@ -11,9 +11,11 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import Reducers from './Reducers';
 const store=createstore(Reducers,compose(applyMiddleware(thunk)));
 const root = ReactDOM.createRoot(document.getElementById('root'));
+// console.log(process.env.REACT_APP_CLIENT_ID);
+
 root.render(
   <Provider store={store}>
-    <GoogleOAuthProvider clientId="1093004509426-g7f8nub8n7pqcobpnj1tgitv5uh4ff6k.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={process.env.REACT_APP_CLIENT_ID}>
       <React.StrictMode>
         <App />
       </React.StrictMode>
