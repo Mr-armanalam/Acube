@@ -1,15 +1,16 @@
-import React from 'react'
-import { MdOutlineSettings } from "react-icons/md";
+import React, { useEffect } from 'react'
 import { get_messages } from "../../action/get_messages";
 import { useDispatch, useSelector } from 'react-redux';
 import formatDate from '../../utils/getDateformate';
 import { formatNewDate } from '../../utils/getnewDate';
+import { get_all_chat_user } from '../../action/get_all_chat_user';
+import ChatSearch from './ChatSearch';
 
 
 const ChatSidebar = ({ setSelectedUser, selectedUser, setloading}) => {
+
     const dispatch = useDispatch();
     const {filteredUsers: users, currentMessages} = useSelector((state) => state.get_all_chat_user_reducer);
-    // console.log(new Date());
     
     const handleSelectedUser = (user) => {
       dispatch(get_messages({selectedUser: user._id}))
@@ -17,16 +18,15 @@ const ChatSidebar = ({ setSelectedUser, selectedUser, setloading}) => {
       setloading(true);
     }
 
+    useEffect(() => {
+      dispatch(get_all_chat_user({}));
+  },[dispatch])
+
   return (
     <div className="sidebar_background">
-        <div className="s_header">
-          <h2 className="">
-            Chats <MdOutlineSettings className="s_setting" />
-          </h2>
-          <div>
-            <input type="text" placeholder="Search" />
-          </div>
-        </div>
+
+        <ChatSearch />
+        
         <div className="s_chat_box_container">
           {users !== undefined && users?.map((item, index) => (
             <div key={index} className={`s_chat_box ${selectedUser.email === item.email ? "selected":'' }`}  onClick={() => handleSelectedUser(item)}>

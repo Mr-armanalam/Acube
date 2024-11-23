@@ -6,8 +6,9 @@ import ChatSidebar from "../../Component/chat/ChatSidebar";
 
 
 const Chat = () => {
+
   const [selectedUser, setSelectedUser] = useState({});
-  const [loading, setloading] = useState(false)
+  const [loading, setloading] = useState(false);
   
   return (
     <main className="chat_container">

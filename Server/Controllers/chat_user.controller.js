@@ -4,9 +4,16 @@ import Message from "../Models/message.model.js";
 
 export const getChatUser = async (req, res) => {
   try {   
+    const {searchquery} = req.body;
     const loggedInUserId = req.user.id;
-    const filteredUsers = await User.find({_id: {$ne: loggedInUserId}});
-  
+
+    const userFilter = { _id: { $ne: loggedInUserId } }; 
+    if (searchquery) { 
+      userFilter.username = { $regex: new RegExp(searchquery, "i") }; 
+    }
+
+    const filteredUsers = await User.find(userFilter);
+
     //   const currentMessage = [];
     //   const conversated_messages = await Conversation.find({participants: {$all: [loggedInUserId, filteredUsers[0]?._id]}});
     //   const messages_id = conversated_messages[0]?.messages.slice(-1)[0];
@@ -31,7 +38,7 @@ export const getChatUser = async (req, res) => {
       return { user: user._id, date: latestChat.createdAt, message: latestChat.content }; 
     })); 
     
-    console.log(currentMessages);
+    // console.log(currentMessages);
   
 
     res.status(200).json({filteredUsers, currentMessages});

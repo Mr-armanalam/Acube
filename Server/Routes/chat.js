@@ -4,7 +4,7 @@ import { getChatUser } from "../Controllers/chat_user.controller.js";
 import protectRoute from "../middleware/protectRoute.middleware.js";
 const routes=express.Router();
 
-routes.get('/chat_user/:token',protectRoute, getChatUser);
+routes.post('/chat_user/:token',protectRoute, getChatUser);
 routes.post('/message/:token',protectRoute,getMessage)
 routes.post('/send/:token',protectRoute,sendMessage)
 
