@@ -3,21 +3,19 @@ import "./chat_main.css";
 import { IoMdSend } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
 import { send_chat_messages } from "../../action/send_chat_messages";
+import { get_messages } from "../../action/get_messages";
 
 const ChatMain = ({ selectedUser, loading=false, setloading}) => {
   const contentRef = useRef(null);
   const dispatch = useDispatch();
   const getmessages = useSelector((state) => state.get_messages_reducer);
   const newMessages = useSelector((state) => state.send_chat_messages_reducer);
-  // console.log(getmessages);
-  // console.log(selectedUser);
-  setloading(false)
-  
 
+  setloading(false);
   const [sendingMessages, setSendingMessages] = useState("");
+
   const handleSubmit = (e) => {
     e.preventDefault();
-
     dispatch(
       send_chat_messages({
         message: sendingMessages,
@@ -28,10 +26,11 @@ const ChatMain = ({ selectedUser, loading=false, setloading}) => {
   };
 
   useEffect(() => { 
+    dispatch(get_messages({selectedUser: selectedUser._id}))
     contentRef.current.scrollTop = contentRef.current.scrollHeight; 
     setloading(true)
     
-  },[setloading,loading, selectedUser,newMessages, sendingMessages]);
+  },[setloading,loading,dispatch, selectedUser,newMessages]);
 
   return (
     <section className="c_section">
