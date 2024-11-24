@@ -12,6 +12,10 @@ const MessageSchema = new Schema(
       ref: "User",
       required: true,
     },
+    group: {
+      type: Schema.Types.ObjectId,
+      ref: "Group",
+    },
     content: {
       type: String,
       required: true,

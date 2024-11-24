@@ -1,32 +1,18 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import "./videoPlayer.css";
- import subtitle from "../../assets/subtitles.vtt";
+import subtitle from "../../assets/subtitles.vtt";
 
-function VideoPlayer({video}) {
-
-  const videoContainer = document.querySelector(".video-container");
-  const Video = document.querySelector("video");
-  const volumeslider = document.querySelector(".volume-slider");
-  const timelineContainer = document.querySelector(".timeline-container");
+function VideoPlayer({ video }) {
   const videoRef = useRef(null);
-  const vdioCont = useRef(null);
-  const timelnCon = useRef(null);
-  const volumSlidr = useRef(null);
-  const speedBtn = document.querySelector(".speed-btn");
+  const videoContainerRef = useRef(null);
+  const timelineRef = useRef(null);
+  const volumeSliderRef = useRef(null);
+  const speedBtnRef = useRef(null);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState([0, 0, 0]); // current time of the video in array. The first value represents the minute and the second represents seconds.
   const [duration, setDuration] = useState([0, 0, 0]); // // total duration of the video in the array. The first value represents the minute and the second represents seconds.
-
-  const handlePlay = () => {
-    if (isPlaying) {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      videoRef.current.play();
-      setIsPlaying(true);
-    }
-  };
+  const [isScrubbing, setIsScrubbing] = useState(false);
 
   const sec2Min = (sec) => {
     const min = Math.floor(sec / 60);
@@ -39,184 +25,235 @@ function VideoPlayer({video}) {
     };
   };
 
-  useEffect(() => {
-    timelnCon.current?.addEventListener("mousedown", toggleScrubbing);
-    document.addEventListener("mouseup", e => {if (isScrubbing) toggleScrubbing(e)})
-    document.addEventListener("mousemove", e => {if (isScrubbing) handleTimelineUpdate(e)})
+  const handlePlay = () => {
+    if (isPlaying) {
+      videoRef.current?.pause();
+    } else {
+      videoRef.current?.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
 
-    videoRef.current?.addEventListener("timeupdate", () => {
-      const percent = videoRef.current?.currentTime / videoRef.current?.duration;
-      timelnCon.current?.style.setProperty("--progress-position", percent);
-    });
+  const handleVolumeChange = (e) => {
+    const volume = parseFloat(e.target.value);
+    if (!isNaN(volume)) {
+      videoRef.current.volume = volume;
+      videoRef.current.muted = volume === 0;
+      updateVolumeUI();
+    }
+  };
 
-    videoRef.current?.addEventListener("volumechange", muteSound);
+  const handleMute = () => {
+    videoRef.current.muted = !videoRef.current?.muted;
+    updateVolumeUI();
+  };
+
+  const updateVolumeUI = () => {
+    if (videoRef.current?.muted || videoRef.current?.volume === 0) {
+      volumeSliderRef.current.value = 0;
+      videoContainerRef.current.dataset.volumeLevel = "muted";
+    } else if (videoRef.current?.volume >= 0.5) {
+      videoContainerRef.current.dataset.volumeLevel = "high";
+    } else {
+      videoContainerRef.current.dataset.volumeLevel = "low";
+      volumeSliderRef.current.value = videoRef.current?.volume;
+    }
+  };
+
+  const handleScrubbing = (e) => {
+    const rect = timelineRef.current?.getBoundingClientRect();
+    const percent =
+      Math.min(Math.max(0, e.clientX - rect.x), rect.width) / rect.width;
+    setIsScrubbing(e.buttons === 1);
+    if (isScrubbing) {
+      videoRef.current.currentTime = percent * videoRef.current?.duration;
+    }
+    updateTimeline(percent);
+  };
+
+  const updateTimeline = (percent) => {
+    timelineRef.current?.style.setProperty("--progress-position", percent);
+  };
+
+  const handleTimeUpdate = () => {
     const { min, sec, hour } = sec2Min(videoRef.current?.duration);
     setDuration([min, sec, hour]);
+
     setInterval(() => {
-      const { min, sec, hour } = sec2Min(videoRef?.current?.currentTime);
+      const { min, sec, hour } = sec2Min(videoRef.current?.currentTime);
       setCurrentTime([min, sec, hour]);
     }, 1000);
-  }, [isPlaying]);
 
-  // document.addEventListener("keydown", (e) => {
-  //    const tagName = document.activeElement.tagName.toLowerCase();
-
-  //    if (tagName === "input") return;
-
-  //   switch (e.key.toLowerCase()) {
-  //     case " ":
-  //     case "k":
-  //       handlePlay();
-  //       break;
-  //     case "f":
-  //       toggleFullScreenMode();
-  //       break;
-  //     case "t":
-  //       toggleTheaterMode();
-  //       break;
-  //     case "i":
-  //       toggleMiniPlayerMode();
-  //       break;
-  //     case "m" :
-  //     toggleMute();
-  //       break;
-  //     case "arrowleft":
-  //     case "j":
-  //       skip(-0.05);
-  //       break;
-  //     case "arrowright":
-  //     case "l":
-  //       skip(0.05);
-  //       break;
-  //     case "c":
-  //       toggleCaptions();
-  //       break;
-  //   }
-  // });
-
-  // Timeline
-
-  let isScrubbing = false;
-  let wasPaused;
-  const toggleScrubbing = (e) => {
-    const rect = timelnCon.current.getBoundingClientRect();
-    const percent =  Math.min(Math.max(0, e.clientX - rect.x), rect.width) / rect.width;
-    isScrubbing = (e.buttons & 1) === 1;
-    vdioCont.current.classList.toggle("scrubbing", isScrubbing);
-    if (isScrubbing) {
-      wasPaused = videoRef.current.paused;
-      videoRef.current.pause();
-     // console.log(wasPaused);
-    } else {
-      videoRef.current.currentTime = percent * videoRef.current.duration;
-     // console.log(wasPaused);
-
-      if (!wasPaused) videoRef.current.play();
-    }
-    handleTimelineUpdate(e);
+    const percent = videoRef.current?.currentTime / videoRef.current?.duration;
+    updateTimeline(percent);
   };
 
-  const handleTimelineUpdate = (e) => {
-    if (isScrubbing) {
-      e.preventDefault();
-      const percent = videoRef.current.currentTime / videoRef.current.duration;
-      timelnCon.current.style.setProperty("--progress-position", percent);
-    }
-  };
-
-  //duration
-  
-  function skip(Duration) {
-    videoRef.current.currentTime += Duration;
-  }
-
-  // playback speed
-  const changePlaybackSpeed = () => {
-    let newPlaybackRate = Video.playbackRate + 0.25;
+  const handleSpeedChange = () => {
+    let newPlaybackRate = videoRef.current?.playbackRate + 0.25;
     if (newPlaybackRate > 2) newPlaybackRate = 0.25;
-    Video.playbackRate = newPlaybackRate;
-    speedBtn.textContent = `${newPlaybackRate}x`;
+    videoRef.current.playbackRate = newPlaybackRate;
+    speedBtnRef.current.textContent = `${newPlaybackRate}x`;
   };
 
-  //caption
-  const captions = videoRef.current?.textTracks[0];
-  // captions.mode = "hidden";
-  const toggleCaptions = () => {
-    const isHidden = captions.mode === "hidden";
-    captions.mode = isHidden ? "showing" : "hidden";
-    videoContainer.classList.toggle("captions", isHidden);
-    // console.log("hi");
-  };
-
-  //theater mode
-  const toggleTheaterMode = () => {
-    vdioCont?.current?.classList?.toggle("theater");
-  };
-
-  //full screen
-  function toggleFullScreenMode() {
+  const toggleFullScreenMode = () => {
     if (document.fullscreenElement == null) {
-      vdioCont.current.requestFullscreen();
+      videoContainerRef.current?.requestFullscreen();
     } else {
       document.exitFullscreen();
     }
-  }
+  };
+
+  const toggleTheaterMode = () => {
+    videoContainerRef.current.classList.toggle("theater");
+  };
 
   const toggleMiniPlayerMode = () => {
-    if (videoContainer?.classList?.contains("mini-player")) {
+    if (videoContainerRef.current.classList.contains("mini-player")) {
       document.exitPictureInPicture();
     } else {
-      Video.requestPictureInPicture();
+      videoRef.current.requestPictureInPicture();
     }
   };
 
-  document.addEventListener("fullscreenchange", () => {
-    videoContainer?.classList?.toggle(
-      "full-screen",
-      document.fullscreenElement
-    );
-  });
-
-  document.addEventListener("enterpictureinpicture", () => {
-    videoContainer?.classList?.add("mini-player");
-  });
-  document.addEventListener("leavepictureinpicture", () => {
-    videoContainer?.classList?.remove("mini-player");
-  });
-
-  //mute btn
-  const volumeSlider = (e) => {
-    videoRef.current.volume = e.target?.value;
-    videoRef.current.muted = e.target?.value === 0;
+  const toggleCaptions = () => {
+    const captions = videoRef.current?.textTracks[0];
+    const isHidden = captions.mode === "hidden";
+    captions.mode = isHidden ? "showing" : "hidden";
+    videoContainerRef.current.classList.toggle("captions", isHidden);
   };
 
-  const toggleMute = () => {
-    videoRef.current.muted = !videoRef.current.muted;
+  const skip = (duration) => {
+    videoRef.current.currentTime += duration;
   };
 
-  const muteSound = () => {
-    volumSlidr.current.value = Video?.volume;
-    let volumeLevel;
-    if (videoRef.current.muted || videoRef.current.volume === 0) {
-      volumSlidr.current.value = 0;
-      volumeLevel = "muted";
-    } else if (videoRef.current.volume >= 0.5) {
-      volumeLevel = "high";
-    } else {
-      volumeLevel = "low";
+  const handleGesture = (e) => { 
+    const width = videoContainerRef.current.clientWidth; 
+    const third = width / 3; 
+    const x = e.clientX; 
+
+    if (e.detail === 2) { // Double tap
+     if (x > 2 * third) { 
+      skip(10); // Forward 
+      } else if (x < third) { 
+        skip(-10); // Backward 
+        } else { 
+          handlePlay(); // Single tap in the middle 
+        } 
+      } 
+      
+      if (e.detail === 3) { // Triple tap 
+        if (x > 2 * third) { 
+          window.close(); // Close the website 
+        } else if (x < third) { 
+          console.log('Show comments section'); // for show comments section later due
+        } else { console.log('Move to next video'); // for move to next video
+        } 
+      } 
+    }; 
+  
+  useEffect(() => { 
+    videoContainerRef.current?.addEventListener('click', handleGesture); 
+    return () => { 
+      videoContainerRef.current?.removeEventListener('click', handleGesture); 
+    }; 
+  }, []);
+
+
+  useEffect(() => {
+    const handleKeydown = (e) => {
+      const tagName = document.activeElement.tagName.toLowerCase();
+      if (tagName === "input") return;
+      switch (e.key.toLowerCase()) {
+        case " ":
+        case "k":
+          handlePlay();
+          break;
+        case "f":
+          toggleFullScreenMode();
+          break;
+        case "t":
+          toggleTheaterMode();
+          break;
+        case "i":
+          toggleMiniPlayerMode();
+          break;
+        case "m":
+          handleMute();
+          break;
+        case "arrowleft":
+        case "j":
+          skip(-5);
+          break;
+        case "arrowright":
+        case "l":
+          skip(5);
+          break;
+        case "c":
+          toggleCaptions();
+          break;
+        default:
+          break;
+      }
+    };
+    document.addEventListener("keydown", handleKeydown);
+    return () => {
+      document.removeEventListener("keydown", handleKeydown);
+    };
+  }, []);
+
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.addEventListener("timeupdate", handleTimeUpdate);
+      videoRef.current.addEventListener("volumechange", handleVolumeChange);
     }
-
-    vdioCont.current.dataset.volumeLevel = volumeLevel;
-  };
+    document.addEventListener("fullscreenchange", () => {
+      videoContainerRef.current.classList.toggle(
+        "full-screen",
+        document.fullscreenElement != null
+      );
+    });
+    document.addEventListener("enterpictureinpicture", () => {
+      videoContainerRef.current.classList.add("mini-player");
+    });
+    document.addEventListener("leavepictureinpicture", () => {
+      videoContainerRef.current.classList.remove("mini-player");
+    });
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.removeEventListener("timeupdate", handleTimeUpdate);
+        videoRef.current.removeEventListener(
+          "volumechange",
+          handleVolumeChange
+        );
+      }
+      document.removeEventListener("fullscreenchange", () => {
+        videoContainerRef.current.classList.toggle(
+          "full-screen",
+          document.fullscreenElement != null
+        );
+      });
+      document.removeEventListener("enterpictureinpicture", () => {
+        videoContainerRef.current.classList.add("mini-player");
+      });
+      document.removeEventListener("leavepictureinpicture", () => {
+        videoContainerRef.current.classList.remove("mini-player");
+      });
+    };
+  }, [isPlaying, handleTimeUpdate]);
 
   return (
     <>
-      <div ref={vdioCont} className="video-container" data-volume-level="high">
+      <div
+        ref={videoContainerRef}
+        className="video-container"
+        data-volume-level="high"
+      >
         {/* <img className="thumbnail-img" /> */}
         <div className="video-controls-container">
           <div
-            ref={timelnCon}
-            onMouseMove={handleTimelineUpdate}
+            ref={timelineRef}
+            onMouseMove={handleScrubbing}
             className="timeline-container"
           >
             <div className="timeline">
@@ -244,7 +281,7 @@ function VideoPlayer({video}) {
             </button>
 
             <div className="volume-container">
-              <button onClick={toggleMute} className="mute-btn">
+              <button onClick={handleMute} className="mute-btn">
                 <svg className="volume-high-icon volicon" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
@@ -266,19 +303,19 @@ function VideoPlayer({video}) {
               </button>
 
               <input
-                onInput={volumeSlider}
-                ref={volumSlidr}
+                onInput={handleVolumeChange}
+                ref={volumeSliderRef}
                 className="volume-slider"
                 type="range"
                 min={0}
                 max={1}
-                step={"any"}
+                step="any"
               />
             </div>
 
             <div className="duration-container">
               <div className="current-time">
-                {currentTime[2]}.{currentTime[0]}.{currentTime[1]}{" "}
+                {currentTime[2]}:{currentTime[0]}:{currentTime[1]}{" "}
               </div>
               /
               <div className="total-time">
@@ -296,7 +333,8 @@ function VideoPlayer({video}) {
             </button>
 
             <button
-              onClick={changePlaybackSpeed}
+              onClick={handleSpeedChange}
+              ref={speedBtnRef}
               className="speed-btn wide-btn"
             >
               1x
@@ -350,4 +388,4 @@ function VideoPlayer({video}) {
   );
 }
 
-export default VideoPlayer
+export default VideoPlayer;
