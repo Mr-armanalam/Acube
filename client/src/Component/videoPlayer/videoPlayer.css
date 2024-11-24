@@ -9,13 +9,14 @@ body {
 .video-container {
   position: relative;
   margin-top: 2rem;
-  width: 90%;
+  width: 100%;
   max-width: 1000px;
   display: flex;
   justify-content: center;
   margin-inline: auto;
   cursor: pointer;
   background-color: black;
+  border-radius: 4px;
 }
 
 .video-container.theater,
@@ -34,6 +35,7 @@ body {
 
 video {
   width: 100%;
+  border-radius: 4px;
 }
 .video-controls-container {
   position: absolute;

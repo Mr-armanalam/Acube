@@ -11,27 +11,27 @@ const Leftsidebar = () => {
     <div className="container_leftSidebar">
         <NavLink to={'/'} className="icon_sidebar_div">
             <AiOutlineHome size={22} className='icon_sidebar'/>
-            <div className="text_sidebar_icon">Home</div>
+            <p className="text_sidebar_icon">Home</p>
         </NavLink>
         <div className="icon_sidebar_div">
             <MdOutlineExplore size={22} className='icon_sidebar'/>
-            <div className="text_sidebar_icon">Explore</div>
+            <p className="text_sidebar_icon">Explore</p>
         </div>
         <div className="icon_sidebar_div">
             <img src={shorts} width={22} alt='short' className='icon_sidebar'/>
-            <div className="text_sidebar_icon">Shorts</div>
+            <p className="text_sidebar_icon">Shorts</p>
         </div>
         <div className="icon_sidebar_div">
             <MdOutlineSubscriptions size={22} className='icon_sidebar'/>
-            <div className="text_sidebar_icon" style={{fontSize:"12px"}}>Subscription</div>
+            <p className="text_sidebar_icon" style={{fontSize:"12px"}}>Subscription</p>
         </div>
         <NavLink to={'/Library'} className="icon_sidebar_div">
             <MdOutlineVideoLibrary size={22} className='icon_sidebar'/>
-            <div className="text_sidebar_icon">Library</div>
+            <p className="text_sidebar_icon">Library</p>
         </NavLink>
         <NavLink to={'/chat'} className="icon_sidebar_div">
             <PiChatDotsBold size={22} className='icon_sidebar'/>
-            <div className="text_sidebar_icon">Chat</div>
+            <p className="text_sidebar_icon">Chat</p>
         </NavLink>
     </div>
   )

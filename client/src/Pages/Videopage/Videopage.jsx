@@ -111,11 +111,11 @@ const Videopage = () => {
                 </div>
               </div>
             </div>
-            <div className="moreVideoBar">
+          </div>
+           <div className="moreVideoBar">
               <h1>More videos</h1>
               <Showvideogrid vid={viDs} />
             </div>
-          </div>
         </div>
       </>
     );

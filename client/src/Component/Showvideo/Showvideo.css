@@ -6,11 +6,13 @@
     margin: 1rem 0;
     min-height: 220px;
     height: auto;
+    object-fit: cover;
     border: 2px solid #1f1f1f;
     border-radius: 20px;
     background: linear-gradient(110deg, #1a1a1a 8%, #212121 18%, #1a1a1a 33%);
     background-size: 200% 100%;
     animation: 3s shine linear infinite;
+    /* border: 1px solid green; */
 }
 
 .video_description{

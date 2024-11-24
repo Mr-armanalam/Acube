@@ -18,7 +18,7 @@ const ChatSearch = () => {
 
   return (
     <div className="s_header">
-      <h2 className="">
+      <h2>
         Chats{" "}
         <MdOutlineSettings className="s_setting"/>
       </h2>

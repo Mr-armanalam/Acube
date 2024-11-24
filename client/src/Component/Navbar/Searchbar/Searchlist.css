@@ -1,16 +1,39 @@
 .Container_SearchList{
-    background-color: white;
-    width: 90.75%;
+    box-sizing: border-box;
+    background-color: #E0E3D6;
+    width: 91.2%;
     position: absolute;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
     top: 2.7rem;
     height: fit-content;
     z-index: 91;
 }
 .titleItem{
+    /* box-sizing: border-box ; */
     margin: 0;
-    padding: 0.5rem;
+    /* padding: 0.5rem; */
     cursor: pointer;
 }
-.titleItem:hover{
-    background-color: rgba(166,202,234,0.516);
+.titleLink {
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    gap: 4px;
+    text-decoration: none;
+    color: #3e3e3e;
+}
+.titleLink:hover{
+    color: #E0E3D6;
+    background-color: #3e3e3e;
+    margin: 2px 3px;
+    border-radius: 4px;
+}
+
+.titleItem p {
+    margin: 0;
+    padding: 0;
+    font-weight: 500;
+    font-size: medium;
 }
