@@ -32,10 +32,13 @@
   }
   .leftside_whl {
     background-color: rgba(0, 0, 0, 0.153);
-    height: 50vh;
+    height: 12rem;
+    border-radius: 8px;
+    border: 1px solid #292828;
   }
   
   .whl_list{
+    height: 87vh;
       overflow-y: auto;
   }
   @media (max-width:768px) {

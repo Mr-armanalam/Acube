@@ -7,7 +7,7 @@ const WHLvideolist = ({ page, currentuser, videolist }) => {
             {currentuser ? (
                 <>
                     {
-                        videolist?.data.filter(q => q?.viewer === currentuser).reverse().map(m => {
+                        videolist?.data?.filter(q => q?.viewer === currentuser).reverse().map(m => {
                             // console.log(m)
                             return (
                                 <>

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { get_messages } from "../../action/get_messages";
 import { useDispatch, useSelector } from 'react-redux';
 import formatDate from '../../utils/getDateformate';
@@ -7,23 +7,24 @@ import { get_all_chat_user } from '../../action/get_all_chat_user';
 import ChatSearch from './ChatSearch';
 
 
-const ChatSidebar = ({ setSelectedUser, selectedUser, setloading}) => {
+const ChatSidebar = ({ setSelectedUser, selectedUser, setloading,setnavigate, navigate}) => {
 
     const dispatch = useDispatch();
     const {filteredUsers: users, currentMessages} = useSelector((state) => state.get_all_chat_user_reducer);
     
-    const handleSelectedUser = (user) => {
+    const handleSelectedUser = useCallback((user) => {
       dispatch(get_messages({selectedUser: user._id}))
       setSelectedUser(user);
       setloading(true);
-    }
+      setnavigate({ display: "navigate"})
+    },[setloading, setnavigate, dispatch, setSelectedUser])
 
     useEffect(() => {
       dispatch(get_all_chat_user({}));
   },[dispatch])
 
   return (
-    <div className="sidebar_background">
+    <div className={`sidebar_background ${navigate.display}`}>
 
         <ChatSearch />
         

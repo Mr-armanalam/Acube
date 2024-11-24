@@ -2,9 +2,9 @@ import React from "react";
 import "./chat_main.css";
 import { MdChatBubble } from "react-icons/md";
 
-const NoChatMain = () => {
+const NoChatMain = ({navigate}) => {
   return (
-    <section className="No_Chat_main_container">
+    <section className={`No_Chat_main_container ${navigate?.main}`}>
       <div className="No_chat_box">
         <MdChatBubble size={110} color="#252525" />
         <h2>Welcome to Your Chats</h2>

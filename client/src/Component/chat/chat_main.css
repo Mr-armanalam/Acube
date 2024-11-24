@@ -186,3 +186,11 @@
     border-radius: 14px 0 0 0;
     /* width: 15px; */
 }
+@media (max-width:500px) {
+    .c_section{
+        height: 94%;
+    }
+    .navigate{
+        display: none;
+    }
+}

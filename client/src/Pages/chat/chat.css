@@ -60,6 +60,7 @@
     display: none;
 } */
 
+
 .s_chat_box {
   box-sizing: border-box;
   display: flex;
@@ -128,4 +129,23 @@ h4 {
   background-color: #3c3c3c;
   border-radius: 5px;
   cursor: pointer;
+}
+
+@media (max-width:500px) {
+  .chat_container{
+    /* height: 94.7vh; */
+    flex-direction: column;
+    /* border: 1px solid red; */
+    /* overflow: hidden; */
+  }
+  .sidebar_background{
+    height: auto;
+  }
+  .main_chat_container{
+    height: 100%;
+    /* border: 1px solid blue; */
+  }
+  .navigate{
+    display: none;
+  }
 }
