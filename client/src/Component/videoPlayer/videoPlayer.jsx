@@ -11,7 +11,8 @@ function VideoPlayer({ video }) {
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState([0, 0, 0]); // current time of the video in array. The first value represents the minute and the second represents seconds.
-  const [duration, setDuration] = useState([0, 0, 0]); // // total duration of the video in the array. The first value represents the minute and the second represents seconds.
+  const [duration, setDuration] = useState([0, 0, 0]);
+  // const [currentQuality, setCurrentQuality] = useState(videoSources[0].quality); // // total duration of the video in the array. The first value represents the minute and the second represents seconds.
   const [isScrubbing, setIsScrubbing] = useState(false);
 
   const sec2Min = (sec) => {
@@ -126,38 +127,51 @@ function VideoPlayer({ video }) {
     videoRef.current.currentTime += duration;
   };
 
-  const handleGesture = (e) => { 
-    const width = videoContainerRef.current.clientWidth; 
-    const third = width / 3; 
-    const x = e.clientX; 
+  const handleGesture = (e) => {
+    const width = videoContainerRef.current.clientWidth;
+    const third = width / 3;
+    const x = e.clientX;
 
-    if (e.detail === 2) { // Double tap
-     if (x > 2 * third) { 
-      skip(10); // Forward 
-      } else if (x < third) { 
-        skip(-10); // Backward 
-        } else { 
-          handlePlay(); // Single tap in the middle 
-        } 
-      } 
-      
-      if (e.detail === 3) { // Triple tap 
-        if (x > 2 * third) { 
-          window.close(); // Close the website 
-        } else if (x < third) { 
-          console.log('Show comments section'); // for show comments section later due
-        } else { console.log('Move to next video'); // for move to next video
-        } 
-      } 
-    }; 
-  
-  useEffect(() => { 
-    videoContainerRef.current?.addEventListener('click', handleGesture); 
-    return () => { 
-      videoContainerRef.current?.removeEventListener('click', handleGesture); 
-    }; 
+    if (e.detail === 2) {
+      // Double tap
+      if (x > 2 * third) {
+        skip(10); // Forward
+      } else if (x < third) {
+        skip(-10); // Backward
+      } else {
+        handlePlay(); // Single tap in the middle
+      }
+    }
+
+    if (e.detail === 3) {
+      // Triple tap
+      if (x > 2 * third) {
+        window.close(); // Close the website
+      } else if (x < third) {
+        console.log("Show comments section"); // for show comments section later due
+      } else {
+        console.log("Move to next video"); // for move to next video
+      }
+    }
+  };
+
+  // const handleQualityChange = (quality) => {
+  //   const currentTime = videoRef.current.currentTime;
+  //   const isPlaying = !videoRef.current.paused;
+  //   setCurrentQuality(quality);
+  //   videoRef.current.src = videoSources.find(
+  //     (source) => source.quality === quality
+  //   ).src;
+  //   videoRef.current.currentTime = currentTime;
+  //   if (isPlaying) videoRef.current.play();
+  // };
+
+  useEffect(() => {
+    videoContainerRef.current?.addEventListener("click", handleGesture);
+    return () => {
+      videoContainerRef.current?.removeEventListener("click", handleGesture);
+    };
   }, []);
-
 
   useEffect(() => {
     const handleKeydown = (e) => {
@@ -200,7 +214,6 @@ function VideoPlayer({ video }) {
       document.removeEventListener("keydown", handleKeydown);
     };
   }, []);
-
 
   useEffect(() => {
     if (videoRef.current) {
