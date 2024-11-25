@@ -23,12 +23,17 @@
   margin-bottom: 20px;
   position: relative;
 }
-.s_setting{
+.add_group{
     position: absolute ;
     top: 0;
     right: 0;
-    font-size:large;
-}
+    font-size: 25px;
+    color: rgb(8, 8, 8);
+    cursor: pointer;
+  }
+  .add_group:hover{
+    color: beige;
+  }
 .s_header > div {
   height: 35px;
   display: flex;

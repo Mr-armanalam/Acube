@@ -2,9 +2,11 @@ import React, { useEffect, useState, useCallback } from "react";
 import { MdOutlineSettings } from "react-icons/md";
 import { useDispatch } from "react-redux";
 import { get_all_chat_user } from "../../action/get_all_chat_user";
+import { GrAddCircle } from "react-icons/gr";
 
 
-const ChatSearch = () => {
+
+const ChatSearch = ({ setIscreateGroup}) => {
   const dispatch = useDispatch();
   const [searchquery, setsearchquery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState(searchquery);
@@ -19,6 +21,12 @@ const ChatSearch = () => {
       }, delay);
     };
   };
+
+  const handleIscreate = useCallback(() => {
+    setIscreateGroup(true);
+    console.log("hi");
+    
+  },[setIscreateGroup])
 
   const handleSearch = useCallback(
     debounce((query) => {
@@ -35,7 +43,7 @@ const ChatSearch = () => {
   return (
     <div className="s_header">
       <h2>
-        Chats <MdOutlineSettings className="s_setting" />
+        Chats <GrAddCircle className="add_group" onClick={handleIscreate} />
       </h2>
       <div>
         <input
