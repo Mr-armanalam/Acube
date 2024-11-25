@@ -13,17 +13,6 @@ const ChatMain = ({ selectedUser, loading, setloading }) => {
   const newMessages = useSelector((state) => state.send_chat_messages_reducer);
   const [sendingMessages, setSendingMessages] = useState("");
 
-  // const handleSubmit = (e) => {
-  //   e.preventDefault();
-  //   dispatch(
-  //     send_chat_messages({
-  //       message: sendingMessages,
-  //       recieverId: selectedUser._id,
-  //     })
-  //   );
-
-  //   setSendingMessages("");
-  // };
 
   const handleSubmit = useCallback(
     (e) => {
@@ -45,7 +34,7 @@ const ChatMain = ({ selectedUser, loading, setloading }) => {
       dispatch(get_all_chat_user());
       setloading(false);
     }
-    dispatch(get_messages({ selectedUser: selectedUser._id }));
+    dispatch(get_messages(selectedUser._id ));
   }, [loading, dispatch, selectedUser, setloading, newMessages]);
 
   useEffect(() => {
@@ -54,12 +43,6 @@ const ChatMain = ({ selectedUser, loading, setloading }) => {
     }
   }, [newMessages,getmessages]);
 
-  // useEffect(() => {
-  //   dispatch(get_all_chat_user());
-  //   dispatch(get_messages({ selectedUser: selectedUser._id }));
-  //   contentRef.current.scrollTop = contentRef.current.scrollHeight;
-  //   setloading(true);
-  // }, [setloading, loading, dispatch, selectedUser, newMessages]);
 
   return (
     <section className="c_section">

@@ -1,5 +1,7 @@
 import users from "../Models/Auth.js"
 import jwt from "jsonwebtoken"
+
+
 export const login = async (req, res) => {
     const { email,username, picture } = req.body;
     // console.log(req.body)
@@ -54,3 +56,25 @@ export const login = async (req, res) => {
         return
     }
 }
+
+
+export const updatePoints = async (req, res) => {
+  try {
+    // console.log(req.body);
+    // console.log(req.userid)
+    const { points } = req.body;
+    const userId = req.userid;
+
+    const existingUser = await users.findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    existingUser.reputation = (existingUser.reputation || 0) + points;
+    await existingUser.save();
+
+    res.status(200).json({ message: 'Points updated successfully', points: existingUser.reputation });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error, Look like you not logged In' });
+  }
+};

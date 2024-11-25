@@ -5,7 +5,7 @@ import Message from "../Models/message.model.js";
 export const getChatUser = async (req, res) => {
   try {   
     const {searchquery} = req.body;
-    const loggedInUserId = req.user.id;
+    const loggedInUserId = req.userid;
 
     const userFilter = { _id: { $ne: loggedInUserId } }; 
     if (searchquery) { 

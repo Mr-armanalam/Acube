@@ -6,6 +6,7 @@ const userschema=mongoose.Schema({
     username:{type:String,require:true},
     desc:{type:String},
     picture:{type:String},
+    reputation:{type:Number, default: 0},
     joinedon:{type:Date,default:Date.now}
 })
 

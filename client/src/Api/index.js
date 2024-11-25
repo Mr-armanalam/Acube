@@ -1,6 +1,6 @@
 import axios from "axios"
-  // const API=axios.create({baseURL:`http://localhost:5000/`})
- const API = axios.create({ baseURL: process.env.REACT_APP_BACKEND_URL });
+  const API=axios.create({baseURL:`http://localhost:5000/`})
+//  const API = axios.create({ baseURL: process.env.REACT_APP_BACKEND_URL });
  
 
 API.interceptors.request.use((req)=>{
@@ -32,11 +32,12 @@ export const deletehistory=(userid)=>API.delete(`/video/deletehistory/${userid}`
 export const addtolikevideo=(likedvideodata)=>API.post('/video/likevideo',likedvideodata)
 export const getalllikedvideo=()=>API.get('/video/getalllikevide')
 export const deletelikedvideo=(videoid,viewer)=>API.delete(`/video/deletelikevideo/${videoid}/${viewer}`)
+export const updatePoint=(points)=>API.post('/user/update-points',points)  
 
 export const addtowatchlater=(watchlaterdata)=>API.post('/video/watchlater',watchlaterdata)
 export const getallwatchlater=()=>API.get('/video/getallwatchlater')
 export const deletewatchlater=(videoid,viewer)=>API.delete(`/video/deletewatchlater/${videoid}/${viewer}`)
 
-export const all_chat_user_sidebar = (searquery)=>API.post(`/chat/chat_user/${JSON.parse(localStorage.getItem("Profile")).token}`, searquery);
-export const send_chat_Messages = (sendMessages)=>API.post(`/chat/send/${JSON.parse(localStorage.getItem("Profile")).token}`, sendMessages);
-export const get_chat_Messages = (selectedId)=>API.post(`/chat/message/${JSON.parse(localStorage.getItem("Profile")).token}`, selectedId);
+export const all_chat_user_sidebar = (searquery)=>API.post(`/chat/chat_user`, searquery);
+export const send_chat_Messages = (sendMessages)=>API.post(`/chat/send`, sendMessages);
+export const get_chat_Messages = (selectedId)=>API.get(`/chat/message/${selectedId}`);

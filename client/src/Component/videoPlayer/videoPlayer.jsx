@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./videoPlayer.css";
 import subtitle from "../../assets/subtitles.vtt";
+import { updatePoint } from "../../action/updatePoint";
+import {useDispatch} from "react-redux"
+
 
 function VideoPlayer({ video }) {
+  const dispatch = useDispatch();
   const videoRef = useRef(null);
   const videoContainerRef = useRef(null);
   const timelineRef = useRef(null);
@@ -14,6 +18,7 @@ function VideoPlayer({ video }) {
   const [duration, setDuration] = useState([0, 0, 0]);
   // const [currentQuality, setCurrentQuality] = useState(videoSources[0].quality); // // total duration of the video in the array. The first value represents the minute and the second represents seconds.
   const [isScrubbing, setIsScrubbing] = useState(false);
+  const [videosWatched, setVideosWatched] = useState(0);
 
   const sec2Min = (sec) => {
     const min = Math.floor(sec / 60);
@@ -166,6 +171,17 @@ function VideoPlayer({ video }) {
   //   if (isPlaying) videoRef.current.play();
   // };
 
+  const handleVideoEnd = async () => {
+    setVideosWatched(videosWatched + 1);
+    const points = (videosWatched + 1) * 5;
+    try {
+      dispatch(updatePoint({points: points}))
+      console.log("Points updated successfully");
+    } catch (error) {
+      console.error("Error updating points", error);
+    }
+  };
+
   useEffect(() => {
     videoContainerRef.current?.addEventListener("click", handleGesture);
     return () => {
@@ -234,8 +250,8 @@ function VideoPlayer({ video }) {
     });
     return () => {
       if (videoRef.current) {
-        videoRef.current.removeEventListener("timeupdate", handleTimeUpdate);
-        videoRef.current.removeEventListener(
+        videoRef.current?.removeEventListener("timeupdate", handleTimeUpdate);
+        videoRef.current?.removeEventListener(
           "volumechange",
           handleVolumeChange
         );
@@ -393,7 +409,7 @@ function VideoPlayer({ video }) {
             </button>
           </div>
         </div>
-        <video id="video" ref={videoRef} src={video}>
+        <video id="video" ref={videoRef} src={video} onEnded={handleVideoEnd}>
           <track kind="captions" mode="hidden" srcLang="en" src={subtitle} />
         </video>
       </div>
