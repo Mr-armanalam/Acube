@@ -16,7 +16,6 @@ const ChatSidebar = ({
 }) => {
   const [iscreateGroup, setIscreateGroup] = useState(false);
   const [GroupMembers, setGroupMembers] = useState([]);
-  const [GroupName, setGroupName] = useState("");
 
   const dispatch = useDispatch();
   const { filteredUsers: users, currentMessages } = useSelector(
@@ -33,17 +32,17 @@ const ChatSidebar = ({
     [setloading, setnavigate, dispatch, setSelectedUser]
   );
 
-    const handleisCreateUser = useCallback((userId) => {
+    const handleisCreateUser = useCallback((user) => {
 
       setGroupMembers((prevGroupMembers) => {
-        if (prevGroupMembers.includes(userId)) {
-          return prevGroupMembers.filter((id) => id !== userId);
+        
+        if (prevGroupMembers?.includes( user)) {
+          return prevGroupMembers?.filter((userFilter) => userFilter._id !== user._id);
         } else {
-          return [...prevGroupMembers, userId];
+          return [...prevGroupMembers, user];
         }
        });
-        console.log("hi" + GroupMembers.length);
-    },[GroupMembers, setGroupMembers]);
+    },[setGroupMembers]);
 
     useEffect(() => {
         dispatch(get_all_chat_user({}));
@@ -52,11 +51,17 @@ const ChatSidebar = ({
   return (
     <div className={`sidebar_background ${navigate.display}`}>
       <ChatSearch
-        iscreateGroup={iscreateGroup}
         setIscreateGroup={setIscreateGroup}
+        iscreateGroup={iscreateGroup}
+        setGroupMembers={setGroupMembers}
+
       />
 
-        <SelectedGroupMembers />
+        {iscreateGroup || GroupMembers.length !== 0 ? 
+          <SelectedGroupMembers  
+          handleisCreateUser={handleisCreateUser} 
+          GroupMembers={GroupMembers}
+        /> : null}
 
       <div className="s_chat_box_container">
         {users &&
@@ -68,7 +73,7 @@ const ChatSidebar = ({
               }`}
               onClick={() =>
                 iscreateGroup
-                  ? handleisCreateUser(item._id)
+                  ? handleisCreateUser(item)
                   : handleSelectedUser(item)
               }
             >

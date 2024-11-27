@@ -126,7 +126,6 @@
 }
 
 .c_main_container{
-        /* border: 1px solid red; */
     box-sizing: border-box;
     width: 100%;
     height: auto;
@@ -154,8 +153,6 @@
     height: auto;
     background-color: #131313;
     border-top-right-radius: 14px;
-    /* border: 1px solid red; */
-
 }
 .message_cut_right{
     display: flex;
@@ -171,7 +168,6 @@
     color: aliceblue;
 }
 .c_left_message{
-        /* border: 1px solid red; */
     margin-top: auto;
     display: flex;
     flex-direction: column;
@@ -182,7 +178,6 @@
     margin-left: auto;
 }
 .right_cut_message{
-    /* border: 1px solid red; */
     border-radius: 14px 0 0 0;
     /* width: 15px; */
 }
@@ -192,5 +187,10 @@
     }
     .navigate{
         display: none;
+    }
+}
+@media (min-width: 1500px) {
+    .c_section{
+        height: 95vh;
     }
 }

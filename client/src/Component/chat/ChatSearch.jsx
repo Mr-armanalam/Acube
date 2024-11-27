@@ -1,16 +1,17 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { MdOutlineSettings } from "react-icons/md";
 import { useDispatch } from "react-redux";
 import { get_all_chat_user } from "../../action/get_all_chat_user";
 import { GrAddCircle } from "react-icons/gr";
+import { ImCross } from "react-icons/im";
 
 
 
-const ChatSearch = ({ setIscreateGroup}) => {
+
+const ChatSearch = ({ setIscreateGroup, iscreateGroup, setGroupMembers}) => {
   const dispatch = useDispatch();
   const [searchquery, setsearchquery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState(searchquery);
-
+  
   // Debounce function
   const debounce = (func, delay) => {
     let timer;
@@ -23,9 +24,7 @@ const ChatSearch = ({ setIscreateGroup}) => {
   };
 
   const handleIscreate = useCallback(() => {
-    setIscreateGroup(true);
-    console.log("hi");
-    
+    setIscreateGroup(true);    
   },[setIscreateGroup])
 
   const handleSearch = useCallback(
@@ -35,6 +34,11 @@ const ChatSearch = ({ setIscreateGroup}) => {
     [dispatch]
   );
 
+  const handleChat = useCallback(() => {
+    setIscreateGroup(false);
+    setGroupMembers([]);
+  },[setIscreateGroup, setGroupMembers])
+
   useEffect(() => {
     setDebouncedQuery(searchquery);
     handleSearch(searchquery);
@@ -42,9 +46,16 @@ const ChatSearch = ({ setIscreateGroup}) => {
 
   return (
     <div className="s_header">
-      <h2>
+      {!iscreateGroup ? (
+        <h2>
         Chats <GrAddCircle className="add_group" onClick={handleIscreate} />
-      </h2>
+        </h2>
+      ):(
+        <h2>
+        Create <ImCross className="add_group" onClick={handleChat} />
+        </h2>
+      )}
+      
       <div>
         <input
           type="text"

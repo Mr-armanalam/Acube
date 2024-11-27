@@ -1,21 +1,22 @@
 .chat_container {
-  /* border: 1px solid red; */
   height: 92.7vh;
   display: flex;
   color: aliceblue;
   box-sizing: border-box;
+  /* border: 1px solid red; */
 }
 .sidebar_background {
   border-right: 1px solid #121212;
   box-sizing: border-box;
-  height: 92.7vh;
+  /* height: 92.7vh; */
   background: #252525;
-  flex: 1;
+  /* flex: 1; */
 }
 .s_header{
-    width: 20rem;
+    min-width: 20rem;
     margin-inline: 20px;
     margin-top: 20px;
+    flex: 1;
 }
 .s_header > h2 {
   padding: 0;
@@ -41,9 +42,10 @@
   justify-content: center;
   border: 1px solid #3c3c3c;
   border-radius: 7px;
-  width: 19.8rem;
+  min-width: 19.8rem;
   margin-bottom: 20px;
   background-color: #131313;
+  flex: 1;
 }
 .s_header > div > input {
   padding-inline: 12px;
@@ -76,6 +78,7 @@
   align-items: center;
   margin-bottom: 20px;
   padding-block: 8px;
+  padding-inline: 13px;
 }
 .s_avatar {
   width: 50px;
@@ -99,11 +102,11 @@
 .chat_owner {
   display: flex;
   flex-direction: row;
-  /* gap: 4px; */
+  flex: 1;
 }
 .chat_owner > div {
-  /* border: 1px solid red; */
   width: 190px;
+  flex: 1;
 }
 .chat_owner > div > p,
 h4 {
@@ -138,19 +141,27 @@ h4 {
 
 @media (max-width:500px) {
   .chat_container{
-    /* height: 94.7vh; */
     flex-direction: column;
-    /* border: 1px solid red; */
-    /* overflow: hidden; */
   }
   .sidebar_background{
     height: auto;
   }
   .main_chat_container{
     height: 100%;
-    /* border: 1px solid blue; */
   }
   .navigate{
     display: none;
   }
+}
+@media (min-width: 1500px) {
+  .chat_container{
+    height: 97.4vh;
+  }
+  .sidebar_background{
+    height: 97.4vh;
+  }
+  .s_chat_box_container{
+    height: 86.2vh;
+  }
+  
 }
