@@ -41,4 +41,8 @@ export const deletewatchlater=(videoid,viewer)=>API.delete(`/video/deletewatchla
 export const all_chat_user_sidebar = (searquery)=>API.post(`/chat/chat_user`, searquery);
 export const send_chat_Messages = (sendMessages)=>API.post(`/chat/send`, sendMessages);
 export const get_chat_Messages = (selectedId)=>API.get(`/chat/message/${selectedId}`);
+
 export const send_GroupUsers = (GroupUsers)=>API.post('/chat/group_user',GroupUsers);
+export const get_all_Group = ()=>API.get('/chat/group');
+export const send_group_messages = (group_messages)=>API.post('/chat/group/messages', group_messages);
+export const fetch_group_messages = (groupId)=>API.get(`/chat/group/${groupId}/messages`);

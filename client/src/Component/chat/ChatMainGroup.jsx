@@ -2,28 +2,28 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import "./chat_main.css";
 import { IoMdSend } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
-import { send_chat_messages } from "../../action/send_chat_messages";
-import { get_messages } from "../../action/get_messages";
-import { get_all_chat_user } from "../../action/get_all_chat_user";
+import { fetch_grp_msg, send_grp_msg } from "../../action/send_group_msg";
+import { fetchGroup } from "../../action/getAll_Group";
 
-const ChatMain = ({ selectedUser, loading, setloading }) => {
+const ChatMainGroup = ({ selectedUser, loading, setloading }) => {
   const contentRef = useRef(null);
   const dispatch = useDispatch();
-  const getmessages = useSelector((state) => state.get_messages_reducer);
-  const newMessages = useSelector((state) => state.send_chat_messages_reducer);
-  const [sendingMessages, setSendingMessages] = useState("");
+
+    const getmessages = useSelector((state) => state.fetch_grp_Msg_reducer);
+    const newMessages = useSelector((state) => state.send_group_msg);
+    const [sendingMessages, setSendingMessages] = useState("");
 
 
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault();
       dispatch(
-        send_chat_messages({
-          message: sendingMessages,
-          recieverId: selectedUser._id,
+        send_grp_msg({
+          content: sendingMessages,
+          groupId: selectedUser._id,
         })
       );
-      setSendingMessages("");
+      setSendingMessages("");    
     },
     [dispatch, sendingMessages, selectedUser]
   );
@@ -31,17 +31,17 @@ const ChatMain = ({ selectedUser, loading, setloading }) => {
 
   useEffect(() => {
     if (loading) {
-      dispatch(get_all_chat_user());
+      dispatch(fetchGroup());
       setloading(false);
     }
-    dispatch(get_messages(selectedUser._id ));
+    dispatch(fetch_grp_msg(selectedUser._id ));
   }, [loading, dispatch, selectedUser, setloading, newMessages]);
 
   useEffect(() => {
     if (contentRef.current) {
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
-  }, [newMessages,getmessages]);
+  }, [getmessages, newMessages]);
 
 
   return (
@@ -56,12 +56,11 @@ const ChatMain = ({ selectedUser, loading, setloading }) => {
                 className="s_avatar_img"
               />
             ) : (
-              selectedUser.username.charAt(0).toUpperCase()
+              selectedUser.name.charAt(0).toUpperCase()
             )}
           </div>
           <p>
-            {selectedUser.username}
-
+            {selectedUser.name}
           </p>
         </div>
       </div>
@@ -70,12 +69,12 @@ const ChatMain = ({ selectedUser, loading, setloading }) => {
         <div className="c_main_container">
           {getmessages.map((item, index) => (
             <div key={index} className="c_left_message">
-              {item.receiver === selectedUser._id ? (
+              {item?.group === selectedUser._id ? (
                 <div className="c_message_box">
                   <div className="message_cut_left" />
                   <div className="message_cut_right">{item.content}</div>
                 </div>
-              ) : item.sender === selectedUser._id ? (
+              ) : item?.sender === selectedUser._id ? (
                 <div className="c_message_box box_right_message">
                   <div className="message_cut_right">{item.content}</div>
                   <div className="message_cut_left right_cut_message" />
@@ -105,4 +104,4 @@ const ChatMain = ({ selectedUser, loading, setloading }) => {
   );
 };
 
-export default ChatMain;
+export default ChatMainGroup;

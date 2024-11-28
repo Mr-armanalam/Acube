@@ -5,6 +5,6 @@ export const get_messages=(selectedId)=>async(dispatch)=>{
         // console.log(data)
         dispatch({type:"GET_CHAT_MESSAGES",payload:data})
     } catch (error) {
-        console.log(error)
+        console.log(error);
     }
 }

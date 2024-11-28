@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import logo from "./logo.ico"
 import "./Navbar.css"
 import { useDispatch, useSelector } from 'react-redux'
-import { Link, generatePath } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { RiVideoAddLine } from "react-icons/ri"
 import { IoMdNotificationsOutline } from "react-icons/io"
 import { BiUserCircle } from "react-icons/bi"
@@ -20,10 +20,9 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
     const [profile, setprofile] = useState([])
     const dispatch = useDispatch()
    
-
     const currentuser = useSelector(state => state.currentuserreducer);
-    // console.log(profile.name, profile.picture)
-    const successlogin = () => {
+      
+    const successlogin = useCallback(() => {
         if (profile.email) {
             dispatch(login({
                email: profile.email ,
@@ -32,7 +31,8 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
               }))
             // console.log(profile.email)
         }
-    }
+    },[dispatch,profile])
+
     // console.log(currentuser?.token)
     // const currentuser={
     //     result:{
@@ -44,8 +44,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
     // }
 
     const google_login = useGoogleLogin({
-        onSuccess: tokenResponse => setuser(tokenResponse),
-        
+        onSuccess: tokenResponse => setuser(tokenResponse),     
         onError: (error) => console.log("Login Failed", error)
     });
 
@@ -66,13 +65,14 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
 
             }
         },
-        [user]
+        [user, successlogin]
     );
-    const logout=()=>{
+    const logout=useCallback(()=>{
         dispatch(setcurrentuser(null))
         googleLogout()
         localStorage.clear()
-    }
+    },[dispatch])
+
     useEffect(()=>{
         const token=currentuser?.token;
         if(token){
@@ -82,7 +82,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
             }
         }
         dispatch(setcurrentuser(JSON.parse(localStorage.getItem("Profile"))))
-  },[currentuser?.token,dispatch]
+  },[currentuser?.token,dispatch, logout]
 )
     return (
       <>

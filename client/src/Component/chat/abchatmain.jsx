@@ -56,11 +56,13 @@ const ChatMain = ({ selectedUser, loading, setloading }) => {
                 className="s_avatar_img"
               />
             ) : (
-              selectedUser.username.charAt(0).toUpperCase()
+              // selectedUser.username.charAt(0).toUpperCase()
+              selectedUser.name.charAt(0).toUpperCase()
             )}
           </div>
           <p>
-            {selectedUser.username}
+            {selectedUser.name}
+            {/* {selectedUser.username} */}
 
           </p>
         </div>

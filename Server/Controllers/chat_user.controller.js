@@ -1,5 +1,6 @@
 import User from "../Models/Auth.js";
 import Conversation from "../Models/conversation.model.js";
+import Group from "../Models/Group.model.js";
 import Message from "../Models/message.model.js";
 
 export const getChatUser = async (req, res) => {
@@ -45,5 +46,21 @@ export const getChatUser = async (req, res) => {
   } catch (error) {
     console.log("Error -in getUsersForSidebar : ", error.message);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const getGroupUser = async (req, res) => {
+  try {
+    const currentUser  = req.userid;
+    
+    const group = await Group.find({members: {$all : [currentUser]}}).populate('members', 'name');
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+    res.status(200).json(group);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal server error" });
+    throw new Error(error.message);
   }
 };
