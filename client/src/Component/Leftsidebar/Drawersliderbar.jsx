@@ -5,6 +5,8 @@ import { MdOutlineExplore, MdOutlineVideoLibrary, MdSubscriptions, MdOutlineWatc
 import { FaHistory } from 'react-icons/fa'
 import shorts from "./shorts.png"
 import { NavLink } from 'react-router-dom'
+import { PiChatDotsBold } from "react-icons/pi";
+
 const Drawersliderbar = ({ toggledraw, toggledrawersidebar }) => {
   
   return (
@@ -70,6 +72,12 @@ const Drawersliderbar = ({ toggledraw, toggledrawersidebar }) => {
             <div>
               <AiFillLike size={22} className='icon_sidebar' style={{ margin: "auto 0.7rem" }} />
               <div className="text_sidebar_icon">Liked Videos</div>
+            </div>
+          </NavLink>
+          <NavLink to={'/chat'} className="icon_sidebar_div">
+            <div>
+            <PiChatDotsBold size={22} className='icon_sidebar' style={{ margin: "auto 0.7rem" }}/>
+            <div className="text_sidebar_icon">Chat</div>
             </div>
           </NavLink>
         </div>

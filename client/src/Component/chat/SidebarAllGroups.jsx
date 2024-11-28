@@ -22,7 +22,8 @@ const SidebarAllGroups = ({ setSelectedUser,setloading, setnavigate,selectedUser
             <div
               key={index}
               className={`s_chat_box ${
-                selectedUser?._id === groups._id ? "selected" : "" 
+                // selectedUser?._id === groups._id ? "selected" : 
+                "" 
               }`}
               onClick={() => !iscreateGroup && handleSelectedUser(item)
               }

@@ -3,23 +3,24 @@ import "./SelectedGroupMembers.css";
 import { RxCross2 } from "react-icons/rx";
 import { useDispatch } from "react-redux";
 import { send_GroupUsers } from "../../action/sendgroupuser";
+import { fetchGroup } from "../../action/getAll_Group";
 
-const SelectedGroupMembers = ({ handleisCreateUser, GroupMembers }) => {
+const SelectedGroupMembers = ({ handleisCreateUser, GroupMembers, setGroupMembers, setIscreateGroup }) => {
   const dispatch = useDispatch();
   const [GroupId, setGroupId] = useState([]);
   const [GroupName, setGroupName] = useState("");
   const [isSelected, setIsselected] = useState(false);
-
-  // console.log(GroupName);
 
   const handleOnSubmit = useCallback(
     (e) => {
       e.preventDefault();
       setIsselected(false);
       dispatch(send_GroupUsers({GroupId: GroupId, GroupName: GroupName}))
-      // console.log(GroupName, GroupId);
+      setGroupMembers([]);
+      setIscreateGroup(false);
+      dispatch(fetchGroup());
     },
-    [ GroupName, GroupId, dispatch]
+    [ GroupName, GroupId, dispatch, setGroupMembers, setIscreateGroup]
   );
 
   const handleOnSelected = useCallback(() => {
@@ -55,6 +56,7 @@ const SelectedGroupMembers = ({ handleisCreateUser, GroupMembers }) => {
                 placeholder="Group Name"
                 className="Group_name"
                 value={GroupName}
+                required={true}
                 onChange={(e) => setGroupName(e.target.value)}
               />
               <button type="submit" className="submitbtn">

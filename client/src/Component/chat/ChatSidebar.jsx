@@ -47,6 +47,8 @@ const ChatSidebar = ({
           <SelectedGroupMembers  
           handleisCreateUser={handleisCreateUser} 
           GroupMembers={GroupMembers}
+          setIscreateGroup={setIscreateGroup}
+          setGroupMembers={setGroupMembers}
         /> : null}
 
       <div className="s_chat_box_container">

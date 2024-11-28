@@ -42,7 +42,7 @@ const ChatSearch = ({ setIscreateGroup, iscreateGroup, setGroupMembers}) => {
   useEffect(() => {
     setDebouncedQuery(searchquery);
     handleSearch(searchquery);
-  }, [searchquery, handleSearch]);
+  }, [searchquery, handleSearch, setDebouncedQuery]);
 
   return (
     <div className="s_header">
