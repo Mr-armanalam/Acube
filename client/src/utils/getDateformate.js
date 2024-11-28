@@ -1,5 +1,4 @@
 export default function formatDate(isoDate) {
-    // Parse the ISO date string
     const date = new Date(isoDate);
   
     // Extract the day, month, and year
@@ -10,8 +9,4 @@ export default function formatDate(isoDate) {
     // Format the date as DD-MM-YYYY
     return `${day}-${month}-${year}`;
   }
-  
-  // // Example usage
-  // const formattedDate = formatDate("2024-11-22T18:22:51.802Z");
-  // console.log(formattedDate); // Output: 22-11-2024
   

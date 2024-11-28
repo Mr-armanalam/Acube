@@ -17,12 +17,8 @@ export default function getCookie(name) {
         return cookie.substring(nameEQ.length, cookie.length);
       }
     }
-  
-    // Return null if the cookie is not found
     return null;
   }
   
-//   // Example usage
-//   const myCookie = getCookie('username');
-//   console.log(myCookie); // Outputs the value of the 'username' cookie, if it exists
+
   
