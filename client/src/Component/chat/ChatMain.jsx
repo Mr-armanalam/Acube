@@ -24,8 +24,9 @@ const ChatMain = ({ selectedUser, loading, setloading }) => {
         })
       );
       setSendingMessages("");
+      setloading(true);
     },
-    [dispatch, sendingMessages, selectedUser]
+    [dispatch,setloading, sendingMessages, selectedUser]
   );
   
 
@@ -35,7 +36,7 @@ const ChatMain = ({ selectedUser, loading, setloading }) => {
       setloading(false);
     }
     dispatch(get_messages(selectedUser._id ));
-  }, [loading, dispatch, selectedUser, setloading, newMessages]);
+  }, [newMessages, loading, dispatch, selectedUser, setloading]);
 
   useEffect(() => {
     if (contentRef.current) {

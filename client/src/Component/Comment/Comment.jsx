@@ -4,7 +4,7 @@ import Displaycommment from './Displaycommment'
 import { useSelector } from 'react-redux'
 import { useDispatch } from 'react-redux'
 import { postcomment } from '../../action/comment'
-const Comment = ({ videoid }) => {
+const Comment = ({ videoid, commentRef }) => {
     const dispatch = useDispatch()
     const [commenttext, setcommentext] = useState("")
     const currentuser = useSelector(state => state.currentuserreducer);
@@ -44,7 +44,7 @@ const Comment = ({ videoid }) => {
     return (
         <>
             <form className='comments_sub_form_comments' onSubmit={handleonsubmit}>
-                <input type="text" onChange={(e) => setcommentext(e.target.value)} placeholder='add comment...' value={commenttext} className='comment_ibox' />
+                <input type="text" onChange={(e) => setcommentext(e.target.value)} placeholder='add comment...' value={commenttext} ref={commentRef} className='comment_ibox' />
                 <input type="submit" value="add" className='comment_add_btn_comments' />
             </form>
             <div className="display_comment_container">

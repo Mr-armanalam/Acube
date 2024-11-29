@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import "./Videopage.css"
 import moment from 'moment'
 import Likewatchlatersavebtns from './Likewatchlatersavebtns'
@@ -10,6 +10,7 @@ import { useSelector,useDispatch } from 'react-redux'
 import Showvideogrid from '../../Component/Showvideogrid/Showvideogrid'
 import VideoPlayer from '../../Component/videoPlayer/videoPlayer'
 const Videopage = () => {
+  const commentRef = useRef(null);
     const { vid } = useParams();
     const dispatch=useDispatch()
     const vids=useSelector((state)=>state.videoreducer)
@@ -60,21 +61,21 @@ const Videopage = () => {
     const vv = vids?.data?.filter((q) => q._id === vid)[0]
    
     const currentuser = useSelector(state => state.currentuserreducer);
-    const handleviews=()=>{
+    const handleviews=useCallback(()=>{
         dispatch(viewvideo({id:vid}))
-    }
-    const handlehistory=()=>{
+    },[dispatch, vid])
+    const handlehistory= useCallback(()=>{
         dispatch(addtohistory({
             videoid:vid,
             viewer:currentuser?.result._id,
         }))
-    }
+    },[dispatch, vid, currentuser])
     useEffect(()=>{
         if(currentuser){
             handlehistory();
         }
         handleviews()
-    },[])
+    },[currentuser, handlehistory, handleviews])
     return (
       <>
         <div className="container_videoPage">
@@ -85,7 +86,7 @@ const Videopage = () => {
                 className="video_ShowVideo_videoPage"
                 controls
               ></video> */}
-              <VideoPlayer video={vv?.filepath} />
+              <VideoPlayer commentRef={commentRef} video={vv?.filepath} />
               <div className="video_details_videoPage">
                 <div className="video_btns_title_VideoPage_cont">
                   <p className="video_title_VideoPage">{vv?.videotitle}</p>
@@ -107,7 +108,7 @@ const Videopage = () => {
                   <h2>
                     <u>Comments</u>
                   </h2>
-                  <Comment videoid={vv?._id} />
+                  <Comment commentRef={commentRef} videoid={vv?._id} />
                 </div>
               </div>
             </div>

@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 import "./videoPlayer.css";
 import subtitle from "../../assets/subtitles.vtt";
 import { updatePoint } from "../../action/updatePoint";
-import {useDispatch} from "react-redux"
+import {useDispatch, useSelector} from "react-redux"
 
 
-function VideoPlayer({ video }) {
+function VideoPlayer({ video , commentRef}) {
+  const vids = useSelector(state => state.videoreducer)?.data;
+
   const dispatch = useDispatch();
   const videoRef = useRef(null);
   const videoContainerRef = useRef(null);
@@ -13,6 +15,7 @@ function VideoPlayer({ video }) {
   const volumeSliderRef = useRef(null);
   const speedBtnRef = useRef(null);
 
+  const [videosrc, setVideosrc] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState([0, 0, 0]); // current time of the video in array. The first value represents the minute and the second represents seconds.
   const [duration, setDuration] = useState([0, 0, 0]);
@@ -149,13 +152,17 @@ function VideoPlayer({ video }) {
     }
 
     if (e.detail === 3) {
-      // Triple tap
+      ////////////// Triple tap  ///////////////////
       if (x > 2 * third) {
-        window.close(); // Close the website
+        window.close(); //////////////////// Close the website /////////////////////
       } else if (x < third) {
-        console.log("Show comments section"); // for show comments section later due
+        if (commentRef.current) { commentRef.current.focus(); }
+        console.log("Show comments section"); 
       } else {
-        console.log("Move to next video"); // for move to next video
+        const nextVideoIndx = vids?.findIndex(v => v.filepath == video);
+        const nextVideo = vids?.at(nextVideoIndx +1 );
+        setVideosrc(nextVideo?.filepath)
+        console.log("Move to next video"); 
       }
     }
   };
@@ -266,7 +273,7 @@ function VideoPlayer({ video }) {
         videoContainerRef.current.classList.add("mini-player");
       });
       document.removeEventListener("leavepictureinpicture", () => {
-        videoContainerRef.current.classList.remove("mini-player");
+        videoContainerRef.current?.classList.remove("mini-player");
       });
     };
   }, [isPlaying, handleTimeUpdate]);
@@ -409,7 +416,7 @@ function VideoPlayer({ video }) {
             </button>
           </div>
         </div>
-        <video id="video" ref={videoRef} src={video} onEnded={handleVideoEnd}>
+        <video id="video" ref={videoRef} src={videosrc === '' ? video : videosrc} onEnded={handleVideoEnd}>
           <track kind="captions" mode="hidden" srcLang="en" src={subtitle} />
         </video>
       </div>
