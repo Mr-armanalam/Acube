@@ -1,4 +1,4 @@
-import CryptoJS from "Crypto-js";
+import CryptoJS from "crypto-js";
 import Conversation from "../Models/conversation.model.js";
 import Group from "../Models/Group.model.js";
 import Message from "../Models/message.model.js";
