@@ -13,6 +13,7 @@ import get_messages_reducer from "./get_messages_reducer";
 import { fetch_All_groups } from "./get_All_groups_reducer";
 import { fetch_grp_Msg_reducer } from "./fetch_grp_Msg";
 import { send_group_msg } from "./send_msg_group_reducer";
+import downloadVideoReducer from "./downloadVideo.reducer";
 export default combineReducers({
     authreducer,
     currentuserreducer,
@@ -27,5 +28,6 @@ export default combineReducers({
     get_messages_reducer,
     fetch_All_groups,
     fetch_grp_Msg_reducer,
-    send_group_msg
+    send_group_msg,
+    downloadVideoReducer
 });

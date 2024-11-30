@@ -8,6 +8,7 @@ import { useSelector,useDispatch } from 'react-redux'
 import { likevideo } from '../../action/video'
 import {addtolikedvideo,deletelikedvideo} from "../../action/likedvideo"
 import { addtowatchlater,deletewatchlater } from '../../action/watchlater'
+import DownloadVideo from '../../Component/DownloadVideo/DownloadVideo'
 
 const Likewatchlatersavebtns = ({vv,vid}) => {
   const dispatch=useDispatch()
@@ -26,7 +27,7 @@ const Likewatchlatersavebtns = ({vv,vid}) => {
       (q)=>q.videoid ===vid && q.viewer ===currentuser?.result._id
     )
     .map((m)=>setsavevideo(true));
-  },[]);
+  });
 const togglesavedvideo=()=>{
   if(currentuser){
       if(savevideo){
@@ -40,7 +41,7 @@ const togglesavedvideo=()=>{
     alert("please login to save video")
   }
 }
-// console.log(vid,vv.Like)
+// console.log(vv.filepath)
 const togglelikevideo=(e,lk)=>{
   if(currentuser){
       if(likebtn){
@@ -79,6 +80,7 @@ const toggledislikevideo=(e,lk)=>{
       <div className="btn_VideoPage btn_hide">
         <BsThreeDots/>
       </div>
+      <DownloadVideo video={vv?.filepath}/>
       <div className="btn_VideoPage">
         <div className="like_videoPage" onClick={(e)=>togglelikevideo(e,vv?.Like)}>
           {likebtn? (
@@ -100,7 +102,7 @@ const toggledislikevideo=(e,lk)=>{
               <AiOutlineDislike size={22} className='btns_videoPage'/>
             </>
           )}
-          <b>DISLIKE</b>
+          <b>Dislike</b>
         </div>
         <div className="like_videoPage" onClick={(e)=>togglesavedvideo(e)}>
           {savevideo?(<>

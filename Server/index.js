@@ -9,6 +9,7 @@ import path from "path";
 import commentroutes from "./Routes/comment.js";
 import chatroutes from "./Routes/chat.js";
 import cookieParser from "cookie-parser";
+import downloadVid from './Routes/downloadVid.js'
 
 dotenv.config();
 const app = express();
@@ -28,6 +29,8 @@ app.use("/user", userroutes);
 app.use("/video", videoroutes);
 app.use("/comment", commentroutes);
 app.use("/chat", chatroutes);
+app.use("/download", downloadVid);
+
 const PORT = process.env.PORT || 5000;
 
 app.use((req, res, next) => {

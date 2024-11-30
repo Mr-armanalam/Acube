@@ -31,3 +31,19 @@
         display: none;
     }
 }
+
+.download{
+    background: none;
+    padding: 0%;
+    margin: 0;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    size: 50px;
+    cursor: pointer;
+    margin-right: 16px;
+}
+.ishidden{
+    display: none;
+}

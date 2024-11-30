@@ -1,6 +1,6 @@
 import axios from "axios"
-  // const API=axios.create({baseURL:`http://localhost:5000/`})
- const API = axios.create({ baseURL: process.env.REACT_APP_BACKEND_URL });
+  const API=axios.create({baseURL:`http://localhost:5000/`})
+//  const API = axios.create({ baseURL: process.env.REACT_APP_BACKEND_URL });
  
 
 API.interceptors.request.use((req)=>{
@@ -46,3 +46,9 @@ export const send_GroupUsers = (GroupUsers)=>API.post('/chat/group_user',GroupUs
 export const get_all_Group = ()=>API.get('/chat/group');
 export const send_group_messages = (group_messages)=>API.post('/chat/group/messages', group_messages);
 export const fetch_group_messages = (groupId)=>API.get(`/chat/group/${groupId}/messages`);
+
+export const downloadVideo = (videoId)=>API.post('/download/download-video', videoId );
+export const checkPremiumStatus = ()=>API.get(`/download/user/premium-status`);
+export const handlePaymentStatus = (paymentId)=>API.post('/download/handle-payment-status', paymentId );
+export const createPaymentRequest = (paymentData)=>API.post('/download/create-payment-request', paymentData);;
+export const getDownloads = ()=>API.get(`/download/user/downloads`);

@@ -7,7 +7,13 @@ const userschema=mongoose.Schema({
     desc:{type:String},
     picture:{type:String},
     reputation:{type:Number, default: 0},
-    joinedon:{type:Date,default:Date.now}
+    joinedon:{type:Date,default:Date.now},
+    downloadsToday: { type: Number, default: 0 },
+    isPremium: { type: Boolean, default: false },
+    downloads: [{ title: String, date: Date }]
 })
 
-export default mongoose.model("User",userschema)
+export default mongoose.model("User",userschema);
+
+
+
