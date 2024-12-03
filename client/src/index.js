@@ -18,9 +18,9 @@ root.render(
   <InternetStatusProvider>
     <Provider store={store}>
       <GoogleOAuthProvider clientId={process.env.REACT_APP_CLIENT_ID}>
-        <React.StrictMode>
-          <App />
-        </React.StrictMode>
+          <React.StrictMode>
+            <App />
+          </React.StrictMode>
       </GoogleOAuthProvider>
     </Provider>
   </InternetStatusProvider>

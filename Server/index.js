@@ -10,6 +10,9 @@ import commentroutes from "./Routes/comment.js";
 import chatroutes from "./Routes/chat.js";
 import cookieParser from "cookie-parser";
 import downloadVid from './Routes/downloadVid.js'
+import { Server } from "socket.io";
+import { createServer } from "http";
+import { roomhandler } from "./V-Stream-Room/Roomhandler.js";
 
 dotenv.config();
 const app = express();
@@ -39,7 +42,34 @@ app.use((req, res, next) => {
   next();
 });
 
-app.listen(PORT, () => {
+const server = createServer(app);
+const io = new Server(server,
+  {cors: {
+    origin: "*",
+    method: ["GET", "POST"],
+    credentials: true
+  }}
+);
+
+const users = {};
+
+io.on("connection", (socket) => {
+  console.log("User connected");
+  roomhandler(socket, io, users);
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+    for (let userId in users) {
+      if (users[userId] === socket.id) {
+        delete users[userId];
+        break;
+      }
+    }
+  });
+});
+
+
+server.listen(PORT, () => {
   console.log(`Server running on Port ${PORT}`);
 });
 const DB_URL = process.env.DB_URL;
@@ -51,3 +81,4 @@ mongoose
   .catch((error) => {
     console.log(error);
   });
+
