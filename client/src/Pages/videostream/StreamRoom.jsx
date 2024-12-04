@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { RoomContext } from "../../utils/RoomContext";
 import Peer from "simple-peer";
 import RecordRTC from "recordrtc";
@@ -16,14 +16,13 @@ import { FaRegCircleStop } from "react-icons/fa6";
 import { FiPhoneCall } from "react-icons/fi";
 
 const StreamRoom = () => {
+  const navigate = useNavigate();
   const { encryptId } = useParams();
   // console.log(decryptData(id));
   const id = decryptData2(encryptId);
   
   const { socket } = useContext(RoomContext);
-  const { username, email } =
-    useSelector((state) => state.currentuserreducer)?.result || {};
-  // console.log(username, email);
+  const { username, email, picture } = useSelector((state) => state.currentuserreducer)?.result || {};
 
   const [isUserVideoShown, setIsUserVideoShown] = useState(true);
   const [isOnstream, setIsOnstream] = useState(false)
@@ -200,9 +199,9 @@ const StreamRoom = () => {
 
   const disconnectCall = () => {
    try {
-     if (connectionRef.current) {
-       connectionRef.current.destroy();
-     }
+    //  if (connectionRef.current) {
+    //    connectionRef.current.destroy();
+    //  }
  
      if (stream) {
        stream.getTracks().forEach((track) => track.stop());
@@ -248,32 +247,46 @@ const StreamRoom = () => {
       console.error("error in videoSrc changing");
     }
   }  
+  
+  useEffect(() => {
+    if (!localStorage.getItem('Profile')) {
+      navigate("/")
+    }
+  },[navigate, username])
 
   return (
     <div className="video_stream_container">
       <div className="video_container">
         <div className="callerIds">
           <div>Your ID: {me} </div>
-          <div>
-            Caller ID: {callId}
-          </div>
-          </div>
-        {stream === null && (<div className="FriendsLogo">
-          <img src={""} style={{color:"white"}} alt="" />
-          {me.toUpperCase().charAt(0)}
+          <div>Caller ID: {callId} {caller}</div>
         </div>
+
+        {(callId && !callAccepted ) && <div className="callStatus">Calling... {caller}</div>}
+
+        {stream === null && (
+          <div className="FriendsLogo">
+            {picture ? (
+            <img src={picture} width="100%" height="100%" alt="User" 
+            onError={(e) => { e.target.src = picture; }} 
+            />
+            ) : ( me?.toUpperCase().charAt(0)
+            )}
+          </div>
         )}
+
         <div className="video_box">
          <video playsInline className="friendsVideo" ref={partnerVideo} autoPlay />
           {isOnstream && <video onClick={handleFullScreen} playsInline className="selfVideo" muted ref={userVideo} autoPlay />}
-          {/* { callAccepted && <video playsInline className="friendsVideo" ref={partnerVideo} autoPlay />} */}
         </div>
+
       </div>
 
       <div className="button_container">
         <button className="start_meeting_btn" onClick={startVideo}>
           <CiVideoOn />
         </button>
+
         <button
           disabled={!stream && true }
           className="start_meeting_btn"
@@ -303,8 +316,8 @@ const StreamRoom = () => {
         </button>
 
         {recording ? (
-          <button disabled={!stream && true } className="start_meeting_btn" style={{ color: "#d6a146" }} onClick={stopRecording}>
-            <FaRegCircleStop style={{color: ` ${!stream ? "gray" :"white"}`}}/>
+          <button disabled={!stream && true } className="start_meeting_btn" onClick={stopRecording}>
+            <FaRegCircleStop style={{color: ` ${!stream ? "gray" :"d6a146"}`}}/>
           </button>
         ) : (
 
@@ -320,9 +333,11 @@ const StreamRoom = () => {
         <button className="start_meeting_btn" disabled={!stream && true } onClick={saveRecording}>
           <CiSaveDown1 style={{color: ` ${!stream ? "gray" :"white"}`}} />
         </button>
+
       </div>
     </div>
   );
 };
 
 export default StreamRoom;
+

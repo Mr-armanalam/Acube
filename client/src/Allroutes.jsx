@@ -11,7 +11,6 @@ import Watchlater from './Pages/Watchlater/Watchlater'
 import Yourvideo from './Pages/Yourvideo/Yourvideo'
 import Chat from './Pages/chat/Chat'
 import { useInternetStatus } from './utils/internetStatusContext'
-import VideoStream from './Pages/videostream/VideoStream'
 import StreamRoom from './Pages/videostream/StreamRoom'
 
 
@@ -29,7 +28,6 @@ const Allroutes = ({seteditcreatechanelbtn,setvideouploadpage}) => {
         <Route path='/Yourvideo' element={<Yourvideo/>}/>
         <Route path='/channel/:cid' element={<Channel seteditcreatechanelbtn={seteditcreatechanelbtn} setvideouploadpage={setvideouploadpage}/>}/>
         <Route path='/chat' element={<Chat/>}/>
-        <Route path='/video-stream' element={<VideoStream/>}/>
         <Route path='/video-stream/:encryptId' element={<StreamRoom/>}/>
     </Routes>:
     <div style={

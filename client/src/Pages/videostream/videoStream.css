@@ -23,13 +23,17 @@
 
 .start_meeting_btn {
   cursor: pointer;
-  display: -webkit-box;
+  /* display: -webkit-box;
   -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
+  -webkit-box-orient: vertical; */
   background: none;
   font-weight: 900;
   font-size: 40px;
   color: #E0E3D6;
+}
+
+.start_meeting_btn:hover{
+  margin-top: -10px;
 }
 
 
@@ -73,7 +77,19 @@
   flex-direction: column;
   gap: 8px;
   font-family: 'Courier New', Courier, monospace;
-  color: #e5e6e7;
+  color: gray;
+  font-weight: 700;
+}
+
+.callStatus{
+  position: absolute;
+  bottom: 27%;
+  left: 50%;
+  transform: translate(-50%, -50%) !important;
+  color: gray;
+  font-weight: 700;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: larger;
 }
 
 .FriendsLogo{
@@ -93,6 +109,10 @@
   background-color: #E0E3D6;
   color: #232323;
   font-family: verdana , Verdana, Geneva, Tahoma, sans-serif;
+}
+
+.FriendsLogo>img{
+  border-radius: 50%;
 }
 .video_box{
   width: 100%;
