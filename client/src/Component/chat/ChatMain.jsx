@@ -5,6 +5,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { send_chat_messages } from "../../action/send_chat_messages";
 import { get_messages } from "../../action/get_messages";
 import { get_all_chat_user } from "../../action/get_all_chat_user";
+import JoinButton from "../videoStream-utils/CreateButton";
+import { encryptData2 } from "../../utils/toEncrypt";
 
 const ChatMain = ({ selectedUser, loading, setloading }) => {
   const contentRef = useRef(null);
@@ -64,7 +66,10 @@ const ChatMain = ({ selectedUser, loading, setloading }) => {
             {selectedUser.username}
 
           </p>
+        {/* <JoinButton friendsId = {selectedUser?.email}/>     */}
+        <JoinButton friendsId = {encryptData2(selectedUser?.email)}/>    
         </div>
+
       </div>
 
       <div className="c_main1_conainer" ref={contentRef}>

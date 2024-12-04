@@ -3,8 +3,9 @@ import { v4 as uuidv4 } from "uuid";
 // const users = {};
 
 export const roomhandler = (socket, io, users) => {
-  const createRoom = () => {
-    const roomId = uuidv4();
+  const createRoom = ({friendsId}) => {
+    // const roomId = uuidv4();
+    const roomId = friendsId; 
     users[roomId] = [];
     socket.emit("room-created", { roomId });
     console.log("User created the room");

@@ -30,7 +30,7 @@ const Allroutes = ({seteditcreatechanelbtn,setvideouploadpage}) => {
         <Route path='/channel/:cid' element={<Channel seteditcreatechanelbtn={seteditcreatechanelbtn} setvideouploadpage={setvideouploadpage}/>}/>
         <Route path='/chat' element={<Chat/>}/>
         <Route path='/video-stream' element={<VideoStream/>}/>
-        <Route path='/video-stream/:id' element={<StreamRoom/>}/>
+        <Route path='/video-stream/:encryptId' element={<StreamRoom/>}/>
     </Routes>:
     <div style={
       { color: 'red' , backgroundColor: '#252525', height: "100vh", display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '24px', fontWeight: 'bold'}

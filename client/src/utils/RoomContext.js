@@ -2,7 +2,8 @@ import { createContext, useEffect } from "react";
 import socketIo from "socket.io-client";
 import {useNavigate} from 'react-router-dom'
 
-const WS = "http://localhost:5000";
+// const WS = "http://localhost:5000";
+const WS = process.env.REACT_APP_BACKEND_URL;
 
 export const RoomContext = createContext(null);
 

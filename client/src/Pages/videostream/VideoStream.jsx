@@ -1,7 +1,6 @@
 import React from 'react'
-import './videoStream.css'
+// import './videoStream.css'
 import JoinButton from '../../Component/videoStream-utils/CreateButton'
-
 
 
 const VideoStream = () => {
