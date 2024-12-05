@@ -2,7 +2,6 @@
   margin: auto;
   display: flex;
   flex-grow: 2;
-  /* height: 2rem; */
 }
 .SearchBar_Container2 {
   margin: auto;
@@ -14,11 +13,11 @@
   z-index: 91;
 }
 .iBox_SearchBar {
-  background-color: rgb(18, 18, 18);
+  background-color: var(--body_background_800);
   width: 30rem;
-  border: 1px solid rgba(128, 128, 128, 0.4);
+  border: 1px solid var(--body_forground_800);
   border-radius: 5px 0 0 5px;
-  color: white;
+  color: var(--forground_text);
   font-size: large;
   padding: 0.2rem;
   height: 2rem;
@@ -31,12 +30,12 @@
   padding: 0.75rem;
   width: 2rem;
   /* border-radius: 0.1rem; */
-   border-radius: 0 5px 5px 0;
+  border-radius: 0 5px 5px 0;
   background-color: rgb(78, 78, 78);
   color: aliceblue;
 }
 .searchIcon_SearchBar:hover {
-  background-color: rgb(71, 71, 71);
+  background-color: var(--search_background_btn);
 }
 .Mic_SearchBar {
   border-radius: 100%;
@@ -49,17 +48,17 @@
   color: whitesmoke;
   margin: auto 0.7rem;
 }
-@media (max-width:700px) {
-  .iBox_SearchBar{
+@media (max-width: 700px) {
+  .iBox_SearchBar {
     max-width: 7rem;
     height: 25px;
     border-top-left-radius: 5px;
     border-bottom-left-radius: 5px;
   }
-  .Mic_SearchBar{
+  .Mic_SearchBar {
     display: none;
   }
-  .searchIcon_SearchBar{
+  .searchIcon_SearchBar {
     border-top-right-radius: 5px;
     border-bottom-right-radius: 5px;
     height: 15px;
@@ -67,8 +66,8 @@
     border: 1px solid rgba(128, 128, 128, 0.4);
   }
 }
-@media (min-width:400px) and (max-width:768) {
-  .iBox_SearchBar{
+@media (min-width: 400px) and (max-width: 768) {
+  .iBox_SearchBar {
     width: 10rem;
   }
 }

@@ -1,21 +1,21 @@
-.navigation_Home{
-    color: white;
-    background-color: rgb(37,37,37);
-    position: sticky;
-    display: flex;
-    overflow-x: auto;
-    top: 0;
-    border-bottom: 2px solid rgb(128,128,128,0.27);
+.navigation_Home {
+  color: white;
+  background-color: rgb(37, 37, 37);
+  position: sticky;
+  display: flex;
+  overflow-x: auto;
+  top: 0;
+  border-bottom: 2px solid rgb(128, 128, 128, 0.27);
 }
-.btn_nav_home{
-    background-color: rgb(46,46,46);
-    margin: 0.5rem;
-    padding: 0.5rem;
-    border-radius: 45px;
-    cursor: pointer;
+.btn_nav_home {
+  background-color: rgb(46, 46, 46);
+  margin: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 45px;
+  cursor: pointer;
 }
-.btn_nav_home:hover{
-    background-color: rgb(128,128,128);
+.btn_nav_home:hover {
+  background-color: rgb(128, 128, 128);
 }
 /* @media (max-width:768px) {
     .navigation_Home::-webkit-scrollbar {
@@ -23,32 +23,30 @@
     }
 } */
 .navigation_Home::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
-
 
 @keyframes shine {
-    to {
-      background-position-x: -200%;
-    }
+  to {
+    background-position-x: -200%;
   }
+}
 
 .card.is-loading {
-    height: 100vh;
-    background: #252525;
-    background: linear-gradient(110deg, #0f0f0f 8%, #181818 18%, #0f0f0f 33%);
-    border-radius: 5px;
-    background-size: 200% 100%;
-    animation: 1.5s shine linear infinite;
+  height: 100vh;
+  background: var(--body_forground);
+  background: linear-gradient(110deg, #0f0f0f 8%, #181818 18%, #0f0f0f 33%);
+  border-radius: 5px;
+  background-size: 200% 100%;
+  animation: 1.5s shine linear infinite;
 }
- 
+
 .card {
-    display: flex;
-    color: white !important;
-    background-color: transparent;
-    align-items: center;
-    justify-content: center;
-    font-size: x-large;
-    font-weight: bolder;
+  display: flex;
+  color: white !important;
+  background-color: transparent;
+  align-items: center;
+  justify-content: center;
+  font-size: x-large;
+  font-weight: bolder;
 }
-   

@@ -1,4 +1,4 @@
-import React ,{ useEffect } from 'react'
+import React from 'react'
 import { BiLogOut } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
 import { googleLogout } from '@react-oauth/google';
@@ -18,7 +18,7 @@ const Auth = ({ user, setauthbtn, seteditcreatechanelbtn }) => {
     return (
         <div className="Auth_container" onClick={() => setauthbtn(false)}>
             <div className="Auth_container2">
-                <p className="User_Details">
+                <div className="User_Details">
                     <div className="Chanel_logo_App">
                         <p className="fstChar_logo_App">
                             {user?.result.name ? (
@@ -29,8 +29,9 @@ const Auth = ({ user, setauthbtn, seteditcreatechanelbtn }) => {
                             )}
                         </p>
                     </div>
-                    <div className="email_auth">{user?.result.email}</div>
-                </p>
+                    <div className="email_Auth">{user?.result.username}</div>
+                    {/* <div className="email_auth">{user?.result.email}</div> */}
+                </div>
                 <div className="btns_Auth">
                     {user?.result.name ?(
                         <>
@@ -40,7 +41,7 @@ const Auth = ({ user, setauthbtn, seteditcreatechanelbtn }) => {
                         </>
                     ):(
                         <>
-                            <input type="subnit" className='btn_Auth' value="Create Your Own Channel" onClick={()=>seteditcreatechanelbtn(true)}/>
+                            <input type="submit" className='btn_Auth' value="Create Your Own Channel" onClick={()=>seteditcreatechanelbtn(true)}/>
                         </>
                     )}
                     <div>
