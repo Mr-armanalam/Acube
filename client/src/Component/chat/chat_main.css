@@ -97,7 +97,7 @@ h3 {
   padding-inline: 20px;
   border: none;
   outline: none;
-  color: aliceblue;
+  color: var(--logo_tag_text);
   font-size: medium;
   font-weight: 200;
   width: 80%;
@@ -105,14 +105,14 @@ h3 {
 .c_buttom > form > button {
   background: none;
   border: none;
-  color: aliceblue;
+  color: var(--logo_tag_text);
 }
 .C_searchIcon {
   font-size: larger;
   cursor: pointer;
 }
 .C_searchIcon:hover {
-  color: white;
+  color: var(--forground_text);
   font-size: x-large;
 }
 
@@ -165,7 +165,7 @@ h3 {
   padding-inline: 18px;
   padding-block: 6px;
   font-size: medium;
-  color: aliceblue;
+  color: var(--logo_tag_text);
 }
 .c_left_message {
   margin-top: auto;

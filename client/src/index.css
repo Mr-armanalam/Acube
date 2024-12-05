@@ -21,18 +21,31 @@ code {
   --search_background_btn: #474747;
   --nav_logo_background: #e0e3d6;
   --nav_logo_text: black;
-  --forground_text: #F0F8FF;
+  --forground_text: #f0f8ff;
   --video_page_background: #111111;
   --dot: white;
   --scrollbarThumb: gray;
   --authBorder: #3ea6ff;
+  --logo_tag_text: aliceblue;
+
+  --left_Sidebar_background: #252525;
+  --left_Sidebar_icon: #ffffffda;
+  --drawer_leftSidebar_bg: #1c1c1c;
+  --channel_hover: #4d4df3;
+  --home_bg_transparent: rgba(0,0,0,0.486);
+
+  --loading_animation_background: linear-gradient(110deg, #1a1a1a 8%, #212121 18%, #1a1a1a 33%);
+  --loading_box_border: #1f1f1f;
+  --video_title_des: rgba(250, 235, 215, 0.555);
+  --video_title_text: antiquewhite;
+  --showVidMobile_loading_bg: linear-gradient(110deg, #0f0f0f 8%, #181818 18%, #0f0f0f 33%);
+
+  --whl_box_background: rgba(0, 0, 0, 0.153);
 }
 
 ::-webkit-scrollbar {
   width: 2px;
   height: 12px;
-  /* width: 0.5rem;
-  height: 0.5rem; */
 }
 ::-webkit-scrollbar-thumb {
   background-color: var(--scrollbarThumb);

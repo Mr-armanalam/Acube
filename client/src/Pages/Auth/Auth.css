@@ -1,67 +1,66 @@
 .Auth_container {
-    width: 100vw;
-    height: 100vh;
-    position: absolute;
-    z-index: 500;
-    top: 0;
-    right: 0;
-    box-sizing: border-box;
-    display: flex;
-  }
-  .Auth_container2 {
-    width: 15rem;
-    padding: 0.5rem;
-    display: flex;
-    position: absolute;
-    right: 1.5rem;
-    background-color: rgb(16, 16, 16);
-    top: 1rem;
-    text-align: center;
-    flex-direction: column;
-    border: 1px solid rgba(102, 102, 102, 0.6);
-    border-radius: 10px;
-    color: aliceblue;
-    z-index: 500;
-  }
-  .User_Details {
-    width: 100%;
-    margin: 0 auto;
-    padding-block: 0.7rem;
-    display: flex;
-    justify-content: center;
-    border-bottom: 2px solid grey;
-    padding-inline-start: 1.2rem 0.9rem;
-  }
-  .email_Auth {
-    margin-right: auto;
-    font-size: larger;
-    padding: 0.2rem 0.5rem;
-    font-weight: bolder;
-    /* margin: auto; */
-  }
-  .btn_Auth {
-    color: aliceblue;
-    font-weight: bolder;
-    font-size: larger;
-    padding: 0.5rem 0.5rem;
-    border: 0;
-    margin: 0.2rem 0;
-    background-color: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-  }
-  .btn_Auth:hover {
-    background-color: rgb(47, 47, 47);
-    border-radius: 10px;
-  }
-  .btns_Auth {
-    padding: 1.5rem 0;
-    display: flex;
-    flex-direction: column;
-    cursor: pointer;
-    text-decoration: none;
-  }
-  
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  z-index: 500;
+  top: 0;
+  right: 0;
+  box-sizing: border-box;
+  display: flex;
+}
+.Auth_container2 {
+  width: 15rem;
+  padding: 0.5rem;
+  display: flex;
+  position: absolute;
+  right: 1.5rem;
+  background-color: rgb(16, 16, 16);
+  top: 1rem;
+  text-align: center;
+  flex-direction: column;
+  border: 1px solid rgba(102, 102, 102, 0.6);
+  border-radius: 10px;
+  color: var(--logo_tag_text);
+  z-index: 500;
+}
+.User_Details {
+  width: 100%;
+  margin: 0 auto;
+  padding-block: 0.7rem;
+  display: flex;
+  justify-content: center;
+  border-bottom: 2px solid grey;
+  padding-inline-start: 1.2rem 0.9rem;
+}
+.email_Auth {
+  margin-right: auto;
+  font-size: larger;
+  padding: 0.2rem 0.5rem;
+  font-weight: bolder;
+  /* margin: auto; */
+}
+.btn_Auth {
+  color: var(--logo_tag_text);
+  font-weight: bolder;
+  font-size: larger;
+  padding: 0.5rem 0.5rem;
+  border: 0;
+  margin: 0.2rem 0;
+  background-color: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.btn_Auth:hover {
+  background-color: rgb(47, 47, 47);
+  border-radius: 10px;
+}
+.btns_Auth {
+  padding: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  text-decoration: none;
+}

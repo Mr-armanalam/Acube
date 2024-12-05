@@ -1,14 +1,19 @@
 .Container_Navbar{
-    border: 1px solid;
+    border: 1px solid var(--body_background);
     display: flex;
     height: calc(3.5rem - 2px);
     background-color: var(--body_forground);
     justify-content: space-between;
     align-items: center;
+    color: var(--forground_text);
 }
 .Burger_Logo_Navbar{
     display: flex;
     height: 3.3rem;
+}
+.vid_bell_Navbar{
+    color: var(--forground_text);
+    color: white;
 }
 .burger{
     display: flex;

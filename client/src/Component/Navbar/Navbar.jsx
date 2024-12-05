@@ -99,7 +99,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
             </Link>
           </div>
           <Searchbar />
-          <RiVideoAddLine size={22} className={"vid_bell_Navbar"} />
+          <RiVideoAddLine size={22} className="vid_bell_Navbar" />
           <div className="apps_Box">
             <p className="appBox"></p>
             <p className="appBox"></p>
@@ -112,7 +112,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
             <p className="appBox"></p>
           </div>
 
-          <IoMdNotificationsOutline size={22} className={"vid_bell_Navbar"} />
+          <IoMdNotificationsOutline size={22} className="vid_bell_Navbar" />
           <div className="Auth_cont_Navbar">
             {currentuser ? (
               <>

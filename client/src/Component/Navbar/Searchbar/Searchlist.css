@@ -10,9 +10,7 @@
   z-index: 91;
 }
 .titleItem {
-  /* box-sizing: border-box ; */
   margin: 0;
-  /* padding: 0.5rem; */
   cursor: pointer;
 }
 .titleLink {

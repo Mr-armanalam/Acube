@@ -42,7 +42,7 @@ video {
   bottom: 0;
   left: 0;
   right: 0;
-  color: white;
+  color: var(--forground_text);
   z-index: 100;
   opacity: 0;
   transition: opacity 150ms ease-in-out;
@@ -208,7 +208,7 @@ video {
   transform: translate(-50%, -100%);
   left: calc(var(--preview-position) * 100%);
   border-radius: 0.25rem;
-  border: 2px solid white;
+  border: 2px solid var(--forground_text);
   display: none;
 }
 
@@ -246,7 +246,7 @@ video {
 .timeline-container:hover .timeline {
   height: 100%;
 }
-@media (max-width:768px) {
+@media (max-width: 768px) {
   .volicon {
     width: 20px;
     height: 20px;

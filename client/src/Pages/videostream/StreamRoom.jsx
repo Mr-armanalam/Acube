@@ -20,12 +20,13 @@ const StreamRoom = () => {
   const { encryptId } = useParams();
   // console.log(decryptData(id));
   const id = decryptData2(encryptId);
-  
+
   const { socket } = useContext(RoomContext);
-  const { username, email, picture } = useSelector((state) => state.currentuserreducer)?.result || {};
+  const { username, email, picture } =
+    useSelector((state) => state.currentuserreducer)?.result || {};
 
   const [isUserVideoShown, setIsUserVideoShown] = useState(true);
-  const [isOnstream, setIsOnstream] = useState(false)
+  const [isOnstream, setIsOnstream] = useState(false);
   const [stream, setStream] = useState(null);
   const [receivingCall, setReceivingCall] = useState(false);
   const [caller, setCaller] = useState("");
@@ -121,11 +122,11 @@ const StreamRoom = () => {
     });
 
     connectionRef.current = peer;
-    setCallId(id);  
+    setCallId(id);
   };
 
   const acceptCall = () => {
-    setIsOnstream(true)
+    setIsOnstream(true);
     const peer = new Peer({
       initiator: false,
       trickle: false,
@@ -198,44 +199,43 @@ const StreamRoom = () => {
   };
 
   const disconnectCall = () => {
-   try {
-    //  if (connectionRef.current) {
-    //    connectionRef.current.destroy();
-    //  }
- 
-     if (stream) {
-       stream.getTracks().forEach((track) => track.stop());
-     }
- 
-     if (screenStream) {
-       screenStream.getTracks().forEach((track) => track.stop());
-     }
- 
-     // Reset call state
-     setIsOnstream(false);
-     setCallAccepted(false);
-     setReceivingCall(false);
-     setCaller("");
-     setCallerSignal("");
-     setStream(null);
-     setScreenStream(null);
- 
-     if (userVideo.current) {
-       userVideo.current.srcObject = null;
-     }
-     if (partnerVideo.current) {
-       partnerVideo.current.srcObject = null;
-     }
-     setCallId("");
-   } catch (error) {
-    console.log(error);   
-   }
+    try {
+      //  if (connectionRef.current) {
+      //    connectionRef.current.destroy();
+      //  }
+
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+
+      if (screenStream) {
+        screenStream.getTracks().forEach((track) => track.stop());
+      }
+
+      // Reset call state
+      setIsOnstream(false);
+      setCallAccepted(false);
+      setReceivingCall(false);
+      setCaller("");
+      setCallerSignal("");
+      setStream(null);
+      setScreenStream(null);
+
+      if (userVideo.current) {
+        userVideo.current.srcObject = null;
+      }
+      if (partnerVideo.current) {
+        partnerVideo.current.srcObject = null;
+      }
+      setCallId("");
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const handleFullScreen = () => {
     if (userVideo.current && partnerVideo.current) {
       if (isUserVideoShown) {
-        
         partnerVideo.current.srcObject = stream;
         userVideo.current.srcObject = currentStream1;
       } else {
@@ -246,40 +246,64 @@ const StreamRoom = () => {
     } else {
       console.error("error in videoSrc changing");
     }
-  }  
-  
+  };
+
   useEffect(() => {
-    if (!localStorage.getItem('Profile')) {
-      navigate("/")
+    if (!localStorage.getItem("Profile")) {
+      navigate("/");
     }
-  },[navigate, username])
+  }, [navigate, username]);
 
   return (
     <div className="video_stream_container">
       <div className="video_container">
         <div className="callerIds">
           <div>Your ID: {me} </div>
-          <div>Caller ID: {callId} {caller}</div>
+          <div>
+            Caller ID: {callId} {caller}
+          </div>
         </div>
 
-        {(callId && !callAccepted ) && <div className="callStatus">Calling... {caller}</div>}
+        {callId && !callAccepted && (
+          <div className="callStatus">Calling... {caller}</div>
+        )}
 
         {stream === null && (
           <div className="FriendsLogo">
             {picture ? (
-            <img src={picture} width="100%" height="100%" alt="User" 
-            onError={(e) => { e.target.src = picture; }} 
-            />
-            ) : ( me?.toUpperCase().charAt(0)
+              <img
+                src={picture}
+                width="100%"
+                height="100%"
+                alt="User"
+                onError={(e) => {
+                  e.target.src = picture;
+                }}
+              />
+            ) : (
+              me?.toUpperCase().charAt(0)
             )}
           </div>
         )}
 
         <div className="video_box">
-         <video playsInline className="friendsVideo" ref={partnerVideo} autoPlay />
-          {isOnstream && <video onClick={handleFullScreen} playsInline className="selfVideo" muted ref={userVideo} autoPlay />}
+          <video
+            playsInline
+            className="friendsVideo"
+            ref={partnerVideo}
+            autoPlay
+          />
+          {isOnstream && (
+            <video
+              onClick={handleFullScreen}
+              playsInline
+              className="selfVideo"
+              muted
+              ref={userVideo}
+              autoPlay
+            />
+          )}
         </div>
-
       </div>
 
       <div className="button_container">
@@ -288,15 +312,15 @@ const StreamRoom = () => {
         </button>
 
         <button
-          disabled={!stream && true }
+          disabled={!stream && true}
           className="start_meeting_btn"
-          style={{ color:` ${!stream ? "gray" : "red"} ` }}
+          style={{ color: ` ${!stream ? "gray" : "red"} ` }}
           onClick={disconnectCall}
         >
           <MdCallEnd />
         </button>
 
-        {(receivingCall && !callAccepted) ? ( 
+        {receivingCall && !callAccepted ? (
           <button
             className="start_meeting_btn"
             style={{ color: "green" }}
@@ -304,40 +328,66 @@ const StreamRoom = () => {
           >
             <FiPhoneCall />
           </button>
-
         ) : (
-          <button disabled={!stream && true } className="start_meeting_btn" onClick={() => callUser(id)}>
-            <MdAddCall style={{color: ` ${!stream ? "gray" :"white"}`}}/>
+          <button
+            disabled={!stream && true}
+            className="start_meeting_btn"
+            onClick={() => callUser(id)}
+          >
+            <MdAddCall
+              style={{
+                color: ` ${!stream ? "gray" : "var(--forground_text)"}`,
+              }}
+            />
           </button>
         )}
 
-        <button disabled={!stream && true } className="start_meeting_btn" onClick={startScreenShare}>
-          <MdOutlineScreenShare style={{color: ` ${!stream ? "gray" :"white"}`}} />
+        <button
+          disabled={!stream && true}
+          className="start_meeting_btn"
+          onClick={startScreenShare}
+        >
+          <MdOutlineScreenShare
+            style={{ color: ` ${!stream ? "gray" : "var(--forground_text)"}` }}
+          />
         </button>
 
         {recording ? (
-          <button disabled={!stream && true } className="start_meeting_btn" onClick={stopRecording}>
-            <FaRegCircleStop style={{color: ` ${!stream ? "gray" :"d6a146"}`}}/>
+          <button
+            disabled={!stream && true}
+            className="start_meeting_btn"
+            onClick={stopRecording}
+          >
+            <FaRegCircleStop
+              style={{ color: ` ${!stream ? "gray" : "d6a146"}` }}
+            />
           </button>
         ) : (
-
           <button
-            disabled={!stream && true }
+            disabled={!stream && true}
             className="start_meeting_btn"
             onClick={startRecording}
           >
-            <CgRecord style={{color: ` ${!stream ? "gray" :"white"}`}}/>
+            <CgRecord
+              style={{
+                color: ` ${!stream ? "gray" : "var(--forground_text)"}`,
+              }}
+            />
           </button>
         )}
 
-        <button className="start_meeting_btn" disabled={!stream && true } onClick={saveRecording}>
-          <CiSaveDown1 style={{color: ` ${!stream ? "gray" :"white"}`}} />
+        <button
+          className="start_meeting_btn"
+          disabled={!stream && true}
+          onClick={saveRecording}
+        >
+          <CiSaveDown1
+            style={{ color: ` ${!stream ? "gray" : "var(--forground_text)"}` }}
+          />
         </button>
-
       </div>
     </div>
   );
 };
 
 export default StreamRoom;
-

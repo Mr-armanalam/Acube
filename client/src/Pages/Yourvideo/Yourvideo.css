@@ -1,4 +1,4 @@
-.container_yourvideo{
-    padding: 0.5rem;
-    color: white;
+.container_yourvideo {
+  padding: 0.5rem;
+  color: var(--forground_text);
 }

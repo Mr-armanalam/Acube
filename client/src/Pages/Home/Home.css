@@ -1,5 +1,5 @@
 .navigation_Home {
-  color: white;
+  color: var(--forground_text);
   background-color: rgb(37, 37, 37);
   position: sticky;
   display: flex;
@@ -43,7 +43,7 @@
 
 .card {
   display: flex;
-  color: white !important;
+  color: var(--forground_text) !important;
   background-color: transparent;
   align-items: center;
   justify-content: center;

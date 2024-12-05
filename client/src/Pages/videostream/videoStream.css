@@ -17,7 +17,7 @@
   cursor: pointer;
 }
 .start_button2:active {
-  color: whitesmoke;
+  color: var(--forground_text) smoke;
   font-size: 30px;
 }
 

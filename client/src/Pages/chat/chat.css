@@ -1,7 +1,7 @@
 .chat_container {
   height: 92.7vh;
   display: flex;
-  color: aliceblue;
+  color: var(--logo_tag_text);
   box-sizing: border-box;
   /* border: 1px solid red; */
 }
@@ -52,7 +52,7 @@
   width: 99%;
   height: auto;
   border: none;
-  color: aliceblue;
+  color: var(--logo_tag_text);
   border-radius: 6px;
   background: none;
   outline: none;
