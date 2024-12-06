@@ -16,12 +16,16 @@ code {
 :root {
   --body_background: #131313;
   --body_background_800: #121212;
+  --body_background_850: #272727;
   --body_forground: #212121;
+  --body_forground_850: #2c2c2c;
   --body_forground_800: #3c3c3c;
+  --body_forground_700: #4c4b4b;
   --search_background_btn: #474747;
   --nav_logo_background: #e0e3d6;
   --nav_logo_text: black;
   --forground_text: #f0f8ff;
+  --forground_text_700: #c5c5c5;
   --video_page_background: #111111;
   --dot: white;
   --scrollbarThumb: gray;
@@ -29,18 +33,40 @@ code {
   --logo_tag_text: aliceblue;
 
   --left_Sidebar_background: #252525;
-  --left_Sidebar_icon: #ffffffda;
+  --left_Sidebar_icon: rgba(255, 255, 255, 0.855);
   --drawer_leftSidebar_bg: #1c1c1c;
   --channel_hover: #4d4df3;
   --home_bg_transparent: rgba(0,0,0,0.486);
 
   --loading_animation_background: linear-gradient(110deg, #1a1a1a 8%, #212121 18%, #1a1a1a 33%);
+  --loading_bg_clr: #1a1a1a;
   --loading_box_border: #1f1f1f;
   --video_title_des: rgba(250, 235, 215, 0.555);
   --video_title_text: antiquewhite;
   --showVidMobile_loading_bg: linear-gradient(110deg, #0f0f0f 8%, #181818 18%, #0f0f0f 33%);
 
   --whl_box_background: rgba(0, 0, 0, 0.153);
+  --video_page_background: black;
+  --video_controls_background: linear-gradient(to top, rgba(0, 0, 0.75), transparent);
+  --red_caption_icon: red;
+
+  --comment_border_bottom: #404040;
+  --comment_border_bottom_low: #4040400d;
+  --comment_border_bottom_800: #f0f8ff0d;
+  --cmnt_del_btn: #2c55d1b1;
+
+  --chat_bg_logo: #0f0f0f;
+  --grp_chat_bx_brdr: #050505;
+  --grp_selected_spanclr: #c2c2c2;
+  --grp_selected_spanclrHover: #e3dacf;
+  --grf_form: #2f2f2f;
+  --grf_formHover: beige;
+
+  --auth_cont_background: #101010;
+  --create_channel_cont: rgba(0, 0, 0, 0.697);
+  --create_channel_cont2: rgba(55, 57, 67, 0.294);
+  --create_channel_inputT: #89f3fa;
+  --create_channel_cut: orange;
 }
 
 ::-webkit-scrollbar {

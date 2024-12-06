@@ -12,7 +12,7 @@
   padding: 1rem;
   width: fit-content;
   height: fit-content;
-  background-color: black;
+  background-color: var(--video_page_background);
   color: rgb(136, 133, 129);
   position: relative;
   margin: auto;
@@ -37,7 +37,7 @@
   width: 100%;
 }
 .btn_vidUpload {
-  background-color: black;
+  background-color: var(--video_page_background);
   color: var(--forground_text);
   font-weight: bolder;
   border: 2px solid;

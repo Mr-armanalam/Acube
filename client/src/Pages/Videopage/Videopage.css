@@ -29,7 +29,7 @@
   /* padding: 0.1rem; */
   height: 70vh;
   width: 100%;
-  background-color: black;
+  background-color: var(--video_page_background);
   border: 1px solid rgba(37, 37, 37, 0.2);
   border-radius: 10px;
   /* border: 1px solid red; */
@@ -75,7 +75,7 @@
 }
 
 .chanel_logo_videoPage p {
-  color: black;
+  color: var(--video_page_background);
   margin: auto;
   font-size: xx-large;
 }

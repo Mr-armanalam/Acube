@@ -15,7 +15,7 @@ body {
   justify-content: center;
   margin-inline: auto;
   cursor: pointer;
-  background-color: black;
+  background-color: var(--video_page_background);
   border-radius: 4px;
 }
 
@@ -52,7 +52,7 @@ video {
   content: "";
   position: absolute;
   bottom: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0.75), transparent);
+  background: var(--video_controls_background);
   width: 100%;
   aspect-ratio: 6 /1;
   z-index: -1;
@@ -87,12 +87,6 @@ video {
   opacity: 1;
 }
 
-/* .video-container.pause .pause-icon{
-  display: none;
-}
-.video-container:not(.pause) .play-icon{
-  display: none;
-} */
 .video-container.theater .tall {
   display: none;
 }
@@ -149,7 +143,7 @@ video {
 }
 
 .video-container.captions .captions-btn {
-  border-bottom: 3px solid red;
+  border-bottom: 3px solid var(--red_caption_icon);
 }
 
 .video-controls-container .controls button.wide-btn {
@@ -185,7 +179,7 @@ video {
   top: 0;
   bottom: 0;
   right: calc(100% - var(--progress-position) * 100%);
-  background-color: red;
+  background-color: var(--red_caption_icon);
 }
 .timeline .thumb-indicator {
   --scale: 0;
@@ -194,7 +188,7 @@ video {
   height: 200%;
   top: -50%;
   left: calc(var(--progress-position) * 100%);
-  background-color: red;
+  background-color: var(--red_caption_icon);
   border-radius: 50%;
   transition: transform 150ms ease-in-out;
   aspect-ratio: 1/1;
