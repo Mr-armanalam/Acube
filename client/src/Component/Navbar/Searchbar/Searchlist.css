@@ -20,11 +20,11 @@
   flex-direction: row;
   gap: 4px;
   text-decoration: none;
-  color: var(--body_forground_800);
+  color: var(--search_text);
 }
 .titleLink:hover {
   color: var(--nav_logo_background);
-  background-color: var(--body_forground_800);
+  background-color: var(--search_text);
   margin: 2px 3px;
   border-radius: 4px;
 }
