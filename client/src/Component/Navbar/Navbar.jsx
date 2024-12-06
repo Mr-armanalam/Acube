@@ -90,6 +90,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
         }
         dispatch(setcurrentuser(JSON.parse(localStorage.getItem("Profile"))))
   },[currentuser?.token,dispatch, logout]
+  
 )
     return (
       <>
@@ -108,9 +109,10 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
           <Searchbar />
 
           <div className='themeContainer' onClick={() => setThemeClick(!themeClick)}>
-            {(mode === "auto" || mode === "dark") ? 
-              <IoIosMoon size={22} className='vid_bell_Navbar'/>:
-              <IoSunny size={22} className='vid_bell_Navbar'/> 
+            {
+            !(localStorage.theme === "light" ) ? 
+              <IoSunny size={22} className='vid_bell_Navbar'/> :
+              <IoIosMoon size={22} className='vid_bell_Navbar'/>
             }
            {themeClick && <ThemeBox/>}
           </div>

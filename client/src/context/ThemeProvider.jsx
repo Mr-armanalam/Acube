@@ -12,15 +12,17 @@ const ThemeProvider = ({ children }) => {
     const southIndiaStates = [ "Tamil Nadu", "Kerala", "Karnataka", "Andhra Pradesh", "Telangana" ];
     let isSouthIndia = southIndiaStates.includes(location.region);
 
-    if (mode === "auto" && !(localStorage.theme === "light")) {       
+    if (!(localStorage.theme === "light" || localStorage.theme === "dark")) {  
       if (isSouthIndia && hours >= 10 && hours <= 12) {        
         document.body.classList.add("white-theme");
-      } else {
+      } else {        
         document.body.classList.remove("white-theme");
       }
-    } else if ((mode === "light") || (localStorage.theme === "light")) {
+    } else if (localStorage.theme === "light") {      
       document.body.classList.add("white-theme");
-    } else if ((mode === "dark") || !(localStorage.theme === "light")) {
+    } else if (localStorage.theme === "dark") {      
+      document.body.classList.remove("white-theme");
+    } else if (localStorage.theme === "auto") { 
       document.body.classList.remove("white-theme");
     }
   }
