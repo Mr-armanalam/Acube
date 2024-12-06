@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useContext } from 'react'
 import logo from "./logo.ico"
 import "./Navbar.css"
 import { useDispatch, useSelector } from 'react-redux'
@@ -12,9 +12,16 @@ import axios from "axios"
 import { login } from "../../action/auth"
 import { useGoogleLogin,googleLogout } from '@react-oauth/google';
 import { setcurrentuser } from '../../action/currentuser';
+import { IoSunny } from "react-icons/io5";
+import { IoIosMoon } from "react-icons/io";
+
 
 import {jwtDecode} from "jwt-decode"
+import { ThemeContext } from '../../context/ThemeProvider'
+import ThemeBox from './ThemeBox'
 const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
+    const { mode } = useContext(ThemeContext);
+    const [themeClick, setThemeClick] = useState(false);
     const [authbtn, setauthbtn] = useState(false)
     const [user, setuser] = useState(null)
     const [profile, setprofile] = useState([])
@@ -99,6 +106,15 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
             </Link>
           </div>
           <Searchbar />
+
+          <div className='themeContainer' onClick={() => setThemeClick(!themeClick)}>
+            {(mode === "auto" || mode === "dark") ? 
+              <IoIosMoon size={22} className='vid_bell_Navbar'/>:
+              <IoSunny size={22} className='vid_bell_Navbar'/> 
+            }
+           {themeClick && <ThemeBox/>}
+          </div>
+
           <RiVideoAddLine size={22} className="vid_bell_Navbar" />
           <div className="apps_Box">
             <p className="appBox"></p>

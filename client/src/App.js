@@ -14,7 +14,7 @@ import { getallhistory } from "./action/history";
 import { getalllikedvideo } from "./action/likedvideo";
 import { getallwatchlater } from "./action/watchlater";
 import { get_all_chat_user } from "./action/get_all_chat_user";
-import { RoomProvider } from "./utils/RoomContext";
+import { RoomProvider } from "./context/RoomContext";
 
 function App() {
   const [toggledrawersidebar, settogledrawersidebar] = useState({

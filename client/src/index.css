@@ -19,11 +19,15 @@ code {
   --body_background_850: #272727;
   --body_forground: #212121;
   --body_forground_850: #2c2c2c;
+  --body_second_topbtn_nav: #2e2e2e;
+  --body_second_topbtn_navHover: #808080;
+  --body_second_top_navlight: #80808045;
   --body_forground_800: #3c3c3c;
   --body_forground_700: #4c4b4b;
   --search_background_btn: #474747;
   --nav_logo_background: #e0e3d6;
   --nav_logo_text: black;
+  --navbar_border: #131313;
   --forground_text: #f0f8ff;
   --forground_text_700: #c5c5c5;
   --video_page_background: #111111;
@@ -48,6 +52,9 @@ code {
   --whl_box_background: rgba(0, 0, 0, 0.153);
   --video_page_background: black;
   --video_controls_background: linear-gradient(to top, rgba(0, 0, 0.75), transparent);
+  --video_page_log: #ffffffaa;
+  --video_page_logBorder: rgba(0, 0, 0, 0.19);
+  --video_page_title_section_brder: #f5deb32d;
   --red_caption_icon: red;
 
   --comment_border_bottom: #404040;
@@ -56,6 +63,11 @@ code {
   --cmnt_del_btn: #2c55d1b1;
 
   --chat_bg_logo: #0f0f0f;
+  --chat_nav_btm_brdr: #4c4b4b;
+  --cretegrp_selectbtn: #111111;
+  --Nochat_foreground: #212121;
+  --selected_member_bg: #272727;
+  --grp_createNameInput: white;
   --grp_chat_bx_brdr: #050505;
   --grp_selected_spanclr: #c2c2c2;
   --grp_selected_spanclrHover: #e3dacf;
@@ -67,6 +79,61 @@ code {
   --create_channel_cont2: rgba(55, 57, 67, 0.294);
   --create_channel_inputT: #89f3fa;
   --create_channel_cut: orange;
+}
+
+.white-theme{
+  --body_background: #FFFFFF;
+  --body_background_800: white;
+  --body_background_850: white;
+  --body_forground: white;
+  --body_forground_850: white;
+  --body_forground_800: #d7e0e9;
+  --body_forground_700: white;
+  --search_background_btn: #d7e0e9;
+  --nav_logo_background: #d7e0e9;
+  --auth_cont_background: #f0f0f0;
+  --grf_form: #d7d7d7;
+  --left_Sidebar_background: white;
+  --left_Sidebar_icon: black;
+  --drawer_leftSidebar_bg: white;
+  --body_second_top_navlight: #d7e0e9;
+  --body_second_top_navbtn: white;
+  --body_second_topbtn_navHover: #d7e0e9;
+  --nav_logo_text: black;
+  --forground_text: black;
+  --forground_text_700: black;
+  --video_page_background: white;
+  --dot: gray;
+  --authBorder: #3ea6ff;
+  --logo_tag_text: black;
+  --home_bg_transparent: rgba(0, 0, 0, 0.056);
+  --video_controls_background: linear-gradient(to top, #f8f8f879, transparent);
+  --loading_animation_background: linear-gradient(110deg, #f1f1f1 8%, #fff 18%, #f1f1f1 33%);
+  --showVidMobile_loading_bg: linear-gradient(110deg, #f1f1f1 8%, #fff 18%, #f1f1f1 33%);
+  --video_title_text: black;
+  --video_title_des: gray;
+  --loading_box_border: white;
+  --video_page_log: #d7e0e9;
+  --video_page_logBorder: white;
+  --video_page_title_section_brder: #f7f7f7;
+  --comment_border_bottom: #404040;
+  --comment_border_bottom_low: #4040400d;
+  --comment_border_bottom_800: #f0f8ff0d;
+  --whl_box_background: rgba(0, 0, 0, 0.153);
+  --chat_bg_logo: #fff;
+  --cretegrp_selectbtn: #c4c4c4;
+  --grp_chat_bx_brdr: #eef2f7;
+  --grp_selected_spanclrHover: #d7e0e9;
+  --grp_selected_spanclr: gray;
+  --grf_formHover: gray;
+  --grp_createNameInput: #f0f0f0;
+  --selected_member_bg: #dee5eb9c;
+  --create_channel_cont: rgba(0, 0, 0, 0.057);
+  --create_channel_cont2: #ffffff99;
+  --create_channel_inputT: #daf3f5;
+  --chat_nav_btm_brdr: #d7e0e9;
+  --Nochat_foreground: #cbcbcb;
+  --navbar_border: #e4edef;
 }
 
 ::-webkit-scrollbar {

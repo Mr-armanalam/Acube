@@ -1,21 +1,22 @@
 .navigation_Home {
   color: var(--forground_text);
-  background-color: rgb(37, 37, 37);
+  background-color: var(--left_Sidebar_background);
   position: sticky;
   display: flex;
   overflow-x: auto;
   top: 0;
-  border-bottom: 2px solid rgb(128, 128, 128, 0.27);
+  border-bottom: 2px solid var(--body_second_top_navlight);
+  height: 58px;
 }
 .btn_nav_home {
-  background-color: rgb(46, 46, 46);
+  background-color: var(--body_second_top_navbtn);
   margin: 0.5rem;
   padding: 0.5rem;
   border-radius: 45px;
   cursor: pointer;
 }
 .btn_nav_home:hover {
-  background-color: rgb(128, 128, 128);
+  background-color: var(--body_second_topbtn_navHover);
 }
 /* @media (max-width:768px) {
     .navigation_Home::-webkit-scrollbar {
@@ -35,7 +36,7 @@
 .card.is-loading {
   height: 100vh;
   background: var(--body_forground);
-  background: linear-gradient(110deg, #0f0f0f 8%, #181818 18%, #0f0f0f 33%);
+  background: var(--showVidMobile_loading_bg);
   border-radius: 5px;
   background-size: 200% 100%;
   animation: 1.5s shine linear infinite;

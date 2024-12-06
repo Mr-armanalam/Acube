@@ -1,14 +1,11 @@
 .container_videoPage {
   height: calc(100vh - 3.4rem);
-  /* background-color: rgb(11, 11, 11); */
   background-color: var(--video_page_background);
   color: var(--forground_text);
   display: flex;
-  /* border: 1px solid blue; */
 }
 
 .container2_videoPage {
-  /* margin: 1.5rem 4.5rem; */
   display: flex;
   gap: 0.5rem;
   width: 75%;
@@ -18,25 +15,21 @@
   display: none;
 }
 .video_display_screen_videoPage {
-  /* width: calc(100vw - 4.5rem - 35vw);  */
   width: 100%;
   padding: 1rem;
   flex: 1;
-  /* border: 1px solid red; */
 }
 
 .video_ShowVideo_videoPage {
-  /* padding: 0.1rem; */
   height: 70vh;
   width: 100%;
   background-color: var(--video_page_background);
   border: 1px solid rgba(37, 37, 37, 0.2);
   border-radius: 10px;
-  /* border: 1px solid red; */
 }
 
 .video_btns_title_VideoPage_cont {
-  border-bottom: 3px solid rgba(245, 222, 179, 0.175);
+  border-bottom: 3px solid var(--video_page_title_section_brder);
   flex-grow: 1;
 }
 .video_title_VideoPage {
@@ -47,7 +40,6 @@
 .views_date_btns_VideoPage {
   display: flex;
   margin: 0.5rem 1rem;
-  /* width: calc(100vw - 6.5rem - 35vw); */
   width: auto;
 }
 .views_videoPage {
@@ -58,7 +50,7 @@
 }
 
 .chanel_details_videoPage {
-  border-bottom: 3px solid rgba(245, 222, 179, 0.175);
+  border-bottom: 3px solid var(--video_page_title_section_brder);
   display: flex;
   text-decoration: none;
   color: var(--logo_tag_text);
@@ -66,11 +58,11 @@
 }
 .chanel_logo_videoPage {
   display: flex;
-  border: 1px solid rgba(0, 0, 0, 0.19);
+  border: 1px solid var(--video_page_logBorder);
   width: 4rem;
   height: 4rem;
   margin: 0.5rem;
-  background-color: rgba(255, 255, 255, 0.667);
+  background-color: var(--video_page_log);
   border-radius: 100%;
 }
 
@@ -90,7 +82,6 @@
 }
 .moreVideoBar {
   width: calc(100vw - 4.5rem - 70vw);
-  /* padding: 0 1rem; */
 }
 
 @media (max-width: 768px) {
@@ -100,12 +91,10 @@
     height: auto;
   }
   .container2_videoPage {
-    /* margin:1.5rem 0; */
     flex-direction: column;
     width: 100vw;
   }
   .video_display_screen_videoPage {
-    /* border: 1px solid red; */
     width: auto;
     overflow-x: hidden;
   }

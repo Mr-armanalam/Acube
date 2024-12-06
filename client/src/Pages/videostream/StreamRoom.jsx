@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { RoomContext } from "../../utils/RoomContext";
 import Peer from "simple-peer";
 import RecordRTC from "recordrtc";
 import "./videoStream.css";
@@ -14,6 +13,7 @@ import { CiSaveDown1 } from "react-icons/ci";
 import { MdOutlineScreenShare } from "react-icons/md";
 import { FaRegCircleStop } from "react-icons/fa6";
 import { FiPhoneCall } from "react-icons/fi";
+import { RoomContext } from "../../context/RoomContext";
 
 const StreamRoom = () => {
   const navigate = useNavigate();
@@ -270,19 +270,7 @@ const StreamRoom = () => {
 
         {stream === null && (
           <div className="FriendsLogo">
-            {picture ? (
-              <img
-                src={picture}
-                width="100%"
-                height="100%"
-                alt="User"
-                onError={(e) => {
-                  e.target.src = picture;
-                }}
-              />
-            ) : (
-              me?.toUpperCase().charAt(0)
-            )}
+            {me?.toUpperCase().charAt(0)}
           </div>
         )}
 

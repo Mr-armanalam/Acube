@@ -25,7 +25,7 @@
   height: 34px;
   max-width: 200px;
   border-radius: 8px;
-  background-color: var(--body_background_850);
+  background-color: var(--selected_member_bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -52,7 +52,7 @@
   background-color: transparent;
   border: none;
   margin-left: auto;
-  color: var(--video_page_background);
+  color: var(--cretegrp_selectbtn);
   font-weight: 900;
   cursor: pointer;
   right: 0;
@@ -89,6 +89,7 @@ button {
   border: none;
   border-radius: 4px;
   font-weight: 600;
+  background-color: var(--grp_createNameInput);
 }
 .Group_form1 > form > button {
   font-weight: 700;

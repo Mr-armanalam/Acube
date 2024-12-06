@@ -5,6 +5,7 @@
   justify-content: center;
   height: 100%;
   color: var(--body_forground);
+  color: var(--Nochat_foreground);
 }
 .No_chat_box {
   display: flex;
@@ -32,7 +33,7 @@ h3 {
   position: relative;
 }
 .c_nav {
-  border-bottom: 1px solid var(--body_forground_700);
+  border-bottom: 1px solid var(--chat_nav_btm_brdr);
   position: absolute;
   top: 0;
   left: 0;
@@ -76,7 +77,7 @@ h3 {
   font-weight: 600;
 }
 .c_buttom {
-  border-top: 1px solid var(--body_forground_700);
+  border-top: 1px solid var(--chat_nav_btm_brdr);
   position: absolute;
   bottom: 0;
   left: 0;

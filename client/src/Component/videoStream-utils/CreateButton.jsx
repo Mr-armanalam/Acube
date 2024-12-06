@@ -1,7 +1,7 @@
 import React, { useContext } from 'react'
-import { RoomContext } from '../../utils/RoomContext'
 import '../../Pages/videostream/videoStream.css'
 import { IoVideocamOutline } from "react-icons/io5";
+import { RoomContext } from '../../context/RoomContext';
 
 
 const JoinButton = ({friendsId}) => {

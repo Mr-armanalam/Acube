@@ -6,7 +6,8 @@ const NoChatMain = ({ navigate, currentUser }) => {
   return (
     <section className={`No_Chat_main_container ${navigate?.main}`}>
       <div className="No_chat_box">
-        <MdChatBubble size={110} color="var(--body_forground)" />
+        <MdChatBubble size={110}  />
+        {/* <MdChatBubble size={110} color="var(--body_forground)" /> */}
         <h2>Welcome to Your Chats</h2>
         <h3>{`Please ${
           currentUser ? "Select" : "Login"

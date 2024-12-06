@@ -3,14 +3,12 @@
   display: flex;
   color: var(--logo_tag_text);
   box-sizing: border-box;
-  /* border: 1px solid red; */
 }
 .sidebar_background {
   border-right: 1px solid var(--body_background_800);
   box-sizing: border-box;
-  /* height: 92.7vh; */
   background: var(--body_forground);
-  /* flex: 1; */
+  border-right: 1px solid var(--navbar_border);
 }
 .s_header {
   min-width: 20rem;
@@ -33,7 +31,7 @@
   cursor: pointer;
 }
 .add_group:hover {
-  color: beige;
+  color: var(--grf_formHover);
 }
 .s_header > div {
   height: 35px;

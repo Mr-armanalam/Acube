@@ -10,6 +10,7 @@ import { thunk } from "redux-thunk";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import Reducers from "./Reducers";
 import { InternetStatusProvider } from "./utils/internetStatusContext";
+import ThemeProvider from "./context/ThemeProvider";
 const store = createstore(Reducers, compose(applyMiddleware(thunk)));
 const root = ReactDOM.createRoot(document.getElementById("root"));
 // console.log(process.env.REACT_APP_CLIENT_ID);
@@ -18,9 +19,11 @@ root.render(
   <InternetStatusProvider>
     <Provider store={store}>
       <GoogleOAuthProvider clientId={process.env.REACT_APP_CLIENT_ID}>
+        <ThemeProvider>
           <React.StrictMode>
             <App />
           </React.StrictMode>
+        </ThemeProvider>
       </GoogleOAuthProvider>
     </Provider>
   </InternetStatusProvider>
