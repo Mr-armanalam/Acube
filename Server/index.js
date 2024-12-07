@@ -10,6 +10,7 @@ import commentroutes from "./Routes/comment.js";
 import chatroutes from "./Routes/chat.js";
 import cookieParser from "cookie-parser";
 import downloadVid from './Routes/downloadVid.js'
+import Otpauth from "./Routes/Otpauth.js";
 import { Server } from "socket.io";
 import { createServer } from "http";
 import { roomhandler } from "./V-Stream-Room/Roomhandler.js";
@@ -29,6 +30,7 @@ app.get("/", (req, res) => {
 
 app.use(bodyParser.json());
 app.use("/user", userroutes);
+app.use("/auth", Otpauth);
 app.use("/video", videoroutes);
 app.use("/comment", commentroutes);
 app.use("/chat", chatroutes);

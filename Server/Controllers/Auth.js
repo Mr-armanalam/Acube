@@ -60,8 +60,6 @@ export const login = async (req, res) => {
 
 export const updatePoints = async (req, res) => {
   try {
-    // console.log(req.body);
-    // console.log(req.userid)
     const { points } = req.body;
     const userId = req.userid;
 
