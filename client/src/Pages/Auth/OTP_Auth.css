@@ -1,8 +1,11 @@
-
+*{
+  box-sizing: border-box;
+}
 .otp_auth_container{
   display: flex;
   align-items: center;
   justify-content: center;
+  padding-inline: 20px;
   height: 96vh;
   width: 100vw;
   background-color: var(--otp_auth_cont_bg);
@@ -118,3 +121,28 @@
   color: var(--auth_region);
 }
 
+@media (max-width: 426px) {
+  .otp_auth_container{
+    box-sizing: border-box;
+    padding-inline: 25px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .otp_auth_container_box{
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+    padding-inline: 30px;
+    padding-bottom: 30px;
+  }
+  .otp_auth_container::-webkit-scrollbar{
+    display: none;
+  }
+  .auth_title_section{
+    width: 100%;
+  }
+  .otp_auth_frm{
+    margin-top: 30px;
+    width: 100%;
+  }
+}
