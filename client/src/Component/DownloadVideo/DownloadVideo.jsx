@@ -25,6 +25,8 @@ const DownloadVideo = ({video}) => {
 
         const fetchDownloads = async () => {
             const userDownloads = await dispatch(getDownloads());
+            console.log(userDownloads);
+            
             setDownloads(userDownloads);
         };
         fetchDownloads();
@@ -80,10 +82,10 @@ const DownloadVideo = ({video}) => {
     //         alert('Error handling payment status');
     //     }
     // };
-
+    console.log(user, !user)
     return (
         <>
-            <a href={video} download className={`btn_VideoPage download ${!isPremium && downloads.length >= 1 && 'ishidden'} `} onClick={handleDownload} disabled={isDownloading || (!isPremium && downloads.length >= 1)}>
+            <a href={video} download className={`btn_VideoPage download ${((!isPremium && downloads.length >= 1) || !user) && 'ishidden'} `} onClick={handleDownload} disabled={isDownloading || (!isPremium && downloads.length >= 1)}>
                 <IoMdDownload size={22} className='btns_videoPage' />
             </a>
             {!isPremium && (

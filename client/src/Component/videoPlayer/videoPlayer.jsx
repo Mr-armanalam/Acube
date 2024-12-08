@@ -14,13 +14,14 @@ function VideoPlayer({ video , commentRef}) {
   const timelineRef = useRef(null);
   const volumeSliderRef = useRef(null);
   const speedBtnRef = useRef(null);
+  const isScrubbingRef = useRef(false);
 
   const [videosrc, setVideosrc] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState([0, 0, 0]); // current time of the video in array. The first value represents the minute and the second represents seconds.
+  const [currentTime, setCurrentTime] = useState([0, 0, 0]); 
   const [duration, setDuration] = useState([0, 0, 0]);
-  // const [currentQuality, setCurrentQuality] = useState(videoSources[0].quality); // // total duration of the video in the array. The first value represents the minute and the second represents seconds.
-  const [isScrubbing, setIsScrubbing] = useState(false);
+  // const [currentQuality, setCurrentQuality] = useState(videoSources[0].quality);
+  // const [isScrubbing, setIsScrubbing] = useState(false);
   const [videosWatched, setVideosWatched] = useState(0);
 
   const sec2Min = (sec) => {
@@ -73,8 +74,8 @@ function VideoPlayer({ video , commentRef}) {
     const rect = timelineRef.current?.getBoundingClientRect();
     const percent =
       Math.min(Math.max(0, e.clientX - rect.x), rect.width) / rect.width;
-    setIsScrubbing(e.buttons === 1);
-    if (isScrubbing) {
+      isScrubbingRef.current = (e.buttons === 1);
+    if (isScrubbingRef.current) {
       videoRef.current.currentTime = percent * videoRef.current?.duration;
     }
     updateTimeline(percent);
@@ -425,3 +426,4 @@ function VideoPlayer({ video , commentRef}) {
 }
 
 export default VideoPlayer;
+

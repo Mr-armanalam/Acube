@@ -4,6 +4,6 @@ export const updatePoint=(points)=>async(dispatch)=>{
         await api.updatePoint(points);
         // console.log(data);        
     } catch (error) {
-        alert(error)
+        console.log(error.message)
     }
 }
