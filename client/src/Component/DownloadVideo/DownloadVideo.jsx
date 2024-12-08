@@ -14,7 +14,6 @@ const DownloadVideo = ({video}) => {
     const [isPremium, setIsPremium] = useState(false);
     const dispatch = useDispatch();
 
-    // console.log(user);
     
     useEffect(() => {
         const fetchPremiumStatus = async () => {
@@ -24,9 +23,7 @@ const DownloadVideo = ({video}) => {
         fetchPremiumStatus();
 
         const fetchDownloads = async () => {
-            const userDownloads = await dispatch(getDownloads());
-            console.log(userDownloads);
-            
+            const userDownloads = await dispatch(getDownloads());            
             setDownloads(userDownloads);
         };
         fetchDownloads();
@@ -82,7 +79,7 @@ const DownloadVideo = ({video}) => {
     //         alert('Error handling payment status');
     //     }
     // };
-    console.log(user, !user)
+    
     return (
         <>
             <a href={video} download className={`btn_VideoPage download ${((!isPremium && downloads.length >= 1) || !user) && 'ishidden'} `} onClick={handleDownload} disabled={isDownloading || (!isPremium && downloads.length >= 1)}>

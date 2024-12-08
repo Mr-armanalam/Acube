@@ -8,6 +8,7 @@ export const downloadvideo = async (req, res) => {
         } 
             
         user.downloadsToday += 1; 
+        user.lastReset = Date.now();
         user.downloads.push({ title: 'Video Title', date: new Date() }); 
         await user.save(); 
         

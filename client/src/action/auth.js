@@ -6,7 +6,7 @@ export const login=(authdata)=>async(dispatch)=>{
         dispatch({type:"AUTH",data})
         dispatch(setcurrentuser(JSON.parse(localStorage.getItem('Profile'))))
     } catch (error) {
-        alert(error)
+        alert("Failed to login: " + error.message)
     }
 }
 
@@ -16,7 +16,7 @@ export const sendOTP = (authdata)=>async(dispatch)=>{
         console.log(result?.data + result.status);
         dispatch({type:"SENDOTP",result})
     } catch (error) {
-        alert(error)
+        alert("Failed to send OTP: " + error.message)
     }
 }
 
