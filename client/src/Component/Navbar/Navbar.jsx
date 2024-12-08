@@ -16,6 +16,7 @@ import { IoSunny } from "react-icons/io5";
 import { IoIosMoon } from "react-icons/io";
 import { jwtDecode } from "jwt-decode";
 import ThemeBox from "./ThemeBox";
+import { encryptData2 } from "../../utils/toEncrypt";
 
 const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
   const [themeClick, setThemeClick] = useState(false);
@@ -29,10 +30,11 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
 
   const successlogin = useCallback(() => {
     if (profile.email) {
-      console.log("hi");
+      // console.log("profile");
 
       if (sessionStorage.isSouthIndia) {
-        navigate("/auth-verifier");
+        const data = encryptData2(profile);        
+        navigate(`/auth-verifier/${data}`);
       } else {
         dispatch(
           login({
@@ -43,7 +45,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
         );
       }
     }
-  }, [dispatch, profile, navigate]);
+  }, [dispatch, profile]);
 
   // console.log(currentuser?.token)
   // const currentuser={
@@ -73,7 +75,8 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
               },
             }
           );
-          setprofile(res.data);
+          if (res.data) { setprofile(res.data);}
+          // setprofile(res.data);
         } catch (error) {
           console.error("Error fetching user info: ", error);
         }

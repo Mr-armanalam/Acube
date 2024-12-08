@@ -80,6 +80,14 @@ code {
   --create_channel_cont2: rgba(55, 57, 67, 0.294);
   --create_channel_inputT: #89f3fa;
   --create_channel_cut: orange;
+
+  --otp_auth_cont_bg: #131313;
+  --otp_auth_cont_box_bg: black;
+  --otp_auth_title_h1: #444444;
+  --otp_auth_title_p: #444444;
+  --otp_auth_title_button_clr: #c4c1c1;
+  --auth_region: white;
+  --authSubmit_bg: #131313;
 }
 
 .white-theme{
@@ -136,6 +144,13 @@ code {
   --Nochat_foreground: #cbcbcb;
   --navbar_border: #e4edef;
   --search_text: #202020;
+  --otp_auth_cont_bg: #00000015;
+  --otp_auth_cont_box_bg: #fcfcfc;
+  --otp_auth_title_h1: #444444;
+  --otp_auth_title_p: #d9d9d9;
+  --otp_auth_title_button_clr: #313131;
+  --auth_region: #7e7e7e;
+  --authSubmit_bg: #d7e0e9;
 }
 
 ::-webkit-scrollbar {

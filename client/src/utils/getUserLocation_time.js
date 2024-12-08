@@ -1,3 +1,4 @@
+import { encryptData2 } from "./toEncrypt";
 
 async function getUserLocation() {
   try {
@@ -20,7 +21,7 @@ const CheckRegion = async () => {
   const southIndiaStates = [ "Tamil Nadu", "Kerala", "Karnataka", "Andhra Pradesh", "Telangana" ];
   let isSouthIndia = southIndiaStates.includes(location?.region);
   if (isSouthIndia) {
-    sessionStorage.setItem('isSouthIndia', location?.region)
+    sessionStorage.setItem('isSouthIndia', encryptData2(location?.region))
   }
   return isSouthIndia;
 }

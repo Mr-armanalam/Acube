@@ -39,7 +39,7 @@ const Allroutes = ({ seteditcreatechanelbtn, setvideouploadpage }) => {
           />
           <Route path="/chat" element={<Chat />} />
           <Route path="/video-stream/:encryptId" element={<StreamRoom />} />
-          <Route path="/auth-verifier" element={<OtpAuth/>} />
+          <Route path="/auth-verifier/:user" element={<OtpAuth/>} />
         </Routes>
       ) : (
         <div

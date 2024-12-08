@@ -4,11 +4,9 @@ let otpStore = {};
 
 export const SendOtp = (req, res) => {
   const { email, phone } = req.body;
-  console.log(email, phone);
   const otp = generateOTP();
   
   otpStore[email || phone] = otp;
-  console.log(otpStore);  // for debugging purposes, to see the stored OTPs. Remove it in production.
 
  try {
    if (email) {    
@@ -26,7 +24,6 @@ export const SendOtp = (req, res) => {
 
 export const VerifyOtp = (req, res) => {
   const { email, phone, otp } = req.body;
-  console.log(email, phone, otp);
   const storedOTP = otpStore[email || phone];  
 
   if (otp == storedOTP) {

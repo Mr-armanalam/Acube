@@ -1,19 +1,35 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {useNavigate} from "react-router-dom"
+import {useNavigate, useParams} from "react-router-dom"
 
 import "./OTP_Auth.css";
-import { sendOTP, verifyOTP } from "../../action/auth";
+import { login, sendOTP, verifyOTP } from "../../action/auth";
+import { decryptData2 } from "../../utils/toEncrypt";
 
 const OTP_Auth = () => {
   const navigate = useNavigate();
+  const {user} = useParams();
+  let data ={}
+
+  const handleUnauthorized = useCallback(()=> {
+    navigate("/")
+    alert("Something went wrong ");  
+  },[navigate])
+
+  try {
+     data = decryptData2(user);
+  } catch (error) {
+    console.log(error.message);
+  }
+  // console.log(typeof(data));
+
+
   const sentotpStatus = useSelector(state => state.authOTPreducer);
   const verifyOTPStatus = useSelector(state => state.authOtpverifierReducer);
   const dispatch = useDispatch();
-  const currentUser = useSelector((state) => state.currentuserreducer)?.result
-    ?.email;
+  const currentUser = data.email;
 
-  const [status, setStatus] = useState();
+  const [status, setStatus] = useState("");
   const [state, setState] = useState({
     email: "",
     otp: "",
@@ -42,14 +58,27 @@ const OTP_Auth = () => {
       }))
     }
   }
-
+// console.log(status)
   useEffect(() => {    
-    if (status === 200) {
+    if (verifyOTPStatus.status === 200 || status === 200 ) {
+      // console.log(data);
       navigate("/");
-    }else{
-      setStatus(verifyOTPStatus.status)
+      dispatch(
+        login({
+          email: data.email,
+          username: data.name,
+          picture: data.picture,
+        })
+      );
     }
-  },[verifyOTPStatus,status, navigate]);
+
+  },[verifyOTPStatus, status, user]);
+
+  useEffect(() => {
+    if (!data.email) {
+      handleUnauthorized();
+    }
+  },[handleUnauthorized])
 
   return (
     <section className="otp_auth_container">
@@ -65,9 +94,9 @@ const OTP_Auth = () => {
           <input
             type="email"
             name="email"
-            disabled={!currentUser && true}
+            disabled={currentUser && true}
             onChange={handleOnChange}
-            value={state.email || currentUser}
+            value={state.email || currentUser || ''}
             placeholder="jongo@gmail.com"
           />
           <label htmlFor="number">-OR-</label>
@@ -91,7 +120,7 @@ const OTP_Auth = () => {
           <button type="submit">Next</button>
           </div>
         </form>
-        <div className="auth_terms">{sessionStorage.isSouthIndia}</div>
+        <div className="auth_terms">{decryptData2(sessionStorage.isSouthIndia)}</div>
       </div>
     </section>
   );
