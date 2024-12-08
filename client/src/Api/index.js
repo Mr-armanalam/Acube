@@ -52,3 +52,6 @@ export const checkPremiumStatus = ()=>API.get(`/download/user/premium-status`);
 export const handlePaymentStatus = (paymentId)=>API.post('/download/handle-payment-status', paymentId );
 export const createPaymentRequest = (paymentData)=>API.post('/download/create-payment-request', paymentData);;
 export const getDownloads = ()=>API.get(`/download/user/downloads`);
+
+export const sendOtp = (authdata)=>API.post('/auth/send-otp', authdata);
+export const verifyOtp = (authOtp)=>API.post('/auth/verify-otp', authOtp);

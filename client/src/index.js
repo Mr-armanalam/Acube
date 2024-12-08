@@ -20,9 +20,7 @@ root.render(
     <Provider store={store}>
       <GoogleOAuthProvider clientId={process.env.REACT_APP_CLIENT_ID}>
         <ThemeProvider>
-          <React.StrictMode>
             <App />
-          </React.StrictMode>
         </ThemeProvider>
       </GoogleOAuthProvider>
     </Provider>

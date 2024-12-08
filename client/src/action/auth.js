@@ -9,3 +9,24 @@ export const login=(authdata)=>async(dispatch)=>{
         alert(error)
     }
 }
+
+export const sendOTP = (authdata)=>async(dispatch)=>{
+    try {
+        const result = await api.sendOtp(authdata);
+        console.log(result?.data + result.status);
+        dispatch({type:"SENDOTP",result})
+    } catch (error) {
+        alert(error)
+    }
+}
+
+export const verifyOTP = (authdata)=>async(dispatch)=>{
+    try {
+       const result = await api.verifyOtp(authdata);
+       console.log(result?.data + result.status);
+        dispatch({type:"VERIFYOTP",result})
+    } catch (error) {
+        const result = {data: "Invalid OTP", status: error.status || 400};
+        dispatch({type:"VERIFYOTP",result});
+    }
+}

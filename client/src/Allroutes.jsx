@@ -12,6 +12,7 @@ import Yourvideo from "./Pages/Yourvideo/Yourvideo";
 import Chat from "./Pages/chat/Chat";
 import { useInternetStatus } from "./utils/internetStatusContext";
 import StreamRoom from "./Pages/videostream/StreamRoom";
+import OtpAuth from "./Pages/Auth/OTP_Auth";
 
 const Allroutes = ({ seteditcreatechanelbtn, setvideouploadpage }) => {
   const isOnline = useInternetStatus();
@@ -38,6 +39,7 @@ const Allroutes = ({ seteditcreatechanelbtn, setvideouploadpage }) => {
           />
           <Route path="/chat" element={<Chat />} />
           <Route path="/video-stream/:encryptId" element={<StreamRoom />} />
+          <Route path="/auth-verifier" element={<OtpAuth/>} />
         </Routes>
       ) : (
         <div
