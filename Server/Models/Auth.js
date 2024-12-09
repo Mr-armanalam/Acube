@@ -11,7 +11,8 @@ const userschema=mongoose.Schema({
     isPremium: { type: Boolean, default: false },
     downloads: [{ title: String, date: Date }],
     lastReset: { type: Date, default: Date.now},
-    joinedon:{type:Date,default:Date.now},
+},{
+    timestamps:true,
 })
 
 export default mongoose.model("User",userschema);

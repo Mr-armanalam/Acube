@@ -2,12 +2,13 @@ import React from 'react'
 import Describechannel from './Describechannel'
 import Leftsidebar from '../../Component/Leftsidebar/Leftsidebar'
 import Showvideogrid from '../../Component/Showvideogrid/Showvideogrid'
-import vid from "../../Component/Video/vid.mp4";
+// import vid from "../../Component/Video/vid.mp4";
 import { useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 const Channel = ({seteditcreatechanelbtn,setvideouploadpage}) => {
   const {cid}=useParams()
-  const vids=useSelector(state=>state.videoreducer)?.data?.filter(q=>q?.videochanel===cid).reverse()
+  const vids=useSelector(state=>state.videoreducer)?.data?.filter(q=>q?.videochanel===cid).reverse();
+  
   //     const vids = [
   //   {
   //     _id: 1,
@@ -53,7 +54,7 @@ const Channel = ({seteditcreatechanelbtn,setvideouploadpage}) => {
           setvideouploadpage={setvideouploadpage}
           seteditcreatechanelbtn={seteditcreatechanelbtn}
         />
-        <Showvideogrid vids={vids} />
+        <Showvideogrid vid={vids} />
       </div>
     </div>
   );

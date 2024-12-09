@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 import users from "../Models/Auth.js"
+import videofile from "../Models/videofile.js";
+
+
 export const updatechaneldata=async(req,res)=>{
     const {id:_id}=req.params;
     const {name,desc}=req.body;
@@ -7,6 +10,12 @@ export const updatechaneldata=async(req,res)=>{
         return res.status(400).send("Channel unavailable..")
     }
     try {
+         await videofile.updateMany({videochanel: _id}, {
+            $set: {
+                uploader: name
+            }
+        },{new: true});
+
         const updatedata=await users.findByIdAndUpdate(
             _id,{
                 $set:{
@@ -16,6 +25,7 @@ export const updatechaneldata=async(req,res)=>{
             },
             {new:true}
         );
+
         res.status(200).json(updatedata)
     } catch (error) {
         res.status(405).json({message:error.message})
