@@ -1,17 +1,72 @@
 .container3_chanel {
-  border-bottom: 3px solid rgba(1, 26, 96, 0.692);
+  display: flex;
+  border-bottom: 3px solid #011a60b0;
   padding: 0.5rem;
   color: var(--forground_text) smoke;
   position: relative;
+  color: var(--channel_text);
+  /* overflow-y: auto; */
+}
+.reputation_cont{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.credit{
+  display: flex;
+  gap: 20px;
+  font-weight: 700;
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+}
+.credit>div, .premium{
+  border: 1px solid var(--channel_text);
+  height: 40px;
+  border-radius: 20px;
+  display: block;
+  align-content: center;
+  max-width: 300px;
+  padding-inline: 20px;
+  background: none;
+  color: var(--channel_text);
+}
+
+.credit>div>span, .premium>span, .download>span{
+  color: #e78c0e;
+}
+
+button {
+  cursor: pointer;
+}
+.premium:hover{
+  background-color: var(--channel_text);
+  color: black;
+}
+
+.download{
+  display: flex;
+  max-width: 50px;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: large;
+}
+
+.channel_details{
+  flex: 1;
+}
+.edit_crete_cont{
+  flex: 1;
 }
 .chanel_logo_chanel {
-  border: 10px solid rgba(49, 7, 219, 0.66);
+  border: 10px solid var(--channel_text);
   width: 5rem;
   height: 5rem;
   border-radius: 100%;
   display: flex;
   margin: 0 auto;
-  background-color: rgba(92, 135, 4, 0.769);
+  background-color: var(--channel_avatar_bg);
 }
 .chanel_logo_chanel b {
   margin: auto;
@@ -31,7 +86,7 @@
   position: absolute;
   right: 1rem;
   top: 0.5rem;
-  background-color: blue;
+  background-color: var(--channel_edit_bg);
   padding: 0.5rem;
   border: 2px solid transparent;
   border-radius: 0.5rem;
@@ -45,5 +100,6 @@
 .uploadbtn_chanel:hover,
 .editbtn_chanel:hover {
   border: 2px solid;
-  color: rgb(231, 140, 14);
+  color: #e78c0e;
+  color: var(--channel_edit_brdr);
 }

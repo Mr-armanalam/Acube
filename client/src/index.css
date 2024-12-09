@@ -28,6 +28,9 @@ code {
   --nav_logo_background: #e0e3d6;
   --nav_logo_text: black;
   --navbar_border: #131313;
+  --channel_text: #c5c5c5;
+  --channel_avatar_bg: #121212;
+
   --search_text: #3c3c3c;
   --forground_text: #f0f8ff;
   --forground_text_700: #c5c5c5;
@@ -62,6 +65,8 @@ code {
   --comment_border_bottom_low: #4040400d;
   --comment_border_bottom_800: #f0f8ff0d;
   --cmnt_del_btn: #2c55d1b1;
+  --channel_edit_bg: blue;
+  --channel_edit_brdr: #e78c0e;
 
   --chat_bg_logo: #0f0f0f;
   --chat_nav_btm_brdr: #4c4b4b;
@@ -100,6 +105,7 @@ code {
   --body_forground_700: white;
   --search_background_btn: #d7e0e9;
   --nav_logo_background: #d7e0e9;
+  --channel_avatar_bg: #d7e0e9;
   --auth_cont_background: #f0f0f0;
   --grf_form: #d7d7d7;
   --left_Sidebar_background: white;
@@ -151,6 +157,9 @@ code {
   --otp_auth_title_button_clr: #313131;
   --auth_region: #7e7e7e;
   --authSubmit_bg: #d7e0e9;
+  --channel_text: #506191;
+  --channel_edit_brdr: black;
+  --channel_edit_bg: #d7e0e9;
 }
 
 ::-webkit-scrollbar {

@@ -106,7 +106,7 @@ const OTP_Auth = () => {
             id="number"
             value={state.number}
             onChange={handleOnChange}
-            placeholder="919567123074"
+            placeholder="+91 9567123074"
           />
           {sentotpStatus?.status === 200 && <input
             type="text"
