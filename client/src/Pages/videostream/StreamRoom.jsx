@@ -22,7 +22,7 @@ const StreamRoom = () => {
   const id = decryptData2(encryptId);
 
   const { socket } = useContext(RoomContext);
-  const { username, email, picture } =
+  const { username, email } =
     useSelector((state) => state.currentuserreducer)?.result || {};
 
   const [isUserVideoShown, setIsUserVideoShown] = useState(true);

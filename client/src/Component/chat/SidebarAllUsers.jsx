@@ -40,7 +40,7 @@ const SidebarAllUsers = ({ selectedUser, setSelectedUser,setloading, setnavigate
                 {item?.picture ? (
                   <img
                     src={item.picture}
-                    alt="user avatar"
+                    alt=""
                     className="s_avatar_img"
                   />
                 ) : (

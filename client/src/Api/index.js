@@ -39,6 +39,7 @@ export const getallwatchlater=()=>API.get('/video/getallwatchlater')
 export const deletewatchlater=(videoid,viewer)=>API.delete(`/video/deletewatchlater/${videoid}/${viewer}`)
 
 export const all_chat_user_sidebar = (searquery)=>API.post(`/chat/chat_user`, searquery);
+export const deleteChat = (chat)=>API.put(`/chat/chat_message`, chat);
 export const send_chat_Messages = (sendMessages)=>API.post(`/chat/send`, sendMessages);
 export const get_chat_Messages = (selectedId)=>API.get(`/chat/message/${selectedId}`);
 

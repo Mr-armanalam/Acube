@@ -12,7 +12,7 @@ export const roomhandler = (socket, io, users) => {
   };
 
   const joinRoom = ({ roomId }) => { 
-    // console.log("User joined room", roomId);
+    console.log("User joined room", roomId);
     users[roomId] = socket.id;  
   };
 
@@ -21,7 +21,7 @@ export const roomhandler = (socket, io, users) => {
 
   socket.on("callUser", (data) => {
     const userToCall = users[data.userToCall];
-    // console.log("calluserdata",data);
+    console.log("calluserdata",data);
         
     io.to(userToCall).emit("receiveCall", {
       signal: data.signalData,
@@ -31,7 +31,7 @@ export const roomhandler = (socket, io, users) => {
   });
 
   socket.on("answerCall", (data) => {
-    // console.log('answercall', data);
+    console.log('answercall', data);
     const userToAnswer = users[data.to];
     io.to(userToAnswer).emit("callAccepted", data.signal);
   });

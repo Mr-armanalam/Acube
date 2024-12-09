@@ -13,7 +13,7 @@ export const send_Groupusers = async (req, res) =>{
         await group.save();
         res.status(200).json("Groupusers successfully created") ; 
     } catch (error) {
-        console.log(error);
+        console.log(error.message);
         throw new Error(error);
     }  
 }

@@ -46,7 +46,7 @@ export const createPaymentRequest = async (req, res) => {
         const paymentResponse = await fetch('https://api.instamojo.com/v2/payment_requests/', options);
         
         const paymentData = await paymentResponse.json();
-        console.log(paymentData);
+        // console.log(paymentData);
 
         if (paymentData.success) {
             return res.status(200).json({ success: true, payment_request: paymentData.payment_request });

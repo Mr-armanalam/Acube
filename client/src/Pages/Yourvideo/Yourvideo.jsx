@@ -1,6 +1,6 @@
 import React from 'react'
 import "./Yourvideo.css"
-import vid from "../../Component/Video/vid.mp4"
+// import vid from "../../Component/Video/vid.mp4"
 import Showvideogrid from '../../Component/Showvideogrid/Showvideogrid'
 import Leftsidebar from '../../Component/Leftsidebar/Leftsidebar'
 import { useSelector } from 'react-redux'

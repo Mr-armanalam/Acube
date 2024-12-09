@@ -13,17 +13,17 @@ export const login=(authdata)=>async(dispatch)=>{
 export const sendOTP = (authdata)=>async(dispatch)=>{
     try {
         const result = await api.sendOtp(authdata);
-        console.log(result?.data + result.status);
+        // console.log(result?.data + result.status);
         dispatch({type:"SENDOTP",result})
     } catch (error) {
-        alert("Failed to send OTP: " + error.message)
+        console.log("Failed to send OTP: " + error.message)
     }
 }
 
 export const verifyOTP = (authdata)=>async(dispatch)=>{
     try {
        const result = await api.verifyOtp(authdata);
-       console.log(result?.data + result.status);
+    //    console.log(result?.data + result.status);
         dispatch({type:"VERIFYOTP",result})
     } catch (error) {
         const result = {data: "Invalid OTP", status: error.status || 400};

@@ -79,7 +79,7 @@
 //                     .then((res) => {
 //                         setprofile(res.data)
 //                         successlogin()
-//                         console.log("hi");
+//                         .log("hi");
 
 //                         // console.log(res.data)
 //                     })

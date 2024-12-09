@@ -75,8 +75,24 @@ export const getGroupUser = async (req, res) => {
     }
     res.status(200).json(group);
   } catch (error) {
-    console.log(error);
+    console.log(error.message);
     res.status(500).json({ error: "Internal server error" });
     throw new Error(error.message);
+  }
+};
+
+export const deleteMessage = async (req, res) => {
+  try {
+    const {id: messageId} = req.body;
+    // console.log( messageId);
+
+    const deleted = await Message.findOneAndDelete({ _id: messageId }, {new: true});
+    if (!deleted) {
+      return res.status(404).json({ error: "message not deleted" });
+    }
+    res.status(200).json("message is successfully deleted")
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ error: "Internal server"})
   }
 };

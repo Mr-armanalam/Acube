@@ -15,7 +15,7 @@ const Displaycommment = ({
   const [cmtid, setcmntid] = useState("");
   const dispatch = useDispatch();
   const currentuser = useSelector((state) => state.currentuserreducer);
-  console.log(edit, cmtnody, cmtid);
+  // console.log(edit, cmtnody, cmtid);
 
   const handleedit = (ctid, ctbdy) => {
     setedit(true);

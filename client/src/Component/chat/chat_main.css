@@ -147,6 +147,7 @@ h3 {
   background-color: var(--body_forground_800);
   height: auto;
   margin-bottom: 10px;
+  position: relative;
 }
 .message_cut_left {
   width: 10px;
@@ -165,6 +166,13 @@ h3 {
   padding-inline: 18px;
   padding-block: 6px;
   font-size: medium;
+  color: var(--logo_tag_text);
+}
+.delete_btn{
+  position: absolute;
+  right: -26px;
+  top: 6px;
+  font-size: 20px;
   color: var(--logo_tag_text);
 }
 .c_left_message {

@@ -55,7 +55,7 @@ export const updatePoints = async (req, res) => {
   try {
     const { points } = req.body;
     const userId = req.userid;
-    console.log(points, userId);
+    // console.log(points, userId);
 
     const existingUser = await users.findById(userId);
     if (!existingUser) {
