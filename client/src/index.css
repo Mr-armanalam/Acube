@@ -144,7 +144,8 @@ code {
   --grp_createNameInput: #f0f0f0;
   --selected_member_bg: #dee5eb9c;
   --create_channel_cont: rgba(0, 0, 0, 0.057);
-  --create_channel_cont2: #ffffff99;
+  --create_channel_cont2: #ffffff; 
+  /* ffffff99 */
   --create_channel_inputT: #daf3f5;
   --chat_nav_btm_brdr: #d7e0e9;
   --Nochat_foreground: #cbcbcb;

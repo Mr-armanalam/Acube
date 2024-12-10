@@ -44,7 +44,7 @@
 
 .vid_bell_Navbar,
 .Mic_SearchBar {
-  color: var(--forground_text) smoke;
+  color: var(--forground_text) ;
   margin: auto 0.7rem;
 }
 @media (max-width: 700px) {

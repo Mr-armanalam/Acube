@@ -56,11 +56,11 @@ const io = new Server(server,
 const users = {};
 
 io.on("connection", (socket) => {
-  console.log("User connected");
+  // console.log("User connected");
   roomhandler(socket, io, users);
 
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    // console.log("User disconnected:", socket.id);
     for (let userId in users) {
       if (users[userId] === socket.id) {
         delete users[userId];

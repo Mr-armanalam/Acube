@@ -21,7 +21,7 @@
 }
 .container2_CreateEditChanel h1 {
   text-decoration: underline;
-  color: var(--forground_text) smoke;
+  color: var(--forground_text) ;
 }
 .container2_CreateEditChanel input,
 .container2_CreateEditChanel textarea {
