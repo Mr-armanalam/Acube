@@ -23,11 +23,12 @@
 .ibox_vidupload {
   margin: 0.5rem;
   font-size: larger;
-  border-radius: 5px;
+  border-radius: 15px;
   background-color: transparent;
   padding: 0.2rem;
   color: var(--logo_tag_text);
   width: calc(100% - 2rem);
+  height: 40px;
 }
 .ibox_div_vidupload {
   display: flex;
@@ -41,6 +42,7 @@
   color: var(--forground_text);
   font-weight: bolder;
   border: 2px solid;
+  height: 40px;
 }
 
 .btn_vidUpload:hover {

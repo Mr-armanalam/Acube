@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
 import './Videoupload.css'
 import { buildStyles, CircularProgressbar } from "react-circular-progressbar"
+import 'react-circular-progressbar/dist/styles.css';
+
+
 import { useSelector, useDispatch } from 'react-redux'
 import { uploadvideo } from '../../action/video'
 const Videoupload = ({ setvideouploadpage }) => {
@@ -48,7 +51,7 @@ const Videoupload = ({ setvideouploadpage }) => {
                     <input type="text" maxLength={30} placeholder='Enter title of your video' className="ibox_vidupload" onChange={(e) => {
                         settitle(e.target.value);
                     }} />
-                    <label htmlFor="file" className='ibox_cidupload btn_vidUpload'>
+                    <label htmlFor="file" className='ibox_vidupload btn_vidUpload'>
                         <input type="file" name='file' style={{ fontSize: "1rem" }} onChange={(e) => { handlesetvideofile(e) }} className="ibox_vidupload" />
                     </label>
                 </div>
@@ -57,15 +60,15 @@ const Videoupload = ({ setvideouploadpage }) => {
                     <div className="loader ibox_div_vidupload">
                         <CircularProgressbar
                             value={progress}
-                            text={`${progress}`}
+                            text={`${progress}%`}
                             styles={buildStyles({
                                 rotation: 0.25,
                                 strokeLinecap: "butt",
                                 textSize: "20px",
                                 pathTransitionDuration: 0.5,
                                 pathColor: `rgba(255,255,255,${progress / 100})`,
-                                textColor: "#f88",
-                                trailColor: "#adff2f",
+                                textColor: "var(--create_channel_cut)",
+                                trailColor: "var(--channel_text)",
                                 backgroundColor: "#3e98c7",
                             })}
 
