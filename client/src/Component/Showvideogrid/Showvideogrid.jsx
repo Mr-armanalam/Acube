@@ -3,7 +3,7 @@ import "./Showvideogrid.css"
 import Showvideo from '../Showvideo/Showvideo'
 const Showvideogrid = ({vid}) => {
   return (
-    <div className="Container_ShowVideoGrid">
+    <div className="Container_ShowVideoGrid2">
         {
             vid?.reverse().map(vi=>{
                 return(
