@@ -20,8 +20,6 @@ function VideoPlayer({ video , commentRef}) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState([0, 0, 0]); 
   const [duration, setDuration] = useState([0, 0, 0]);
-  // const [currentQuality, setCurrentQuality] = useState(videoSources[0].quality);
-  // const [isScrubbing, setIsScrubbing] = useState(false);
   const [videosWatched, setVideosWatched] = useState(0);
 
   const sec2Min = (sec) => {
@@ -160,9 +158,10 @@ function VideoPlayer({ video , commentRef}) {
         window.close(); //////////////////// Close the website /////////////////////
       } else if (x < third) {
         if (commentRef.current) { commentRef.current.focus(); }
+        commentRef?.current.focus(); //
         console.log("Show comments section"); 
       } else {
-        const nextVideoIndx = vids?.findIndex(v => v.filepath == video);
+        const nextVideoIndx = vids?.findIndex(v => v.filepath === video);
         const nextVideo = vids?.at(nextVideoIndx +1 );
         setVideosrc(nextVideo?.filepath)
         console.log("Move to next video"); 

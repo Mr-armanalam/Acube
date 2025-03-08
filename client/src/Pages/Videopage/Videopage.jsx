@@ -29,8 +29,6 @@ const Videopage = () => {
   const handleviews = useCallback(() => {
     dispatch(viewvideo({ id: vid }));
   }, [dispatch, vid]);
-
-  // console.log("main");
   
   const handlehistory = useCallback(() => {
     if (currentuser) {

@@ -4,7 +4,7 @@ import Displaycommment from './Displaycommment'
 import { useSelector } from 'react-redux'
 import { useDispatch } from 'react-redux'
 import { postcomment } from '../../action/comment'
-const Comment = ({ videoid, commentRef }) => {
+const Comment = ({isCommentActive, videoid, commentRef }) => {
     const dispatch = useDispatch()
     const [commenttext, setcommentext] = useState("")
     const currentuser = useSelector(state => state.currentuserreducer);
