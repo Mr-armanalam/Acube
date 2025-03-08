@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import "./videoPlayer.css";
 import subtitle from "../../assets/subtitles.vtt";
 import { updatePoint } from "../../action/updatePoint";
@@ -35,28 +35,15 @@ function VideoPlayer({ video , commentRef}) {
     };
   };
 
-  const handlePlay = () => {
+  const handlePlay = useCallback(() => {
     if (isPlaying) {
       videoRef.current?.pause();
     } else {
       videoRef.current?.play();
     }
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleVolumeChange = (e) => {
-    const volume = parseFloat(e.target.value);
-    if (!isNaN(volume)) {
-      videoRef.current.volume = volume;
-      videoRef.current.muted = volume === 0;
-      updateVolumeUI();
-    }
-  };
-
-  const handleMute = () => {
-    videoRef.current.muted = !videoRef.current?.muted;
-    updateVolumeUI();
-  };
+    // setIsPlaying(!isPlaying);
+    setIsPlaying((previousState) => !previousState);
+  },[isPlaying, videoRef]);  
 
   const updateVolumeUI = () => {
     if (videoRef.current?.muted || videoRef.current?.volume === 0) {
@@ -69,6 +56,21 @@ function VideoPlayer({ video , commentRef}) {
       volumeSliderRef.current.value = videoRef.current?.volume;
     }
   };
+  
+  const handleVolumeChange = useCallback((e) => {
+    const volume = parseFloat(e.target.value);
+    if (!isNaN(volume)) {
+      videoRef.current.volume = volume;
+      videoRef.current.muted = volume === 0;
+      updateVolumeUI();
+    }
+  },[videoRef, updateVolumeUI]);
+
+  const handleMute = () => {
+    videoRef.current.muted = !videoRef.current?.muted;
+    updateVolumeUI();
+  };
+
 
   const handleScrubbing = (e) => {
     const rect = timelineRef.current?.getBoundingClientRect();
@@ -85,7 +87,7 @@ function VideoPlayer({ video , commentRef}) {
     timelineRef.current?.style.setProperty("--progress-position", percent);
   };
 
-  const handleTimeUpdate = () => {
+  const handleTimeUpdate = useCallback(() => {
     const { min, sec, hour } = sec2Min(videoRef.current?.duration);
     setDuration([min, sec, hour]);
 
@@ -96,7 +98,7 @@ function VideoPlayer({ video , commentRef}) {
 
     const percent = videoRef.current?.currentTime / videoRef.current?.duration;
     updateTimeline(percent);
-  };
+  },[videoRef]);
 
   const handleSpeedChange = () => {
     let newPlaybackRate = videoRef.current?.playbackRate + 0.25;
@@ -136,7 +138,7 @@ function VideoPlayer({ video , commentRef}) {
     videoRef.current.currentTime += duration;
   };
 
-  const handleGesture = (e) => {
+  const handleGesture = useCallback((e) => {
     const width = videoContainerRef.current.clientWidth;
     const third = width / 3;
     const x = e.clientX;
@@ -166,7 +168,7 @@ function VideoPlayer({ video , commentRef}) {
         console.log("Move to next video"); 
       }
     }
-  };
+  },[commentRef,videoContainerRef,skip,setVideosrc, handlePlay, video, vids]);
 
   // const handleQualityChange = (quality) => {
   //   const currentTime = videoRef.current.currentTime;
@@ -195,7 +197,7 @@ function VideoPlayer({ video , commentRef}) {
     return () => {
       videoContainerRef.current?.removeEventListener("click", handleGesture);
     };
-  }, []);
+  }, [handleGesture]);
 
   useEffect(() => {
     const handleKeydown = (e) => {
@@ -237,7 +239,7 @@ function VideoPlayer({ video , commentRef}) {
     return () => {
       document.removeEventListener("keydown", handleKeydown);
     };
-  }, []);
+  }, [handleMute, handlePlay]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -277,7 +279,7 @@ function VideoPlayer({ video , commentRef}) {
         videoContainerRef.current?.classList.remove("mini-player");
       });
     };
-  }, [isPlaying, handleTimeUpdate]);
+  }, [isPlaying, handleTimeUpdate,handleVolumeChange]);
 
   return (
     <>
@@ -286,7 +288,6 @@ function VideoPlayer({ video , commentRef}) {
         className="video-container"
         data-volume-level="high"
       >
-        {/* <img className="thumbnail-img" /> */}
         <div className="video-controls-container">
           <div
             ref={timelineRef}
@@ -294,7 +295,6 @@ function VideoPlayer({ video , commentRef}) {
             className="timeline-container"
           >
             <div className="timeline">
-              {/* <img className="preview-img" /> */}
               <div className="thumb-indicator"></div>
             </div>
           </div>
