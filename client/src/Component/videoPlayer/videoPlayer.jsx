@@ -45,7 +45,7 @@ function VideoPlayer({ video , commentRef}) {
     setIsPlaying((previousState) => !previousState);
   },[isPlaying, videoRef]);  
 
-  const updateVolumeUI = () => {
+  const updateVolumeUI = useCallback(() => {
     if (videoRef.current?.muted || videoRef.current?.volume === 0) {
       volumeSliderRef.current.value = 0;
       videoContainerRef.current.dataset.volumeLevel = "muted";
@@ -55,8 +55,8 @@ function VideoPlayer({ video , commentRef}) {
       videoContainerRef.current.dataset.volumeLevel = "low";
       volumeSliderRef.current.value = videoRef.current?.volume;
     }
-  };
-  
+  },[videoRef, volumeSliderRef, videoContainerRef]);
+
   const handleVolumeChange = useCallback((e) => {
     const volume = parseFloat(e.target.value);
     if (!isNaN(volume)) {
@@ -66,10 +66,10 @@ function VideoPlayer({ video , commentRef}) {
     }
   },[videoRef, updateVolumeUI]);
 
-  const handleMute = () => {
+  const handleMute = useCallback(() => {
     videoRef.current.muted = !videoRef.current?.muted;
     updateVolumeUI();
-  };
+  },[videoRef, updateVolumeUI]);
 
 
   const handleScrubbing = (e) => {
@@ -134,9 +134,9 @@ function VideoPlayer({ video , commentRef}) {
     videoContainerRef.current.classList.toggle("captions", isHidden);
   };
 
-  const skip = (duration) => {
+  const skip = useCallback((duration) => {
     videoRef.current.currentTime += duration;
-  };
+  },[videoRef]);
 
   const handleGesture = useCallback((e) => {
     const width = videoContainerRef.current.clientWidth;
@@ -239,7 +239,7 @@ function VideoPlayer({ video , commentRef}) {
     return () => {
       document.removeEventListener("keydown", handleKeydown);
     };
-  }, [handleMute, handlePlay]);
+  }, [handleMute, handlePlay, skip]);
 
   useEffect(() => {
     if (videoRef.current) {
