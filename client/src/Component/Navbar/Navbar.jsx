@@ -29,10 +29,9 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
   const currentuser = useSelector((state) => state.currentuserreducer);
 
   const successlogin = useCallback(() => {
-    if (profile.email !== null || undefined || '') {
-
+    if (profile.email !== undefined) {
       const data = encryptData2(profile);
-        navigate(`/auth-verifier/${data}`);
+      navigate(`/auth-verifier/${data}`);
 
       // if (sessionStorage.isSouthIndia) {
       //   const data = encryptData2(profile);
@@ -47,8 +46,8 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
       //   );
       // }
     }
-    return
-  }, [profile]);
+    return;
+  }, [profile, dispatch]);
 
   // console.log(currentuser?.token)
   // const currentuser={
@@ -113,7 +112,6 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
     }
     dispatch(setcurrentuser(JSON.parse(localStorage.getItem("Profile"))));
   }, [currentuser?.token, dispatch, logout]);
-  
   return (
     <>
       <div className="Container_Navbar">
@@ -177,7 +175,6 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
       )}
     </>
   );
-  
 };
 
 export default Navbar;

@@ -16,6 +16,7 @@ const base64UrlDecode = (str) => {
 
 
 export const encryptData2 = (data) => {
+  if (!data) return;  
   const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPTION_KEY).toString();  
   return base64UrlEncode(encrypted);
 };
