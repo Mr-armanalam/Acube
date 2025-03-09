@@ -1,70 +1,55 @@
-# Getting Started with Create React App
+# Accube
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+[CheckOut](https://accube.vercel.app/).
 
-## Available Scripts
 
-In the project directory, you can run:
+## 1.	Group Management:
+o	Develop functionality for creating groups.
 
-### `npm start`
+o	Enable search functionality to find groups easily.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+o	Step: Login -> Click on the Chat button on the left sidebar -> Enter the Chat Home -> Click on the Plus Icon and select user to create group
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 2.	Private Room Chat:
+o	Implement private group chat with end-to-end encryption for secure conversations.
 
-### `npm test`
+o	Step: Login -> Enter in the Chat-Home -> Select or find using search -> chat with your friend.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 3.	Video Player Integration:
+o	Develop gesture-based controls for enhanced playback interaction.
 
-### `npm run build`
+o	Add a video player supporting multiple quality options (320p, 480p, 720p, 1080p).
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+o	Step: Click on the any video -> Enter in the Video-Player Section -> double-tap on the right side, the playback will move 10 seconds forward. Double tap on the left side, the playback should go 10 seconds backward. Double taps in the middle of the screen, the playback should pause. Three taps on middle of screen we should move to next video and 3 taps on left side we should show the comment section.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 4.	Point Allocation System:
+o	Design a system to allocate points to user profiles based on video watch count.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+o	Step: Login ->Click on any video -> watch the video to completely and earn points.
 
-### `npm run eject`
+## 5.	Download Feature:
+o	Create an option to download videos with daily limits for free users.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+o	Step: Login -> Click on the video which you want to download -> click on the download button below the video and download it.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 6.	Upgrade Account:
+o	Create a premium feature to download videos with unlimited access.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+o	Step: Login -> click on any video -> click on the upgrade button below the video and make payment.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## 7.	VoIP and Screen Sharing:
+o	Add video call and screen-sharing features for users.
 
-## Learn More
+o	Implement a session recording option for local storage.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+o	Step: Login -> Click on the Chat button in the left sidebar -> click on the individual friend -> click on the video icon on the top right corner -> make video calls to their friends and share screen of YouTube website and you should have option to record the video session and save it in local.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 8.	Theme Customization:
+o	Develop an adaptive theme that changes based on login time and location.
 
-### Code Splitting
+o	Step: - Manually: Click on the theme-changeable icon -> Select a theme mode which you want. Automatically: between 10 AM to 12 Pm websites automatically apply white theme if you now theme selected before.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## 9.	Authentication Customization:
+o	Trigger OTP verification via email for southern states and no verification for other state.
 
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+o	Step: Click on the Sign In button -> Do login process.
