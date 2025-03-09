@@ -30,6 +30,8 @@ export const checkPremiumStatus = () => async (dispatch) => {
 export const createPaymentRequest = (paymentData) => async (dispatch) => {
     try {
         const response = await api.createPaymentRequest(paymentData);
+        // console.log(response);
+        
         return response.data;
     } catch (error) {
         console.error('Error creating payment request:', error);

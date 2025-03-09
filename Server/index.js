@@ -29,6 +29,7 @@ app.get("/", (req, res) => {
 });
 
 app.use(bodyParser.json());
+app.use(express.static("public"));
 app.use("/user", userroutes);
 app.use("/auth", Otpauth);
 app.use("/video", videoroutes);

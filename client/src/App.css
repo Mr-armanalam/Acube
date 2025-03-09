@@ -45,6 +45,22 @@ video {
   background-color: var(--dot);
   margin: auto 0.5rem;
 }
+
+.Payment_statuse{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 90vh;
+  background-color: var(--body_background);
+}
+.Payment_statuse>div {
+  background-color: var(--forground_text);
+  padding: 20px 50px;
+  border-radius: 8px;
+  color: var(--body_background);
+}
+
+
 @media (max-width: 768px) {
   .at_small_sizel {
     display: none;

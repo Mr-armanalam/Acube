@@ -13,6 +13,7 @@ import Chat from "./Pages/chat/Chat";
 import { useInternetStatus } from "./utils/internetStatusContext";
 import StreamRoom from "./Pages/videostream/StreamRoom";
 import OtpAuth from "./Pages/Auth/OTP_Auth";
+import PaymentStatus from "./Component/PaymentStatus";
 
 const Allroutes = ({ seteditcreatechanelbtn, setvideouploadpage }) => {
   const isOnline = useInternetStatus();
@@ -28,6 +29,7 @@ const Allroutes = ({ seteditcreatechanelbtn, setvideouploadpage }) => {
           <Route path="/Watchhistory" element={<Watchhistory />} />
           <Route path="/Watchlater" element={<Watchlater />} />
           <Route path="/Yourvideo" element={<Yourvideo />} />
+          <Route path="/paymentstatus" element={<PaymentStatus />} />
           <Route
             path="/channel/:cid"
             element={

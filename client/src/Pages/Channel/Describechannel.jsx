@@ -18,11 +18,19 @@ const Describechannel = ({
     <div className="container3_chanel">
       <div className="reputation_cont">
         <div className="download">
-        <MdFileDownload/> <span>{currentuser?.result?.downloadsToday || "0"}</span>
+          <MdFileDownload />{" "}
+          <span>{currentuser?.result?.downloadsToday || "0"}</span>
         </div>
         <div className="credit">
-        <div>Points: {" "} <span>{currentuser?.result?.reputation}</span></div>
-        <button className="premium">Premium:  <span>Buy $</span></button>
+          <div>
+            Points: <span>{currentuser?.result?.reputation}</span>
+          </div>
+          <button className="premium">
+            Premium:{" "}
+            <span>{`${
+              currentuser?.result?.isPremium ? "active" : "Buy $"
+            }`}</span>
+          </button>
         </div>
       </div>
 

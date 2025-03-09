@@ -1,60 +1,41 @@
+import Stripe from "stripe";
+import User from "../../Models/Auth.js";
 
-import axios from 'axios';
+const stripe = new Stripe(process.env.STRIPE_SK);
 
 export const createPaymentRequest = async (req, res) => {
-    const { amount, buyerName, emailId, phone, purpose, sendEmail, sendSMS } = req.body;
-    
-    try {
-        const options1 = {
-            method: 'POST',
-            headers: {
-                accept: 'application/json',
-                'content-type': 'application/x-www-form-urlencoded'
-            },
-            body: new URLSearchParams({
-                grant_type: 'client_credentials',
-                client_id: process.env.CLIENT_ID_INSTAMOJO,
-                client_secret: process.env.CLIENT_SECRET_INSTAMOJO
-            })
-        };
+  const { amount, _id, emailId, purpose } = req.body;
+  //   console.log(amount, buyerName, emailId);
 
-        const tokenResponse = await fetch('https://api.instamojo.com/oauth2/token/', options1);
-        const tokenData = await tokenResponse.json();
-        const token = tokenData.access_token;
+  try {
+    const YOUR_DOMAIN = process.env.FRONTEND_URL;
 
-        if (!token) {
-            throw new Error('Token retrieval failed');
-        }
+    await User.findByIdAndUpdate(_id, { isPremium: true }, { new: true });
 
-        const options = {
-            method: 'POST',
-            headers: {
-                accept: 'application/json',
-                Authorization: `Bearer ${token}`,
-                'content-type': 'application/x-www-form-urlencoded'
-            },
-            body: new URLSearchParams({
-                send_email: sendEmail,
-                amount: amount,
-                purpose: purpose,
-                buyer_name: buyerName,
-                email: emailId,
-                redirect_url: 'https://armanalam.vercel.app/'
-            })
-        };
+    const customer = await stripe.checkout.sessions.create({
+      customer_email: emailId,
+      line_items: [
+        {
+          price_data: {
+            currency: "INR",
+            product_data: { name: purpose || "Upgrade to Premium" },
+            unit_amount: amount * 100,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url: `${YOUR_DOMAIN}/paymentstatus?success=1`,
+      cancel_url: `${YOUR_DOMAIN}/paymentstatus?canceled=1`,
+    });
 
-        const paymentResponse = await fetch('https://api.instamojo.com/v2/payment_requests/', options);
-        
-        const paymentData = await paymentResponse.json();
-        // console.log(paymentData);
-
-        if (paymentData.success) {
-            return res.status(200).json({ success: true, payment_request: paymentData.payment_request });
-        } else {
-            return res.status(400).json({ success: false, message: paymentData.message });
-        }
-    } catch (error) {
-        console.error('Error creating payment request:', error);
-        return res.status(500).json({ success: false, message: 'Error creating payment request' });
-    }
+    return res
+      .status(200)
+      .json({ success: true, payment_request: customer.url });
+  } catch (error) {
+    console.error("Error creating payment request:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Error creating payment request" });
+  }
 };
