@@ -23,6 +23,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
   const [authbtn, setauthbtn] = useState(false);
   const [user, setuser] = useState(null);
   const [profile, setprofile] = useState([]);
+  const [isLoading, setisLoading] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -30,6 +31,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
 
   const successlogin = useCallback(() => {
     if (profile.email !== undefined) {
+      setisLoading(false);
       const data = encryptData2(profile);
       navigate(`/auth-verifier/${data}`);
 
@@ -64,9 +66,10 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
     onError: (error) => console.log("Login Failed", error),
   });
 
-  useEffect(() => {
+  useEffect(() => {    
     const fetchUserInfo = async () => {
       if (user && !profile.email) {
+        setisLoading(true);
         try {
           const res = await axios.get(
             `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${user.access_token}`,
@@ -115,6 +118,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
   return (
     <>
       <div className="Container_Navbar">
+        {isLoading && <div className="isLding"><p>Loading...</p></div>}
         <div className="Burger_Logo_Navbar">
           <div className="burger" onClick={() => toggledrawer()}>
             <p></p>
