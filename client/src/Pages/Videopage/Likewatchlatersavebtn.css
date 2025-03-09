@@ -7,6 +7,9 @@
   margin: auto 0;
   display: flex;
 }
+.btn_VideoPage>b {
+  font-size: small;
+}
 .like_videoPage {
   margin: 0.5rem;
   display: flex;
@@ -45,5 +48,6 @@
   margin-right: 16px;
 }
 .ishidden {
-  display: none;
+  display:none !important;
+  /* opacity: 0; */
 }

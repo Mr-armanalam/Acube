@@ -51,7 +51,7 @@ export const getDownloads = () => async (dispatch) => {
     try {
         const response = await api.getDownloads();
         dispatch({ type: 'GET_DOWNLOADS', payload: response.data.downloads });
-        console.log(response.data);
+        // console.log(response.data);
         
         return response.data.downloads;
     } catch (error) {

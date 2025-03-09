@@ -13,13 +13,12 @@ const Describechannel = ({
 
   const currentchannel = channel.filter((c) => c._id === cid)[0];
   const currentuser = useSelector((state) => state.currentuserreducer);
-  // console.log(currentuser);
 
   return (
     <div className="container3_chanel">
       <div className="reputation_cont">
         <div className="download">
-        <MdFileDownload/> <span>{currentuser?.rsult?.downloadsToday || "0"}</span>
+        <MdFileDownload/> <span>{currentuser?.result?.downloadsToday || "0"}</span>
         </div>
         <div className="credit">
         <div>Points: {" "} <span>{currentuser?.result?.reputation}</span></div>

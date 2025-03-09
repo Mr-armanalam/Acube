@@ -39,7 +39,7 @@ const DownloadVideo = ({video}) => {
             alert(response.message); 
         }
         setIsDownloading(false);
-    },[dispatch, downloads]);
+    },[dispatch,setIsDownloading,setDownloads, downloads]);
 
     const handleUpgradeToPremium = useCallback( async () => {
         try {
@@ -63,7 +63,7 @@ const DownloadVideo = ({video}) => {
             console.error('Error creating payment request:', error);
             alert('Error creating payment request');
         }
-    },[dispatch,user]);
+    },[dispatch,user]);    
 
     // const handlePaymentCompletion = async () => {
     //     try {
@@ -82,7 +82,7 @@ const DownloadVideo = ({video}) => {
     
     return (
         <>
-            <a href={video} download className={`btn_VideoPage download ${((!isPremium && downloads.length >= 1) || !user) && 'ishidden'} `} onClick={handleDownload} disabled={isDownloading || (!isPremium && downloads.length >= 1)}>
+            <a href={video} download className={`btn_VideoPage download ${((!isPremium && downloads.length >= 1) || !!user) && 'ishidden'} `} onClick={handleDownload} disabled={isDownloading || (!isPremium && downloads.length >= 1)}>
                 <IoMdDownload size={22} className='btns_videoPage' />
             </a>
             {!isPremium && (
