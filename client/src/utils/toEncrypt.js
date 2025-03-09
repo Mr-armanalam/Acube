@@ -6,9 +6,9 @@ const base64UrlEncode = (str) => {
   return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
 
-const base64UrlDecode = (str) => {
-  str = str.replace(/-/g, '+').replace(/_/g, '/');
-  while (str.length % 4) {
+const base64UrlDecode = (str) => {  
+  str = str?.replace(/-/g, '+').replace(/_/g, '/');
+  while (str?.length % 4) {
     str += '=';
   }
   return str;
@@ -16,7 +16,7 @@ const base64UrlDecode = (str) => {
 
 
 export const encryptData2 = (data) => {
-  const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPTION_KEY).toString();
+  const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPTION_KEY).toString();  
   return base64UrlEncode(encrypted);
 };
 

@@ -18,6 +18,7 @@ function getCurrentTime() {
 
 const CheckRegion = async () => {
   const location = await getUserLocation();       
+  console.log(location);
   const southIndiaStates = [ "Tamil Nadu", "Kerala", "Karnataka", "Andhra Pradesh", "Telangana" ];
   let isSouthIndia = southIndiaStates.includes(location?.region);
   if (isSouthIndia) {

@@ -29,23 +29,26 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
   const currentuser = useSelector((state) => state.currentuserreducer);
 
   const successlogin = useCallback(() => {
-    if (profile.email) {
-      // console.log("profile");
+    if (profile.email !== null || undefined || '') {
 
-      if (sessionStorage.isSouthIndia) {
-        const data = encryptData2(profile);        
+      const data = encryptData2(profile);
         navigate(`/auth-verifier/${data}`);
-      } else {
-        dispatch(
-          login({
-            email: profile.email,
-            username: profile.name,
-            picture: profile.picture,
-          })
-        );
-      }
+
+      // if (sessionStorage.isSouthIndia) {
+      //   const data = encryptData2(profile);
+      //   navigate(`/auth-verifier/${data}`);
+      // } else {
+      //   dispatch(
+      //     login({
+      //       email: profile.email,
+      //       username: profile.name,
+      //       picture: profile.picture,
+      //     })
+      //   );
+      // }
     }
-  }, [dispatch, profile]);
+    return
+  }, [profile]);
 
   // console.log(currentuser?.token)
   // const currentuser={
@@ -75,7 +78,9 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
               },
             }
           );
-          if (res.data) { setprofile(res.data);}
+          if (res.data) {
+            setprofile(res.data);
+          }
           // setprofile(res.data);
         } catch (error) {
           console.error("Error fetching user info: ", error);
@@ -108,6 +113,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
     }
     dispatch(setcurrentuser(JSON.parse(localStorage.getItem("Profile"))));
   }, [currentuser?.token, dispatch, logout]);
+  
   return (
     <>
       <div className="Container_Navbar">
@@ -171,7 +177,7 @@ const Navbar = ({ toggledrawer, seteditcreatechanelbtn }) => {
       )}
     </>
   );
+  
 };
 
 export default Navbar;
-

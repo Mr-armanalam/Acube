@@ -120,7 +120,7 @@ const OTP_Auth = () => {
           <button type="submit">Next</button>
           </div>
         </form>
-        <div className="auth_terms">{decryptData2(sessionStorage.isSouthIndia)}</div>
+        <div className="auth_terms">{decryptData2(sessionStorage?.isSouthIndia)}</div>
       </div>
     </section>
   );
