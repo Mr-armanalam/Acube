@@ -32,7 +32,7 @@ const DownloadVideo = ({ video }) => {
   }, [user, dispatch]);
 
   const handleDownload = useCallback(async () => {
-    if (!user.result) {
+    if (user === null || undefined) {
       alert("Please login to download videos");
       return;
     }
@@ -48,9 +48,12 @@ const DownloadVideo = ({ video }) => {
     setIsDownloading(false);
   }, [dispatch, setIsDownloading,user, setDownloads, downloads]);
 
+  console.log(user);
+
+
   const handleUpgradeToPremium = useCallback(async () => {
     try {
-      if (!user.result) {
+      if (user === null || undefined) {        
         alert("Please login to upgrade your account to premium");
         return;
       }
