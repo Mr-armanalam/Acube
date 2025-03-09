@@ -1,7 +1,7 @@
 import "./App.css";
 import React, { useEffect, useState } from "react";
 import Navbar from "./Component/Navbar/Navbar";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import Allroutes from "../src/Allroutes";
 import { BrowserRouter as Router } from "react-router-dom";
 import Drawersliderbar from "../src/Component/Leftsidebar/Drawersliderbar";
@@ -21,16 +21,19 @@ function App() {
     display: "none",
   });
   const dispatch = useDispatch();
+  const currentUser = useSelector((state) => state.currentuserreducer);
 
   useEffect(() => {
     dispatch(fetchallchannel());
     dispatch(getallvideo());
     dispatch(getallcomment());
-    dispatch(getallhistory());
-    dispatch(getalllikedvideo());
-    dispatch(getallwatchlater());
-    dispatch(get_all_chat_user());
-  }, [dispatch]);
+    if (currentUser?.result._id) {
+      dispatch(getallhistory());
+      dispatch(getalllikedvideo());
+      dispatch(getallwatchlater());
+      dispatch(get_all_chat_user());
+    }
+  }, [dispatch, currentUser]);
 
   const toggledrawer = () => {
     if (toggledrawersidebar.display === "none") {

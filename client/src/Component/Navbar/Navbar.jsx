@@ -9,7 +9,7 @@ import { BiUserCircle } from "react-icons/bi";
 import Searchbar from "./Searchbar/Searchbar";
 import Auth from "../../Pages/Auth/Auth";
 import axios from "axios";
-import { login } from "../../action/auth";
+// import { login } from "../../action/auth";
 import { useGoogleLogin, googleLogout } from "@react-oauth/google";
 import { setcurrentuser } from "../../action/currentuser";
 import { IoSunny } from "react-icons/io5";
