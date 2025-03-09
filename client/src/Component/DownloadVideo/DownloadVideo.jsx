@@ -48,8 +48,6 @@ const DownloadVideo = ({ video }) => {
     setIsDownloading(false);
   }, [dispatch, setIsDownloading,user, setDownloads, downloads]);
 
-  console.log(user);
-
 
   const handleUpgradeToPremium = useCallback(async () => {
     try {

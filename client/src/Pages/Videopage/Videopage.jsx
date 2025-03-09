@@ -53,7 +53,7 @@ const Videopage = () => {
     <div className="container_videoPage">
       <div className="container2_videoPage">
         <div className="video_display_screen_videoPage">
-          <VideoPlayer commentRef={commentRef} video={vv?.filepath} />
+          <VideoPlayer commentRef={commentRef} currentuser={currentuser} video={vv?.filepath} />
           <div className="video_details_videoPage">
             <div className="video_btns_title_VideoPage_cont">
               <p className="video_title_VideoPage">{vv?.videotitle}</p>

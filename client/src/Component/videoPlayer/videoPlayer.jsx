@@ -5,7 +5,8 @@ import { updatePoint } from "../../action/updatePoint";
 import {useDispatch, useSelector} from "react-redux"
 
 
-function VideoPlayer({ video , commentRef}) {
+function VideoPlayer({ video, currentuser , commentRef}) {
+  
   const vids = useSelector(state => state.videoreducer)?.data;
 
   const dispatch = useDispatch();
@@ -181,6 +182,10 @@ function VideoPlayer({ video , commentRef}) {
   // };
 
   const handleVideoEnd = async () => {
+    if (currentuser === null) {
+      alert('Please login to get Points');
+      return
+    }
     setVideosWatched(videosWatched + 1);
     const points = (videosWatched + 1) * 5;
     try {
