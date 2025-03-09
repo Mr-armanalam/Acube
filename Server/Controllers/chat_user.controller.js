@@ -77,7 +77,7 @@ export const getGroupUser = async (req, res) => {
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ error: "Internal server error" });
-    throw new Error(error.message);
+    // throw new Error(error.message);
   }
 };
 
