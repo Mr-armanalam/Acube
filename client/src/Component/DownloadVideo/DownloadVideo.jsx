@@ -32,6 +32,11 @@ const DownloadVideo = ({ video }) => {
   }, [user, dispatch]);
 
   const handleDownload = useCallback(async () => {
+    if (!user.result) {
+      alert("Please login to download videos");
+      return;
+    }
+
     setIsDownloading(true);
     const response = await dispatch(downloadVideo());
     if (response.success) {
@@ -41,10 +46,14 @@ const DownloadVideo = ({ video }) => {
       alert(response.message);
     }
     setIsDownloading(false);
-  }, [dispatch, setIsDownloading, setDownloads, downloads]);
+  }, [dispatch, setIsDownloading,user, setDownloads, downloads]);
 
   const handleUpgradeToPremium = useCallback(async () => {
     try {
+      if (!user.result) {
+        alert("Please login to upgrade your account to premium");
+        return;
+      }
       const paymentData = {
         amount: 1000,
         _id: user.result._id,
