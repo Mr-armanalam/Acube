@@ -1,0 +1,22 @@
+{
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.11.10"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "name": "acube",
+  "packageManager": "pnpm@12.18.0",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\" --ignore-path .gitignore",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "version": "1.0.0",
+  "license": "MIT"
+}

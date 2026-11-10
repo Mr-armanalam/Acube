@@ -1,0 +1,54 @@
+.video_ShowVideo {
+  cursor: pointer;
+  margin: 0.4rem;
+  margin-bottom: 0;
+  width: calc(100% - 0.8rem);
+  margin: 1rem 0;
+  min-height: 220px;
+  height: auto;
+  object-fit: cover;
+  border: 2px solid var(--loading_box_border);
+  border-radius: 20px;
+  background: var(--loading_animation_background);
+  background-size: 200% 100%;
+  animation: 3s shine linear infinite;
+}
+
+.video_description {
+  display: flex;
+  height: 4rem;
+  margin: auto auto;
+}
+.video_details {
+  width: 80%;
+  color: var(--logo_tag_text);
+  padding: 0.1rem;
+  margin: 0.1rem;
+  height: fit-content;
+}
+.title_vid_ShowVideo {
+  margin: 0;
+  font-size: large;
+  font-weight: bolder;
+  color: var(--video_title_text);
+  display: flex;
+  text-align: clip;
+}
+.vid_views_UploadTime {
+  font-size: medium;
+  color: var(--video_title_des);
+  margin: 0.2rem;
+  display: flex;
+}
+
+@keyframes shine {
+  to {
+    background-position-x: -200%;
+  }
+}
+.loading {
+  background: var(--body_forground);
+  background: var(--showVidMobile_loading_bg);
+  background-size: 200% 100%;
+  animation: 1.5s shine linear infinite;
+}
