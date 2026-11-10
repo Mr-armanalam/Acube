@@ -1,11 +1,16 @@
-// Phase 5 — nested comments: threaded replies via parentId, max indent
-// depth 3, reply box per thread, collapse toggle. Deleting a parent hides
-// its subtree (server soft-deletes; the client just re-renders the list).
+// Phase 5 fix — nested comments: threaded replies via parentId, reply
+// box per thread, collapse toggle. The old `depth < 3` render gate HID
+// replies created at depth 3+ (they existed server-side but were
+// invisible); the tree now renders every depth and only CAPS the visual
+// indent at level 3. The creator-pinned comment renders first with a
+// "Pinned by creator" label; the video owner can pin via
+// POST /comment/:id/pin (server-enforced, creator only).
 import React, { useMemo, useState } from "react";
 import { useAppSelector } from "../../store";
 import {
   useCommentsForVideo,
   useDeleteComment,
+  usePinComment,
   usePostComment,
 } from "../../query/hooks";
 import type { CommentItem } from "../../types";
@@ -35,19 +40,24 @@ function CommentNode({
   node,
   depth,
   videoid,
+  isVideoOwner,
 }: {
   node: TreeNode;
   depth: number;
   videoid: string | undefined;
+  isVideoOwner: boolean;
 }) {
   const currentuser = useAppSelector((s) => s.auth.session);
   const postMutation = usePostComment();
   const deleteMutation = useDeleteComment();
+  const pinMutation = usePinComment();
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const c = node.comment;
   const isOwn = currentuser?.result._id === c.userid;
+  // Visual indent caps at level 3; deeper replies still render.
+  const indent = Math.min(depth, 3) * 16;
 
   const submitReply = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,13 +74,16 @@ function CommentNode({
   };
 
   return (
-    <div className="watch-comment">
+    <div className="watch-comment" style={depth > 3 ? { marginLeft: indent } : undefined}>
       <div className="watch-comment-body">
         <div className="studio-avatar">
           {(c.usercommented ?? "?").charAt(0).toUpperCase()}
         </div>
         <div style={{ flex: 1 }}>
           <strong>{c.usercommented}</strong>
+          {c.pinnedByCreator ? (
+            <span className="watch-comment-pinned"> · Pinned by creator</span>
+          ) : null}
           <p style={{ margin: "4px 0" }}>{c.commentbody}</p>
           <div style={{ display: "flex", gap: 8 }}>
             {currentuser ? (
@@ -102,6 +115,15 @@ function CommentNode({
                 Delete
               </button>
             ) : null}
+            {isVideoOwner && !c.pinnedByCreator ? (
+              <button
+                type="button"
+                className="acube-btn-secondary"
+                onClick={() => pinMutation.mutate(c._id)}
+              >
+                Pin
+              </button>
+            ) : null}
           </div>
           {replyOpen ? (
             <form onSubmit={submitReply} style={{ marginTop: 8 }}>
@@ -119,7 +141,7 @@ function CommentNode({
           ) : null}
         </div>
       </div>
-      {!collapsed && node.children.length > 0 && depth < 3 ? (
+      {!collapsed && node.children.length > 0 ? (
         <div className="watch-replies">
           {node.children.map((child) => (
             <CommentNode
@@ -127,6 +149,7 @@ function CommentNode({
               node={child}
               depth={depth + 1}
               videoid={videoid}
+              isVideoOwner={isVideoOwner}
             />
           ))}
         </div>
@@ -137,17 +160,31 @@ function CommentNode({
 
 export default function NestedComments({
   videoid,
+  videoOwnerId,
 }: {
   videoid: string | undefined;
+  /** User id of the video's owner — only they see the Pin button. */
+  videoOwnerId?: string;
 }) {
   const currentuser = useAppSelector((s) => s.auth.session);
   const commentlist = useCommentsForVideo(videoid);
   const postMutation = usePostComment();
   const [text, setText] = useState("");
-  const tree = useMemo(
-    () => buildTree(commentlist ?? []),
-    [commentlist],
-  );
+  const isVideoOwner =
+    Boolean(currentuser?.result._id) &&
+    currentuser?.result._id === videoOwnerId;
+  const tree = useMemo(() => {
+    const built = buildTree(commentlist ?? []);
+    // Pinned creator comment first, then the rest in server order.
+    built.sort((a, b) =>
+      a.comment.pinnedByCreator && !b.comment.pinnedByCreator
+        ? -1
+        : !a.comment.pinnedByCreator && b.comment.pinnedByCreator
+          ? 1
+          : 0,
+    );
+    return built;
+  }, [commentlist]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,6 +232,7 @@ export default function NestedComments({
             node={node}
             depth={0}
             videoid={videoid}
+            isVideoOwner={isVideoOwner}
           />
         ))
       )}

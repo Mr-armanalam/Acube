@@ -43,7 +43,7 @@ describe("Watch page", () => {
       await screen.findAllByText("Python Basics Tutorial"),
     ).toHaveLength(2); // title + playlist showcase entry
     expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Seek slider")).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Seek" })).toBeInTheDocument();
     expect(screen.getByLabelText("Volume")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Fullscreen" }),
@@ -54,10 +54,10 @@ describe("Watch page", () => {
     // Nested thread: reply is rendered under its parent, collapsible.
     expect(await screen.findByText("Great tutorial!")).toBeInTheDocument();
     expect(screen.getByText("Thanks, glad it helped!")).toBeInTheDocument();
-    expect(screen.getByText("Hide replies")).toBeInTheDocument();
+    expect(screen.getAllByText("Hide replies").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Up next")).toBeInTheDocument();
     // Playlist showcase: vid1 belongs to the mocked "My favourites".
-    expect(screen.getByText("Playlist: My favourites")).toBeInTheDocument();
+    expect(screen.getByText("Playlist · My favourites")).toBeInTheDocument();
   });
 
   it("loads the video by id even when it is not in the feed", async () => {

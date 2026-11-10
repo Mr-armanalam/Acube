@@ -21,9 +21,11 @@ import type {
   StudioAnalytics,
   StudioOverview,
   StudioSettings,
+  StudioSettingsPatch,
   Video,
   VideoListEntry,
   VideoVisibility,
+  WatchSuggestion,
 } from "../types";
 // Phase 3c: like-toggle / watch-complete request shapes are the
 // @acube/shared Zod input types (same schemas the API validates).
@@ -588,11 +590,17 @@ export function useStudioAnalytics(range: 7 | 28 | 90) {
   });
 }
 
-export function useStudioVideos(page = 1) {
+export function useStudioVideos(
+  page = 1,
+  opts: { q?: string; visibility?: string; limit?: number } = {},
+) {
   return useQuery({
-    queryKey: queryKeys.studioVideos(page),
+    queryKey: queryKeys.studioVideos(page, opts.q ?? "", opts.visibility ?? ""),
     queryFn: async (): Promise<PagedResult<Video>> => {
-      const { data } = await api.getStudioVideos(page);
+      const { data } = await api.getStudioVideos(page, opts.limit ?? 50, {
+        q: opts.q || undefined,
+        visibility: opts.visibility || undefined,
+      });
       const pageData = data as PagedResult<Video>;
       return Array.isArray(data)
         ? {
@@ -607,11 +615,17 @@ export function useStudioVideos(page = 1) {
   });
 }
 
-export function useStudioComments(page = 1) {
+export function useStudioComments(
+  page = 1,
+  opts: { filter?: string; sort?: string; limit?: number } = {},
+) {
   return useQuery({
-    queryKey: queryKeys.studioComments(page),
+    queryKey: queryKeys.studioComments(page, opts.filter ?? "", opts.sort ?? ""),
     queryFn: async (): Promise<PagedResult<CommentItem>> => {
-      const { data } = await api.getStudioComments(page);
+      const { data } = await api.getStudioComments(page, opts.limit ?? 50, {
+        filter: opts.filter || undefined,
+        sort: opts.sort || undefined,
+      });
       const pageData = data as PagedResult<CommentItem>;
       return Array.isArray(data)
         ? {
@@ -639,9 +653,8 @@ export function useStudioSettings() {
 export function useUpdateStudioSettings() {
   const queryClient = useQueryClient();
   return useMutation({
-    // Contract fix: the server accepts only { name?, desc? } and
-    // returns the updated user document.
-    mutationFn: async (input: { name?: string; desc?: string }) => {
+    // Phase 5 fix contract: the server accepts the full settings shape.
+    mutationFn: async (input: StudioSettingsPatch) => {
       const { data } = await api.patchStudioSettings(input);
       return data as Channel;
     },
@@ -695,6 +708,7 @@ export function useCreatePlaylist() {
       title: string;
       description?: string;
       visibility?: VideoVisibility;
+      videoIds?: string[];
     }) => {
       const { data } = await api.createStudioPlaylist(input);
       return data as Playlist;
@@ -753,10 +767,16 @@ export function useUpdateVideo() {
       id: string;
       title?: string;
       visibility?: VideoVisibility;
+      description?: string;
+      tags?: string[];
+      thumbnailUrl?: string;
     }) => {
       await api.patchVideo(input.id, {
         title: input.title,
         visibility: input.visibility,
+        description: input.description,
+        tags: input.tags,
+        thumbnailUrl: input.thumbnailUrl,
       });
       return input;
     },
@@ -813,6 +833,118 @@ export function useDeleteVideo() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.studioOverview,
       });
+    },
+  });
+}
+
+// ------------------------------------------------------- Phase 5 fix: new hooks
+
+/** Ranked "Up next" from GET /watch/:id/suggestions, with a reason. */
+export function useWatchSuggestions(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.watchSuggestions(id ?? ""),
+    queryFn: async (): Promise<WatchSuggestion[]> => {
+      const { data } = await api.getWatchSuggestions(id as string);
+      const d = data as { items?: WatchSuggestion[] } | WatchSuggestion[];
+      return Array.isArray(d) ? d : (d.items ?? []);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+/** Creator pins a comment on their own video (server-enforced). */
+export function usePinComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.pinComment(id);
+      return id;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.comments });
+      void queryClient.invalidateQueries({ queryKey: ["studio", "comments"] });
+    },
+  });
+}
+
+/** Restore a soft-deleted video (POST /video/:id/restore). */
+export function useRestoreVideo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.restoreVideo(id);
+      return id;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["studio", "videos"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.videos });
+    },
+  });
+}
+
+/** Add one video to a library shelf (kind "saved" | "watchlater" | "liked"). */
+export function useAddLibraryEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { videoid: string; kind: string }) => {
+      await api.addLibraryEntry(input.videoid, input.kind);
+      return input;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.studioLibrary });
+    },
+  });
+}
+
+export function useRemoveLibraryEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { videoid: string; kind: string }) => {
+      await api.removeLibraryEntry(input.kind, input.videoid);
+      return input;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.studioLibrary });
+    },
+  });
+}
+
+/** Server-persisted history-pause flag (GET/PATCH /user/history-paused). */
+export function useHistoryPaused() {
+  return useQuery({
+    queryKey: queryKeys.historyPaused,
+    queryFn: async (): Promise<boolean> => {
+      const { data } = await api.getHistoryPaused();
+      const d = data as { paused?: boolean } | boolean;
+      return typeof d === "boolean" ? d : (d.paused ?? false);
+    },
+  });
+}
+
+export function useSetHistoryPaused() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (paused: boolean) => {
+      await api.patchHistoryPaused(paused);
+      return paused;
+    },
+    onSuccess: (paused) => {
+      queryClient.setQueryData(queryKeys.historyPaused, paused);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.historyPaused });
+    },
+  });
+}
+
+/** Persist watch position (PATCH /video/history/:videoid/progress).
+ * Path is the single Api function patchHistoryProgress — correct it
+ * there if the backend worker lands a different route. */
+export function useUpdateVideoProgress() {
+  return useMutation({
+    mutationFn: async (input: { videoid: string; progressSec: number }) => {
+      await api.patchHistoryProgress(input.videoid, input.progressSec);
+      return input;
     },
   });
 }

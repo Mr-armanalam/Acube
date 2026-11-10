@@ -17,10 +17,15 @@ export const queryKeys = {
   // Phase 5 — Creator Studio.
   studioOverview: ["studio", "overview"] as const,
   studioAnalytics: (range: number) => ["studio", "analytics", range] as const,
-  studioVideos: (page: number) => ["studio", "videos", page] as const,
-  studioComments: (page: number) => ["studio", "comments", page] as const,
+  studioVideos: (page: number, q = "", visibility = "") =>
+    ["studio", "videos", page, q, visibility] as const,
+  studioComments: (page: number, filter = "", sort = "") =>
+    ["studio", "comments", page, filter, sort] as const,
   studioSettings: ["studio", "settings"] as const,
   studioPlaylists: ["studio", "playlists"] as const,
   studioPlaylist: (id: string) => ["studio", "playlists", id] as const,
   studioLibrary: ["studio", "library"] as const,
+  // Phase 5 fix.
+  watchSuggestions: (id: string) => ["watch", id, "suggestions"] as const,
+  historyPaused: ["history", "paused"] as const,
 };

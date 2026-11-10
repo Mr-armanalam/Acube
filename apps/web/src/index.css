@@ -172,23 +172,27 @@ code {
   border-radius: 5rem;
 }
 
-/* ---- Phase 5 premium tokens: Obsidian + Acube Red (PHASE5_PLAN.md) ---- */
-/* New tokens live alongside the legacy --body_* vars (still used by older
-   components); the legacy vars below are re-pointed at the same palette so
-   old and new UI share one look. Light theme keeps working. */
+/* ---- Phase 5 fix premium tokens: design preview is the source of
+ * truth (10 Nov 2026 audit). Obsidian #0C0B0A, Acube Red #E8482F,
+ * Bone #F2EEE6; Plus Jakarta Sans headings, Manrope UI text;
+ * radius scale 8 / 12 / 16. New tokens live alongside the legacy
+ * --body_* vars (still used by older components); the legacy vars
+ * below are re-pointed at the same palette so old and new UI share
+ * one look. Light theme keeps working. */
 :root {
-  --bg: #0d0d10;
-  --surface: #16161b;
-  --surface-2: #1f1f26;
-  --border: #2a2a32;
-  --text: #f5f5f2;
-  --text-2: #a1a1aa;
-  --accent: #e5484d;
+  --bg: #0c0b0a;
+  --surface: #171512;
+  --surface-2: #24211e;
+  --border: #2a2724;
+  --text: #f2eee6;
+  --text-2: #a8a198;
+  --accent: #e8482f;
   --accent-2: #7c6cff;
   --danger: #f87171;
-  --success: #34d399;
+  --success: #0e9f7a;
   --radius-card: 16px;
-  --radius-btn: 10px;
+  --radius-btn: 12px;
+  --radius-input: 8px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -197,45 +201,53 @@ code {
   --space-8: 32px;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
-  /* Legacy vars re-pointed at Obsidian. */
-  --body_background: #0d0d10;
-  --body_background_800: #0d0d10;
-  --body_background_850: #1f1f26;
-  --body_forground: #16161b;
-  --body_forground_850: #1f1f26;
-  --body_forground_800: #2a2a32;
-  --forground_text: #f5f5f2;
-  --forground_text_700: #a1a1aa;
-  --channel_text: #a1a1aa;
-  --left_Sidebar_background: #16161b;
-  --loading_bg_clr: #16161b;
+  /* Legacy vars re-pointed at the preview palette. */
+  --body_background: #0c0b0a;
+  --body_background_800: #0c0b0a;
+  --body_background_850: #24211e;
+  --body_forground: #171512;
+  --body_forground_850: #24211e;
+  --body_forground_800: #2a2724;
+  --forground_text: #f2eee6;
+  --forground_text_700: #a8a198;
+  --channel_text: #a8a198;
+  --left_Sidebar_background: #171512;
+  --loading_bg_clr: #171512;
+  --navbar_border: #2a2724;
+  --otp_auth_cont_bg: #171512;
+  --authSubmit_bg: #24211e;
 }
 
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+  font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
     "Helvetica Neue", sans-serif;
   background: var(--bg);
   color: var(--text);
 }
 
+h1, h2, h3, .display {
+  font-family: "Plus Jakarta Sans", "Manrope", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
 .white-theme {
-  --bg: #fafaf8;
+  --bg: #f7f5f1;
   --surface: #ffffff;
-  --surface-2: #f1f1ec;
-  --border: #e4e4dc;
-  --text: #141419;
-  --text-2: #5b5b60;
-  --accent: #d13438;
+  --surface-2: #efece6;
+  --border: #e2ddd3;
+  --text: #16130f;
+  --text-2: #5c564c;
+  --accent: #e8482f;
   --accent-2: #5b4bd6;
   --danger: #dc2626;
-  --success: #059669;
-  --body_background: #fafaf8;
+  --success: #0e9f7a;
+  --body_background: #f7f5f1;
   --body_forground: #ffffff;
-  --body_forground_850: #f1f1ec;
-  --forground_text: #141419;
-  --forground_text_700: #5b5b60;
-  --channel_text: #5b5b60;
+  --body_forground_850: #efece6;
+  --forground_text: #16130f;
+  --forground_text_700: #5c564c;
+  --channel_text: #5c564c;
   --left_Sidebar_background: #ffffff;
   --loading_bg_clr: #ffffff;
 }
@@ -247,7 +259,7 @@ body {
   border: none;
   border-radius: var(--radius-btn);
   padding: var(--space-2) var(--space-4);
-  font: 600 14px/20px "Inter", sans-serif;
+  font: 600 14px/20px "Manrope", sans-serif;
   cursor: pointer;
 }
 .acube-btn-secondary {
@@ -256,7 +268,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-btn);
   padding: var(--space-2) var(--space-4);
-  font: 600 14px/20px "Inter", sans-serif;
+  font: 600 14px/20px "Manrope", sans-serif;
   cursor: pointer;
 }
 .acube-btn-danger {
@@ -265,7 +277,7 @@ body {
   border: 1px solid var(--danger);
   border-radius: var(--radius-btn);
   padding: var(--space-2) var(--space-4);
-  font: 600 14px/20px "Inter", sans-serif;
+  font: 600 14px/20px "Manrope", sans-serif;
   cursor: pointer;
 }
 .acube-input,
@@ -273,9 +285,9 @@ body {
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: var(--radius-btn);
+  border-radius: var(--radius-input);
   padding: var(--space-2) var(--space-3);
-  font: 400 14px/20px "Inter", sans-serif;
+  font: 400 14px/20px "Manrope", sans-serif;
 }
 .acube-card {
   background: var(--surface);
@@ -303,7 +315,7 @@ body {
 }
 .acube-badge {
   display: inline-block;
-  font: 600 12px/16px "Inter", sans-serif;
+  font: 600 12px/16px "Manrope", sans-serif;
   padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid var(--border);

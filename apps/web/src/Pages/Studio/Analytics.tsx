@@ -85,6 +85,52 @@ export default function Analytics() {
                   : "—"
               }
             />
+            <StatCard
+              label="Avg views / video"
+              value={
+                overview.data && overview.data.totals.totalVideos > 0
+                  ? String(
+                      Math.round(
+                        analytics.data.totals.views /
+                          overview.data.totals.totalVideos,
+                      ),
+                    )
+                  : "—"
+              }
+            />
+            <StatCard
+              label="Like rate"
+              value={
+                analytics.data.totals.views > 0
+                  ? `${(
+                      (analytics.data.totals.likes /
+                        analytics.data.totals.views) *
+                      100
+                    ).toFixed(1)}%`
+                  : "—"
+              }
+            />
+          </div>
+          <div className="studio-section" style={{ marginTop: 24 }}>
+            <h2>Top source</h2>
+            {analytics.data.trafficSources &&
+            analytics.data.trafficSources.length > 0 ? (
+              <div>
+                {analytics.data.trafficSources.map((s) => (
+                  <div key={s.source} className="studio-list-row">
+                    <span>{s.source}</span>
+                    <span style={{ color: "var(--text-2)" }}>
+                      {s.views} views
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <StudioEmptyState
+                title="Traffic source not tracked yet"
+                body="View events do not record a referrer yet, so there is no real source split to show. This section stays empty rather than showing invented numbers."
+              />
+            )}
           </div>
           <StudioChart
             days={analytics.data.days}

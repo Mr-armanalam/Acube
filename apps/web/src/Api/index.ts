@@ -162,17 +162,43 @@ export const verifyOtp = (authOtp: VerifyOtpInput) =>
 export const getStudioOverview = () => API.get("/studio/overview");
 export const getStudioAnalytics = (range: 7 | 28 | 90 = 28) =>
   API.get("/studio/analytics", { params: { range } });
-export const getStudioVideos = (page = 1, limit = 50) =>
-  API.get("/studio/videos", { params: { page, limit } });
-export const getStudioComments = (page = 1, limit = 50) =>
-  API.get("/studio/comments", { params: { page, limit } });
+// Phase 5 fix: search + visibility filter + real pagination. The
+// backend worker is adding q/visibility to GET /studio/videos in
+// parallel; the client sends them and the MSW handlers answer them.
+export const getStudioVideos = (
+  page = 1,
+  limit = 50,
+  params: { q?: string; visibility?: string } = {},
+) =>
+  API.get("/studio/videos", { params: { page, limit, ...params } });
+export const getStudioComments = (
+  page = 1,
+  limit = 50,
+  params: { filter?: string; sort?: string } = {},
+) =>
+  API.get("/studio/comments", { params: { page, limit, ...params } });
 export const getStudioSettings = () => API.get("/studio/settings");
-// Phase 5 contract fix: the server's studioSettingsSchema accepts
-// only { name?, desc? } — `description`/`handle`/`links` were silently
-// stripped by Zod, so they are not sent at all.
+// Phase 5 fix contract: PATCH /studio/settings accepts the full
+// settings shape (name, desc, handle, links, contactEmail, country,
+// language, bannerUrl, avatarUrl, channelPublic,
+// keepSubscriptionsPrivate, uploadDefaultVisibility,
+// uploadDefaultComments, watermarkEnabled). The backend worker is
+// building this; the old { name?, desc? }-only shape is superseded.
 export const patchStudioSettings = (data: {
   name?: string;
   desc?: string;
+  handle?: string;
+  links?: { label: string; url: string }[];
+  contactEmail?: string;
+  country?: string;
+  language?: string;
+  bannerUrl?: string;
+  avatarUrl?: string;
+  channelPublic?: boolean;
+  keepSubscriptionsPrivate?: boolean;
+  uploadDefaultVisibility?: string;
+  uploadDefaultComments?: boolean;
+  watermarkEnabled?: boolean;
 }) => API.patch("/studio/settings", data);
 export const getStudioPlaylists = () => API.get("/studio/playlists");
 // Public read (visibility rules server-side) — the /playlist/:id page
@@ -206,6 +232,37 @@ export const deleteStudioPlaylist = (id: string) =>
 export const getVideo = (id: string) => API.get(`/video/${id}`);
 export const patchVideo = (
   id: string,
-  data: { title?: string; visibility?: string },
+  data: {
+    title?: string;
+    visibility?: string;
+    description?: string;
+    tags?: string[];
+    thumbnailUrl?: string;
+  },
 ) => API.patch(`/video/${id}`, data);
 export const deleteVideo = (id: string) => API.delete(`/video/${id}`);
+// Phase 5 fix contract: soft-delete restore (backend worker, parallel).
+export const restoreVideo = (id: string) =>
+  API.post(`/video/${id}/restore`);
+// Phase 5 fix contract: ranked suggestions with a reason per item.
+export const getWatchSuggestions = (id: string) =>
+  API.get(`/watch/${id}/suggestions`);
+// Phase 5 fix contract: creator pins a comment (creator only, server).
+export const pinComment = (id: string) => API.post(`/comment/${id}/pin`);
+// Phase 5 fix contract: library entries (kind "saved" | "watchlater" |
+// "liked"). POST/DELETE already exist server-side for /studio/library.
+export const addLibraryEntry = (videoid: string, kind: string) =>
+  API.post("/studio/library", { videoid, kind });
+export const removeLibraryEntry = (kind: string, videoid: string) =>
+  API.delete(`/studio/library/${kind}/${videoid}`);
+// Phase 5 fix contract — history pause flag + watch progress. These
+// two paths are PROPOSED (one Api function each, so a correction is a
+// one-line change): the backend worker owns the exact routes and the
+// MSW handlers below answer the same shapes meanwhile.
+//   PATCH /user/history-paused { paused: boolean }
+//   PATCH /video/history/:videoid/progress { progressSec: number }
+export const getHistoryPaused = () => API.get("/user/history-paused");
+export const patchHistoryPaused = (paused: boolean) =>
+  API.patch("/user/history-paused", { paused });
+export const patchHistoryProgress = (videoid: string, progressSec: number) =>
+  API.patch(`/video/history/${videoid}/progress`, { progressSec });

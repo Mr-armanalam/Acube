@@ -10,7 +10,6 @@ import LoadingCard from "./Component/LoadingCard";
 // ship in the initial bundle. Home stays eager so first paint is fast.
 const Search = lazy(() => import("./Pages/Search/Search"));
 const Channel = lazy(() => import("./Pages/Channel/Channel"));
-const Library = lazy(() => import("./Pages/Library/Library"));
 const Likedvideo = lazy(() => import("./Pages/Likedvideo/Likedvideo"));
 const Watchhistory = lazy(() => import("./Pages/Watchhistory/Watchhistory"));
 const Watchlater = lazy(() => import("./Pages/Watchlater/Watchlater"));
@@ -25,6 +24,7 @@ const StudioContent = lazy(() => import("./Pages/Studio/Content"));
 const StudioAnalytics = lazy(() => import("./Pages/Studio/Analytics"));
 const StudioComments = lazy(() => import("./Pages/Studio/Comments"));
 const StudioSettings = lazy(() => import("./Pages/Studio/Settings"));
+const StudioUpload = lazy(() => import("./Pages/Studio/UploadWizard"));
 const Watch = lazy(() => import("./Pages/Watch/Watch"));
 const HistoryPage = lazy(() => import("./Pages/History/History"));
 const LibraryHub = lazy(() => import("./Pages/Library/LibraryHub"));
@@ -120,6 +120,14 @@ const Allroutes = ({
               }
             />
             <Route
+              path="/studio/upload"
+              element={
+                <RequireAuth>
+                  <StudioUpload />
+                </RequireAuth>
+              }
+            />
+            <Route
               path="/studio/settings"
               element={
                 <RequireAuth>
@@ -144,23 +152,11 @@ const Allroutes = ({
                 </RequireAuth>
               }
             />
-            <Route
-              path="/playlist/:id"
-              element={
-                <RequireAuth>
-                  <PlaylistPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/Library"
-              caseSensitive
-              element={
-                <RequireAuth>
-                  <Library />
-                </RequireAuth>
-              }
-            />
+            {/* Phase 5 fix: public read — visibility rules are
+              server-side, so a logged-out visitor can open a public /
+              unlisted playlist. Owner mutations are guarded in the
+              page itself, not at the route. */}
+            <Route path="/playlist/:id" element={<PlaylistPage />} />
             <Route
               path="/Likedvideo"
               element={

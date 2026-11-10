@@ -50,7 +50,7 @@ describe("Studio", () => {
     expect(
       await screen.findByText("Python Basics Tutorial"),
     ).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: "Edit title" })[0]);
+    await user.click(screen.getAllByRole("button", { name: "Edit details" })[0]);
     const input = screen.getByLabelText("Video title");
     await user.clear(input);
     await user.type(input, "Python Basics Updated");
@@ -58,7 +58,7 @@ describe("Studio", () => {
     await waitFor(() => {
       expect(captured.videoPatches).toContainEqual({
         id: "vid1",
-        body: { title: "Python Basics Updated" },
+        body: expect.objectContaining({ title: "Python Basics Updated" }),
       });
     });
   });
@@ -138,19 +138,24 @@ describe("Studio", () => {
     expect(screen.getByLabelText("Description")).toHaveValue("Test channel");
     await user.clear(nameInput);
     await user.type(nameInput, "Renamed Channel");
-    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => {
       expect(captured.studioSettingsPatches).toHaveLength(1);
       const body = captured.studioSettingsPatches[0] as {
         name?: string;
         desc?: string;
+        handle?: string;
+        links?: Array<{ label: string; url: string }>;
       };
       expect(body.name).toBe("Renamed Channel");
-      // Contract fix: the field is `desc`, not `description`.
+      // Phase 5 fix contract: the field is `desc`, not `description`,
+      // and the full shape (handle, links, …) is sent.
       expect(body.desc).toBe("Test channel");
       expect(body).not.toHaveProperty("description");
-      expect(body).not.toHaveProperty("handle");
-      expect(body).not.toHaveProperty("links");
+      expect(body.handle).toBe("testuser");
+      expect(body.links).toEqual([
+        { label: "GitHub", url: "https://github.com/testuser" },
+      ]);
     });
     expect(await screen.findByText("Settings saved")).toBeInTheDocument();
   });

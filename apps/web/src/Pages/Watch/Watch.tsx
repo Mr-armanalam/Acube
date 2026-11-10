@@ -1,44 +1,69 @@
-// Phase 5 — rebuilt video watch page at /watch/:id. Uses the new custom
-// Player, nested comments, ranked "Up next" (same channel first, then
-// same uploader/topic) and a playlist showcase panel when the video
-// belongs to one of the creator's playlists.
-import React, { useEffect, useMemo } from "react";
+// Phase 5 fix — rebuilt video watch page at /watch/:id (preview
+// screen H). Custom Player (draggable knob, real chapters only),
+// description box with tags, Share (copies the real link), Save menu
+// (library + playlists), Download-Premium via the existing Download
+// component, pinned creator comment first, nested replies to any
+// depth, Up Next from GET /watch/:id/suggestions with "Because:
+// <reason>" labels, and a playlist showcase with thumbnails, index
+// numbers, current-video highlight, progress, Play-all / Shuffle /
+// Loop / Save-a-copy. NO Subscribe button: there is no follow system,
+// so a Subscribe button would fake one (explicit cut — see report).
+// Resume: ?t=<seconds> or the stored history progress seeks the
+// player; playback position is persisted via the progress endpoint.
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./Watch.css";
 import { formatDistanceToNow } from "date-fns";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { useAppSelector } from "../../store";
 import {
   useAddToHistory,
+  useCreatePlaylist,
+  useHistory,
   useStudioPlaylists,
+  useUpdateVideoProgress,
   useVideo,
   useVideos,
   useViewVideo,
   useWatchComplete,
+  useWatchSuggestions,
 } from "../../query/hooks";
 import Likewatchlatersavebtns from "../Videopage/Likewatchlatersavebtns";
 import LoadingCard from "../../Component/LoadingCard";
 import Player from "./Player";
 import NestedComments from "./NestedComments";
+import SaveMenu from "./SaveMenu";
+
+function formatDuration(sec: number | undefined): string {
+  if (!sec || !Number.isFinite(sec) || sec <= 0) return "";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 const Watch = () => {
   const { id } = useParams();
-  // Contract fix: the video itself comes from GET /video/:id (visibility
-  // rules server-side) — NOT from filtering the page-1 feed, which omits
-  // unlisted videos and anything past page 1. The feed list is only
-  // used for the "Up next" ranking below.
+  const [searchParams] = useSearchParams();
   const videoQuery = useVideo(id);
-  const { data } = useVideos();
+  const suggestionsQuery = useWatchSuggestions(id);
+  const { data: feedVideos } = useVideos();
   const currentuser = useAppSelector((s) => s.auth.session);
   const viewMutation = useViewVideo();
   const historyMutation = useAddToHistory();
   const watchCompleteMutation = useWatchComplete();
   const playlistsQuery = useStudioPlaylists();
+  const historyQuery = useHistory();
+  const progressMutation = useUpdateVideoProgress();
+  const createPlaylist = useCreatePlaylist();
   const vv = videoQuery.data;
+  const [loop, setLoop] = useState(false);
+  const [shuffled, setShuffled] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [descOpen, setDescOpen] = useState(false);
+  const lastProgressSent = useRef(0);
 
   const viewerId = currentuser?.result?._id;
   useEffect(() => {
     if (id) viewMutation.mutate(id);
-    // Count one view per page mount, as before.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -46,30 +71,66 @@ const Watch = () => {
     if (viewerId && id) {
       historyMutation.mutate({ videoid: id, viewer: viewerId });
     }
-    // Record history once per page mount for the signed-in viewer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, viewerId]);
 
-  // Ranked "Up next": same channel first, then the rest (newest first).
-  const upNext = useMemo(() => {
-    if (!data || !vv) return [];
-    const others = data.filter((v) => v._id !== vv._id);
-    const sameChannel = others.filter((v) => v.videochanel === vv.videochanel);
-    const rest = others.filter((v) => v.videochanel !== vv.videochanel);
-    return [...sameChannel, ...rest];
-  }, [data, vv]);
+  // Resume position: ?t= param wins, else the stored history row.
+  const storedProgressSec = useMemo(() => {
+    const entry = historyQuery.data?.find((e) => e.videoid === id);
+    if (!entry) return 0;
+    if (typeof entry.progressSec === "number") return entry.progressSec;
+    if (typeof entry.progress === "number" && entry.durationSec) {
+      return Math.round(entry.progress * entry.durationSec);
+    }
+    return 0;
+  }, [historyQuery.data, id]);
+  const initialTime = Number(searchParams.get("t") ?? 0) || storedProgressSec;
 
+  const handleProgress = useCallback(
+    (sec: number) => {
+      if (!id || !viewerId) return;
+      if (Math.abs(sec - lastProgressSent.current) < 5) return;
+      lastProgressSent.current = sec;
+      progressMutation.mutate({ videoid: id, progressSec: Math.floor(sec) });
+    },
+    [id, viewerId, progressMutation],
+  );
+
+  const suggestions = suggestionsQuery.data ?? [];
   const playlist = useMemo(() => {
     if (!id || !playlistsQuery.data) return undefined;
     return playlistsQuery.data.find((p) => p.videoIds.includes(id));
   }, [id, playlistsQuery.data]);
 
   const playlistVideos = useMemo(() => {
-    if (!playlist || !data) return [];
+    if (!playlist) return [];
+    if (playlist.videos?.length) return playlist.videos;
+    // Fallback: resolve ids from the feed cache.
     return playlist.videoIds
-      .map((vid) => data.find((v) => v._id === vid))
+      .map((vid) => (feedVideos ?? []).find((v) => v._id === vid))
       .filter((v): v is NonNullable<typeof v> => Boolean(v));
-  }, [playlist, data]);
+  }, [playlist, feedVideos]);
+
+  // Playlist progress: how many of its videos have a history row.
+  const playlistWatched = useMemo(() => {
+    if (!playlist) return 0;
+    const seen = new Set((historyQuery.data ?? []).map((e) => e.videoid));
+    return playlist.videoIds.filter((vid) => seen.has(vid)).length;
+  }, [playlist, historyQuery.data]);
+
+  const orderedPlaylistVideos = useMemo(() => {
+    if (!shuffled) return playlistVideos;
+    return [...playlistVideos].sort(() => Math.random() - 0.5);
+  }, [playlistVideos, shuffled]);
+
+  const share = useCallback(() => {
+    const url = window.location.href;
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(url).then(() => setShareCopied(true));
+    } else {
+      setShareCopied(false);
+    }
+  }, []);
 
   if (videoQuery.isLoading) {
     return (
@@ -96,11 +157,19 @@ const Watch = () => {
     );
   }
 
+  const currentIndex = playlist
+    ? playlist.videoIds.indexOf(vv._id)
+    : -1;
+
   return (
     <div className="watch-page">
       <div className="watch-main">
         <Player
           src={vv.filepath}
+          initialTime={initialTime || undefined}
+          onProgressSec={handleProgress}
+          chapters={vv.chapters}
+          loop={loop}
           onEnded={() => {
             if (currentuser && id) {
               void watchCompleteMutation.mutateAsync(id);
@@ -113,8 +182,15 @@ const Watch = () => {
           {formatDistanceToNow(new Date(vv.createdat ?? Date.now()), {
             addSuffix: true,
           })}
+          {initialTime > 0 ? ` · Resumed from ${formatDuration(initialTime)}` : ""}
         </div>
-        <Likewatchlatersavebtns vv={vv} vid={id} />
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+          <Likewatchlatersavebtns vv={vv} vid={id} />
+          <SaveMenu videoid={vv._id} />
+          <button type="button" className="acube-btn-secondary" onClick={share}>
+            {shareCopied ? "Link copied" : "Share"}
+          </button>
+        </div>
         <Link
           to={`/channel/${vv.videochanel}`}
           style={{ display: "flex", gap: 12, alignItems: "center", margin: "16px 0", color: "var(--text)", textDecoration: "none" }}
@@ -124,24 +200,106 @@ const Watch = () => {
           </span>
           <strong>{vv.uploader}</strong>
         </Link>
-        <NestedComments videoid={vv._id} />
+        <div className="acube-card" style={{ padding: 16, marginBottom: 24 }}>
+          <p style={{ margin: 0 }}>
+            {vv.views ?? 0} views ·{" "}
+            {(vv.createdat ?? "").slice(0, 10)} —{" "}
+            {descOpen
+              ? (vv.description ?? "No description yet.")
+              : (vv.description ?? "No description yet.").slice(0, 140)}
+          </p>
+          {(vv.tags ?? []).length > 0 ? (
+            <p style={{ color: "var(--text-2)", margin: "8px 0 0" }}>
+              {(vv.tags ?? []).map((t) => `#${t}`).join(" ")}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            className="acube-btn-secondary"
+            style={{ marginTop: 8 }}
+            onClick={() => setDescOpen((v) => !v)}
+          >
+            {descOpen ? "Show less" : "Show more"}
+          </button>
+        </div>
+        <NestedComments videoid={vv._id} videoOwnerId={vv.videochanel} />
       </div>
       <aside className="watch-side">
         {playlist ? (
           <div className="acube-card" style={{ padding: 16, marginBottom: 24 }}>
             <h2 style={{ margin: "0 0 8px", fontSize: 16 }}>
-              Playlist: {playlist.title}
+              Playlist · {playlist.title}
             </h2>
             <p style={{ color: "var(--text-2)", margin: "0 0 12px" }}>
-              {playlistVideos.length}{" "}
-              {playlistVideos.length === 1 ? "video" : "videos"}
+              {playlistWatched} / {playlist.videoIds.length} watched ·{" "}
+              {currentIndex >= 0
+                ? `Playing ${currentIndex + 1} of ${playlist.videoIds.length}`
+                : ""}
             </p>
             <div className="watch-up-next">
-              {playlistVideos.map((v) => (
-                <Link key={v._id} to={`/watch/${v._id}`}>
-                  {v.videotitle}
-                </Link>
-              ))}
+              {orderedPlaylistVideos.map((v) => {
+                const idx = playlist.videoIds.indexOf(v._id);
+                const isCurrent = v._id === vv._id;
+                return (
+                  <Link
+                    key={v._id}
+                    to={`/watch/${v._id}`}
+                    style={
+                      isCurrent
+                        ? { outline: "2px solid var(--accent)", borderRadius: 8, padding: 4 }
+                        : undefined
+                    }
+                  >
+                    <span style={{ color: "var(--text-2)" }}>
+                      {idx + 1}.{" "}
+                    </span>
+                    <span>{v.videotitle}</span>
+                    {isCurrent ? " · Playing now" : ""}
+                    <span style={{ display: "block", color: "var(--text-2)", fontWeight: 400, fontSize: 13 }}>
+                      {formatDuration(v.durationSec ?? v.duration ?? undefined)}{" "}
+                      {v.uploader} · {v.views ?? 0} views
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              <Link
+                to={`/watch/${playlist.videoIds[0] ?? ""}`}
+                className="acube-btn-secondary"
+              >
+                Play all
+              </Link>
+              <button
+                type="button"
+                className="acube-btn-secondary"
+                aria-pressed={shuffled}
+                onClick={() => setShuffled((v) => !v)}
+              >
+                Shuffle {shuffled ? "on" : "off"}
+              </button>
+              <button
+                type="button"
+                className="acube-btn-secondary"
+                aria-pressed={loop}
+                onClick={() => setLoop((v) => !v)}
+              >
+                Loop {loop ? "on" : "off"}
+              </button>
+              <button
+                type="button"
+                className="acube-btn-secondary"
+                onClick={() => {
+                  createPlaylist.mutate({
+                    title: `${playlist.title} (copy)`,
+                    description: playlist.description,
+                    visibility: "private",
+                    videoIds: playlist.videoIds,
+                  });
+                }}
+              >
+                Save a copy
+              </button>
             </div>
             <Link to={`/playlist/${playlist._id}`} style={{ display: "inline-block", marginTop: 12 }}>
               View full playlist
@@ -149,16 +307,27 @@ const Watch = () => {
           </div>
         ) : null}
         <h2 style={{ fontSize: 16 }}>Up next</h2>
-        <div className="watch-up-next">
-          {upNext.map((v) => (
-            <Link key={v._id} to={`/watch/${v._id}`}>
-              {v.videotitle}
-              <span style={{ display: "block", color: "var(--text-2)", fontWeight: 400, fontSize: 13 }}>
-                {v.uploader} · {v.views ?? 0} views
-              </span>
-            </Link>
-          ))}
-        </div>
+        {suggestionsQuery.isLoading ? (
+          <p style={{ color: "var(--text-2)" }}>Loading suggestions…</p>
+        ) : suggestions.length === 0 ? (
+          <p style={{ color: "var(--text-2)" }}>
+            No suggestions yet for this video.
+          </p>
+        ) : (
+          <div className="watch-up-next">
+            {suggestions.map(({ video, reason }) => (
+              <Link key={video._id} to={`/watch/${video._id}`}>
+                {video.videotitle}
+                <span style={{ display: "block", color: "var(--text-2)", fontWeight: 400, fontSize: 13 }}>
+                  {video.uploader} · {video.views ?? 0} views
+                </span>
+                <span style={{ display: "block", color: "var(--text-2)", fontWeight: 400, fontSize: 13 }}>
+                  Because: {reason}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
       </aside>
     </div>
   );

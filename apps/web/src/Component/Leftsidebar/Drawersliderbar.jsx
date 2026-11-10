@@ -40,7 +40,7 @@ const Drawersliderbar = ({ toggledraw, toggledrawersidebar }) => {
           </div>
         </div>
         <div className="libraryBtn_Drawerleftsidebar">
-          <NavLink to={'/Library'} className="icon_sidebar_div">
+          <NavLink to={'/library'} className="icon_sidebar_div">
             <div>
               <MdOutlineVideoLibrary size={22} className='icon_sidebar' style={{ margin: "auto 0.7rem" }} />
               <div className="text_sidebar_icon">Library</div>

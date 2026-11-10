@@ -37,7 +37,15 @@ export interface SessionProfile {
   token: string;
 }
 
-export type VideoVisibility = "public" | "unlisted" | "private";
+export type VideoVisibility = "public" | "unlisted" | "private" | "draft";
+
+/** A real chapter, from the server. No chapter data exists yet, so the
+ * player renders NO chapter ticks until the backend returns chapters —
+ * never fake ones (Phase 5 fix audit). */
+export interface VideoChapter {
+  title: string;
+  startSec: number;
+}
 
 export interface Video {
   _id: string;
@@ -56,6 +64,20 @@ export interface Video {
   /** Phase 5: visibility + processing status (server-owned). */
   visibility?: VideoVisibility;
   status?: "ready" | "processing";
+  /** Phase 5 fix contract: description / tags / thumbnail / duration. */
+  description?: string;
+  tags?: string[];
+  thumbnailUrl?: string;
+  /** Cloudinary thumbnail (legacy field name from the API model). */
+  thumbnail?: string | null;
+  /** Duration in seconds (Cloudinary `duration`, legacy field name). */
+  duration?: number | null;
+  /** Duration in seconds (contract field name). */
+  durationSec?: number;
+  /** Soft-delete timestamp; null/undefined = live. */
+  deletedAt?: string | null;
+  /** Real chapters only — absent means "no chapters", never fake ticks. */
+  chapters?: VideoChapter[];
 }
 
 export interface Channel {
@@ -86,6 +108,13 @@ export interface CommentItem {
   parentId?: string | null;
   /** Phase 5: video title attached by /studio/comments. */
   videotitle?: string;
+  /** Phase 5 fix contract: user id of the creator who pinned this. */
+  pinnedByCreator?: string | null;
+  /** Phase 5 fix: whether the creator has replied in this thread
+   * (drives the Studio Comments "Unreplied" filter server-side). */
+  hasReply?: boolean;
+  /** Server-owned like count on the comment, when the API returns one. */
+  likes?: number;
 }
 
 /** History / liked / watch-later rows all share this shape. */
@@ -97,6 +126,10 @@ export interface VideoListEntry {
   createdAt?: string;
   /** Phase 5: watch progress 0–1 when the server reports it; absent = unknown. */
   progress?: number;
+  /** Phase 5 fix contract: resume position in seconds. */
+  progressSec?: number;
+  /** Phase 5 fix contract: video length in seconds (for progress math). */
+  durationSec?: number;
 }
 
 /** Phase 5 — Creator Studio + playlists (API contract, PHASE5_PLAN.md).
@@ -140,8 +173,20 @@ export interface StudioAnalytics {
   days: StudioAnalyticsDay[];
   totals: { views: number; watchMinutes: number; likes: number; completions?: number };
   bestDay: { date: string; views: number } | null;
+  /** Phase 5 fix: traffic-source split, ONLY when the backend returns
+   * a real one. Absent = "not tracked yet" empty state, never faked. */
+  trafficSources?: { source: string; views: number }[];
 }
 
+export interface StudioChannelLink {
+  label: string;
+  url: string;
+}
+
+/** Phase 5 fix contract — GET/PATCH /studio/settings, full shape.
+ * The backend worker is building this in parallel; until it lands the
+ * MSW handlers answer the same shape. No subscribe/follower field
+ * exists anywhere: there is no follow system, so none is rendered. */
 export interface StudioSettings {
   channel: {
     _id: string;
@@ -150,7 +195,48 @@ export interface StudioSettings {
     desc?: string;
     picture?: string;
     username?: string;
+    handle?: string;
+    links?: StudioChannelLink[];
+    contactEmail?: string;
+    country?: string;
+    language?: string;
+    bannerUrl?: string;
+    avatarUrl?: string;
+    channelPublic?: boolean;
+    keepSubscriptionsPrivate?: boolean;
+    uploadDefaultVisibility?: VideoVisibility;
+    uploadDefaultComments?: boolean;
+    watermarkEnabled?: boolean;
   };
+}
+
+export type StudioSettingsPatch = {
+  name?: string;
+  desc?: string;
+  handle?: string;
+  links?: StudioChannelLink[];
+  contactEmail?: string;
+  country?: string;
+  language?: string;
+  bannerUrl?: string;
+  avatarUrl?: string;
+  channelPublic?: boolean;
+  keepSubscriptionsPrivate?: boolean;
+  uploadDefaultVisibility?: VideoVisibility;
+  uploadDefaultComments?: boolean;
+  watermarkEnabled?: boolean;
+};
+
+/** Phase 5 fix contract — GET /watch/:id/suggestions. */
+export type SuggestionReason =
+  | "Same channel"
+  | "Same topic"
+  | "Viewers also watched"
+  | "Similar length";
+
+export interface WatchSuggestion {
+  video: Video;
+  reason: SuggestionReason;
 }
 
 export interface Playlist {

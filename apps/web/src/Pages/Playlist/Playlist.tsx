@@ -1,29 +1,39 @@
-// Phase 5 — Playlist page at /playlist/:id: playlist title/description,
-// its videos (in playlist order), empty state when it has none.
-// Contract fix: reads the PUBLIC GET /studio/playlists/:id endpoint
-// (visibility rules server-side), not the owner-only playlist list —
-// another creator's public/unlisted playlist must render here, and a
-// logged-out visitor must be able to open it.
+// Phase 5 fix — Playlist page at /playlist/:id: playlist
+// title/description, its videos in playlist order with index numbers
+// and thumbnails, Play all, and owner-only remove-video actions.
+// PUBLIC read: the route has no RequireAuth guard (visibility rules
+// are server-side) — a logged-out visitor can open a public/unlisted
+// playlist. Only owner mutations are guarded, by checking the session
+// against playlist.owner.
 import React, { useMemo } from "react";
 import { Link, useParams } from "react-router";
 import Leftsidebar from "../../Component/Leftsidebar/Leftsidebar";
-import { useStudioPlaylist, useVideosById } from "../../query/hooks";
+import { useAppSelector } from "../../store";
+import {
+  useStudioPlaylist,
+  useUpdatePlaylist,
+  useVideosById,
+} from "../../query/hooks";
 
 export default function PlaylistPage() {
   const { id } = useParams();
   const playlistQuery = useStudioPlaylist(id);
   const byId = useVideosById();
+  const currentuser = useAppSelector((s) => s.auth.session);
+  const updatePlaylist = useUpdatePlaylist();
 
   const playlist = playlistQuery.data;
   const videos = useMemo(() => {
     if (!playlist) return [];
-    // Prefer the ordered `videos` array the endpoint returns; fall back
-    // to the feed cache for any id it did not include.
     if (playlist.videos && playlist.videos.length > 0) return playlist.videos;
     return playlist.videoIds
       .map((vid) => byId[vid])
       .filter((v): v is NonNullable<typeof v> => Boolean(v));
   }, [playlist, byId]);
+
+  const isOwner =
+    Boolean(currentuser?.result._id) &&
+    currentuser?.result._id === playlist?.owner;
 
   return (
     <div className="container_Pages_App">
@@ -55,19 +65,53 @@ export default function PlaylistPage() {
               {videos.length} {videos.length === 1 ? "video" : "videos"} ·{" "}
               {playlist.visibility}
             </p>
+            {videos.length > 0 ? (
+              <Link
+                to={`/watch/${videos[0]._id}`}
+                className="acube-btn-secondary"
+              >
+                Play all
+              </Link>
+            ) : null}
             {videos.length === 0 ? (
               <div className="acube-empty" role="status">
                 <p>This playlist is empty.</p>
               </div>
             ) : (
-              videos.map((v) => (
+              videos.map((v, i) => (
                 <div key={v._id} className="studio-list-row">
-                  <Link to={`/watch/${v._id}`} style={{ color: "var(--text)", fontWeight: 600 }}>
+                  <span style={{ color: "var(--text-2)", fontWeight: 700 }}>
+                    {i + 1}.
+                  </span>
+                  {v.thumbnailUrl || v.thumbnail ? (
+                    <img
+                      className="studio-row-thumb"
+                      src={v.thumbnailUrl ?? v.thumbnail ?? ""}
+                      alt=""
+                      style={{ width: 120 }}
+                    />
+                  ) : null}
+                  <Link to={`/watch/${v._id}`} style={{ color: "var(--text)", fontWeight: 600, flex: 1 }}>
                     {v.videotitle}
                   </Link>
                   <span style={{ color: "var(--text-2)" }}>
                     {v.uploader} · {v.views ?? 0} views
                   </span>
+                  {isOwner ? (
+                    <button
+                      type="button"
+                      className="acube-btn-danger"
+                      aria-label={`Remove ${v.videotitle} from playlist`}
+                      onClick={() =>
+                        updatePlaylist.mutate({
+                          id: playlist._id,
+                          removeVideoIds: [v._id],
+                        })
+                      }
+                    >
+                      Remove
+                    </button>
+                  ) : null}
                 </div>
               ))
             )}

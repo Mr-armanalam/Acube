@@ -1,7 +1,11 @@
-// Phase 5 — History page at /history: day groups, progress bars (only
-// when the server reports progress), Resume, Pause/Clear, per-item remove
-// (DELETE /video/deletehistory/:videoid/:viewer, owner = viewer only).
-import React, { useMemo, useState } from "react";
+// Phase 5 fix — History page at /history (preview screen I): day
+// groups, progress bars from stored progressSec, Resume resumes from
+// the stored position (?t= on the Watch link), Pause wired to the
+// real backend flag (GET/PATCH /user/history-paused — persisted and
+// enforced server-side; the toggle is NOT local-only), per-item remove.
+// Rows whose video is not in the page-1 feed load via GET /video/:id
+// (HistoryVideoRow) instead of being silently dropped.
+import React, { useMemo } from "react";
 import { Link } from "react-router";
 import Leftsidebar from "../../Component/Leftsidebar/Leftsidebar";
 import { useAppSelector } from "../../store";
@@ -9,8 +13,12 @@ import {
   useClearHistory,
   useDeleteHistoryItem,
   useHistory,
+  useHistoryPaused,
+  useSetHistoryPaused,
+  useVideo,
   useVideosById,
 } from "../../query/hooks";
+import type { Video, VideoListEntry } from "../../types";
 
 function dayKey(iso: string | undefined): string {
   if (!iso) return "Unknown date";
@@ -31,21 +39,113 @@ function dayKey(iso: string | undefined): string {
   });
 }
 
+function formatTime(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function progressSecOf(entry: VideoListEntry, video?: Video): number {
+  if (typeof entry.progressSec === "number") return entry.progressSec;
+  const dur = entry.durationSec ?? video?.durationSec ?? video?.duration ?? 0;
+  if (typeof entry.progress === "number" && dur) {
+    return Math.round(entry.progress * dur);
+  }
+  return 0;
+}
+
+function HistoryRow({
+  entry,
+  video,
+  userId,
+  onRemove,
+}: {
+  entry: VideoListEntry;
+  video: Video | undefined;
+  userId: string | undefined;
+  onRemove: (videoid: string) => void;
+}) {
+  if (!video) return null;
+  const dur = entry.durationSec ?? video.durationSec ?? video.duration ?? 0;
+  const pos = progressSecOf(entry, video);
+  const finished = dur > 0 && pos >= dur - 2;
+  return (
+    <div className="studio-list-row">
+      <div style={{ flex: 1 }}>
+        <Link to={`/watch/${video._id}${pos > 0 ? `?t=${pos}` : ""}`} style={{ color: "var(--text)", fontWeight: 600 }}>
+          {video.videotitle}
+        </Link>
+        <div style={{ color: "var(--text-2)", fontSize: 13 }}>
+          {video.uploader} · {video.views ?? 0} views
+          {dur > 0
+            ? finished
+              ? " · Finished"
+              : pos > 0
+                ? ` · Watched ${formatTime(pos)} of ${formatTime(dur)}`
+                : " · Stopped early"
+            : ""}
+        </div>
+        {dur > 0 ? (
+          <div
+            role="progressbar"
+            aria-valuenow={Math.round((pos / dur) * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Watch progress for ${video.videotitle}`}
+            style={{ height: 6, borderRadius: 3, background: "var(--surface-2)", marginTop: 6, maxWidth: 320 }}
+          >
+            <div style={{ width: `${Math.min(100, (pos / dur) * 100)}%`, height: "100%", borderRadius: 3, background: "var(--accent)" }} />
+          </div>
+        ) : null}
+      </div>
+      <Link
+        to={`/watch/${video._id}${pos > 0 ? `?t=${pos}` : ""}`}
+        className="acube-btn-secondary"
+      >
+        {pos > 0 ? `Resume from ${formatTime(pos)}` : "Resume"}
+      </Link>
+      <button
+        type="button"
+        className="acube-btn-danger"
+        aria-label={`Remove ${video.videotitle} from history`}
+        onClick={() => userId && onRemove(video._id)}
+      >
+        Remove
+      </button>
+    </div>
+  );
+}
+
+/** A history row whose video is missing from the feed cache: load it
+ * by id instead of dropping the row. */
+function HistoryVideoRow({
+  entry,
+  userId,
+  onRemove,
+}: {
+  entry: VideoListEntry;
+  userId: string | undefined;
+  onRemove: (videoid: string) => void;
+}) {
+  const { data } = useVideo(entry.videoid);
+  if (!data) return null;
+  return <HistoryRow entry={entry} video={data} userId={userId} onRemove={onRemove} />;
+}
+
 export default function History() {
   const currentuser = useAppSelector((s) => s.auth.session);
   const { data, isLoading, isError, refetch } = useHistory();
   const byId = useVideosById();
   const clearMutation = useClearHistory();
   const removeMutation = useDeleteHistoryItem();
-  const [paused, setPaused] = useState(false);
+  const pausedQuery = useHistoryPaused();
+  const setPaused = useSetHistoryPaused();
   const userId = currentuser?.result._id;
+  const paused = pausedQuery.data ?? false;
 
   const groups = useMemo(() => {
-    const map = new Map<string, typeof data>();
+    const map = new Map<string, VideoListEntry[]>();
     for (const entry of data ?? []) {
-      // Contract fix: history rows carry `likedon` (the model has no
-      // createdAt) — grouping by createdAt put every real row under
-      // "Unknown date".
       const key = dayKey(entry.likedon ?? entry.createdAt);
       const list = map.get(key) ?? [];
       list.push(entry);
@@ -54,6 +154,10 @@ export default function History() {
     return [...map.entries()];
   }, [data]);
 
+  const onRemove = (videoid: string) => {
+    if (userId) removeMutation.mutate({ videoid, viewer: userId });
+  };
+
   return (
     <div className="container_Pages_App">
       <div className="at_small_sizel">
@@ -61,11 +165,16 @@ export default function History() {
       </div>
       <div className="container2_Pages_App" style={{ padding: 24 }}>
         <h1>Watch history</h1>
+        <p style={{ color: "var(--text-2)" }}>
+          Only you can see this · Pausing stops new entries, doesn&apos;t
+          delete old ones
+        </p>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <button
             type="button"
             className="acube-btn-secondary"
-            onClick={() => setPaused((v) => !v)}
+            aria-pressed={paused}
+            onClick={() => setPaused.mutate(!paused)}
           >
             {paused ? "Resume history" : "Pause history"}
           </button>
@@ -101,49 +210,26 @@ export default function History() {
           groups.map(([day, entries]) => (
             <section key={day} style={{ marginBottom: 24 }}>
               <h2 style={{ fontSize: 16 }}>{day}</h2>
-              {entries?.map((entry) => {
+              {entries.map((entry) => {
                 const video = byId[entry.videoid];
-                if (!video) return null;
+                if (video) {
+                  return (
+                    <HistoryRow
+                      key={entry._id}
+                      entry={entry}
+                      video={video}
+                      userId={userId}
+                      onRemove={onRemove}
+                    />
+                  );
+                }
                 return (
-                  <div key={entry._id} className="studio-list-row">
-                    <div style={{ flex: 1 }}>
-                      <Link to={`/watch/${video._id}`} style={{ color: "var(--text)", fontWeight: 600 }}>
-                        {video.videotitle}
-                      </Link>
-                      <div style={{ color: "var(--text-2)", fontSize: 13 }}>
-                        {video.uploader} · {video.views ?? 0} views
-                      </div>
-                      {typeof entry.progress === "number" ? (
-                        <div
-                          role="progressbar"
-                          aria-valuenow={Math.round(entry.progress * 100)}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-label={`Watch progress for ${video.videotitle}`}
-                          style={{ height: 6, borderRadius: 3, background: "var(--surface-2)", marginTop: 6, maxWidth: 320 }}
-                        >
-                          <div style={{ width: `${entry.progress * 100}%`, height: "100%", borderRadius: 3, background: "var(--accent)" }} />
-                        </div>
-                      ) : null}
-                    </div>
-                    <Link to={`/watch/${video._id}`} className="acube-btn-secondary">
-                      Resume
-                    </Link>
-                    <button
-                      type="button"
-                      className="acube-btn-danger"
-                      aria-label={`Remove ${video.videotitle} from history`}
-                      onClick={() =>
-                        userId &&
-                        removeMutation.mutate({
-                          videoid: video._id,
-                          viewer: userId,
-                        })
-                      }
-                    >
-                      Remove
-                    </button>
-                  </div>
+                  <HistoryVideoRow
+                    key={entry._id}
+                    entry={entry}
+                    userId={userId}
+                    onRemove={onRemove}
+                  />
                 );
               })}
             </section>

@@ -19,17 +19,17 @@ function renderRoutes(route: string, session: typeof testSession | null) {
 }
 
 describe("Auth guard", () => {
-  it("redirects a logged-out user from /Library to Home", async () => {
-    renderRoutes("/Library", null);
+  it("redirects a logged-out user from /library to Home", async () => {
+    renderRoutes("/library", null);
     expect(
       await screen.findByText("Python Basics Tutorial"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("History")).not.toBeInTheDocument();
+    expect(screen.queryByText("Your library")).not.toBeInTheDocument();
   });
 
-  it("renders /Library for a signed-in user", async () => {
-    renderRoutes("/Library", testSession);
-    expect(await screen.findByText("History")).toBeInTheDocument();
+  it("renders /library for a signed-in user", async () => {
+    renderRoutes("/library", testSession);
+    expect(await screen.findByText("Your library")).toBeInTheDocument();
   });
 
   // Phase 3c: /Likedvideo, /Watchhistory and /Watchlater are behind

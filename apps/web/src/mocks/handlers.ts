@@ -3,9 +3,9 @@
 // Handlers record what the client sent in `captured` so tests can assert
 // on the exact request (e.g. that a download carries the video id).
 import { http, HttpResponse, type JsonBodyType } from "msw";
-import type { SessionProfile } from "../types";
+import type { SessionProfile, Video } from "../types";
 
-export const fixtureVideos = [
+export const fixtureVideos: Video[] = [
   {
     _id: "vid1",
     videotitle: "Python Basics Tutorial",
@@ -15,6 +15,11 @@ export const fixtureVideos = [
     Like: 5,
     views: 100,
     createdat: "2026-11-01T00:00:00.000Z",
+    description: "Learn Python from scratch.",
+    tags: ["coding", "python", "learning"],
+    durationSec: 134,
+    visibility: "public",
+    deletedAt: null,
   },
   {
     _id: "vid2",
@@ -25,6 +30,11 @@ export const fixtureVideos = [
     Like: 3,
     views: 50,
     createdat: "2026-11-02T00:00:00.000Z",
+    description: "Hooks, explained properly.",
+    tags: ["coding", "react"],
+    durationSec: 107,
+    visibility: "public",
+    deletedAt: null,
   },
   {
     _id: "vid3",
@@ -35,6 +45,31 @@ export const fixtureVideos = [
     Like: 1,
     views: 10,
     createdat: "2026-11-03T00:00:00.000Z",
+    description: "Java for complete beginners.",
+    tags: ["coding", "java", "learning"],
+    durationSec: 182,
+    visibility: "public",
+    deletedAt: null,
+  },
+];
+
+/** Studio-only rows: a draft (never in the public feed) and a private one. */
+export const fixtureStudioVideos: Video[] = [
+  ...fixtureVideos,
+  {
+    _id: "vid4",
+    videotitle: "Untitled draft — trim 03",
+    videochanel: "ch1",
+    filepath: "/videos/draft.mp4",
+    uploader: "alice",
+    Like: 0,
+    views: 0,
+    createdat: "2026-11-04T00:00:00.000Z",
+    description: "Work in progress.",
+    tags: ["draft"],
+    durationSec: 45,
+    visibility: "draft",
+    deletedAt: null,
   },
 ];
 
@@ -49,13 +84,29 @@ export const fixtureSession: SessionProfile = {
 };
 
 export const fixtureStudioOverview = {
+  channel: {
+    _id: "user1",
+    name: "Test User",
+    email: "test@example.com",
+    desc: "Test channel",
+    username: "testuser",
+    handle: "testuser",
+  },
   totals: {
     totalViews: 160,
     totalLikes: 9,
     totalVideos: 2,
     totalComments: 2,
     watchMinutes: 42,
+    completions: 1,
   },
+  // All-time counter sums (incl. pre-Phase 5 traffic) + stats start.
+  allTime: {
+    views: 160,
+    likes: 9,
+    note: "Sums of the per-video counters, including traffic from before Phase 5 analytics.",
+  },
+  statsSince: "2026-11-01",
   topVideos: [fixtureVideos[0], fixtureVideos[2]],
   latestComments: [
     {
@@ -80,7 +131,20 @@ export const fixtureStudioAnalytics = {
   // Contract fix: the real API returns bestDay as an object, not a
   // bare date string (the old fixture hid the [object Object] render).
   bestDay: { date: "2026-11-02", views: 25 },
+  // Phase 5 fix: NO trafficSources here on purpose — the backend does
+  // not return a real source split yet, so the UI must show the honest
+  // "not tracked yet" empty state instead of a faked split.
 };
+
+export const fixtureWatchSuggestions = {
+  // Ranked suggestions for vid1 — the current video is excluded.
+  items: [
+    { video: fixtureVideos[2], reason: "Same channel" },
+    { video: fixtureVideos[1], reason: "Same topic" },
+  ],
+};
+
+export const fixtureHistoryPaused = { paused: false };
 
 export const fixtureStudioComments = [
   {
@@ -90,6 +154,8 @@ export const fixtureStudioComments = [
     commentbody: "Great tutorial!",
     usercommented: "carol",
     videotitle: "Python Basics Tutorial",
+    createdAt: "2026-11-02T10:00:00.000Z",
+    hasReply: true,
   },
   {
     _id: "c2",
@@ -98,6 +164,8 @@ export const fixtureStudioComments = [
     commentbody: "Helpful, thanks!",
     usercommented: "dave",
     videotitle: "Java for Beginners",
+    createdAt: "2026-11-01T09:00:00.000Z",
+    hasReply: false,
   },
 ];
 
@@ -112,6 +180,18 @@ export const fixturePlaylists = [
     createdAt: "2026-11-01T00:00:00.000Z",
   },
 ];
+
+/** A playlist owned by someone else — the Library "Saved playlists"
+ * section renders it; the own-playlists list must not claim it. */
+export const fixtureSavedPlaylist = {
+  _id: "pl2",
+  owner: "user2",
+  title: "Saved playlist example",
+  description: "A playlist by another creator that I saved",
+  visibility: "public",
+  videoIds: ["vid3"],
+  createdAt: "2026-11-02T00:00:00.000Z",
+};
 
 export const fixtureNestedComments = [
   {
@@ -138,6 +218,32 @@ export const fixtureNestedComments = [
     usercommented: "dave",
     parentId: "c1",
   },
+  // Phase 5 fix: a depth-4 chain — c1(0) → c2(1) → c4(2) → c5(3) → c6(4).
+  // The old depth<3 gate hid c6 entirely; the tree must render it.
+  {
+    _id: "c4",
+    videoid: "vid1",
+    userid: "user3",
+    commentbody: "Replying to the reply",
+    usercommented: "dave",
+    parentId: "c2",
+  },
+  {
+    _id: "c5",
+    videoid: "vid1",
+    userid: "user2",
+    commentbody: "And one level deeper",
+    usercommented: "carol",
+    parentId: "c4",
+  },
+  {
+    _id: "c6",
+    videoid: "vid1",
+    userid: "user3",
+    commentbody: "Deepest reply — must still be visible",
+    usercommented: "dave",
+    parentId: "c5",
+  },
 ];
 
 export const captured = {
@@ -161,6 +267,14 @@ export const captured = {
   playlistDeletes: [] as string[],
   studioSettingsPatches: [] as unknown[],
   deleteHistoryItem: [] as Array<{ videoid: string; viewer: string }>,
+  // Phase 5 fix: new contract calls.
+  commentPins: [] as string[],
+  videoRestores: [] as string[],
+  libraryAdds: [] as unknown[],
+  libraryRemoves: [] as Array<{ kind: string; videoid: string }>,
+  historyProgress: [] as Array<{ videoid: string; progressSec: number }>,
+  historyPausedPatches: [] as boolean[],
+  videoSuggestionCalls: [] as string[],
   // Phase 3a: bodies sent to POST /user/login, so tests can assert the
   // Google id_token (not a client-claimed email) is what gets sent.
   loginBodies: [] as unknown[],
@@ -323,13 +437,47 @@ export const handlers = [
     const range = Number(url.searchParams.get("range") ?? 28);
     return json({ ...fixtureStudioAnalytics, range });
   }),
-  http.get("*/studio/videos", () =>
-    json(pageOf([fixtureVideos[0], fixtureVideos[2]])),
-  ),
-  http.get("*/studio/comments", () => json(pageOf(fixtureStudioComments))),
+  // Phase 5 fix: search (q), visibility filter and real pagination.
+  http.get("*/studio/videos", ({ request }) => {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get("q") ?? "").toLowerCase();
+    const visibility = url.searchParams.get("visibility") ?? "";
+    const page = Number(url.searchParams.get("page") ?? 1);
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    let items = fixtureStudioVideos.filter((v) => !v.deletedAt);
+    if (q) {
+      items = items.filter(
+        (v) =>
+          v.videotitle.toLowerCase().includes(q) ||
+          (v.description ?? "").toLowerCase().includes(q) ||
+          (v.tags ?? []).some((t) => t.toLowerCase().includes(q)),
+      );
+    }
+    if (visibility) items = items.filter((v) => v.visibility === visibility);
+    const totalPages = Math.max(1, Math.ceil(items.length / limit));
+    const slice = items.slice((page - 1) * limit, page * limit);
+    return json({ items: slice, page, limit, total: items.length, totalPages });
+  }),
+  // Phase 5 fix: filter=unreplied + sort=newest|oldest.
+  http.get("*/studio/comments", ({ request }) => {
+    const url = new URL(request.url);
+    const filter = url.searchParams.get("filter") ?? "";
+    const sort = url.searchParams.get("sort") ?? "newest";
+    const page = Number(url.searchParams.get("page") ?? 1);
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    let items = [...fixtureStudioComments];
+    if (filter === "unreplied") items = items.filter((c) => !c.hasReply);
+    items.sort((a, b) =>
+      sort === "oldest"
+        ? String(a.createdAt).localeCompare(String(b.createdAt))
+        : String(b.createdAt).localeCompare(String(a.createdAt)),
+    );
+    const totalPages = Math.max(1, Math.ceil(items.length / limit));
+    const slice = items.slice((page - 1) * limit, page * limit);
+    return json({ items: slice, page, limit, total: items.length, totalPages });
+  }),
   http.get("*/studio/settings", () =>
-    // Contract fix: the real API nests settings under `channel` and
-    // has no handle/links fields.
+    // Phase 5 fix contract: full settings shape under `channel`.
     json({
       channel: {
         _id: "user1",
@@ -337,18 +485,36 @@ export const handlers = [
         email: "test@example.com",
         desc: "Test channel",
         username: "testuser",
+        handle: "testuser",
+        links: [{ label: "GitHub", url: "https://github.com/testuser" }],
+        contactEmail: "hello@test.example",
+        country: "India",
+        language: "English",
+        bannerUrl: "",
+        avatarUrl: "",
+        channelPublic: true,
+        keepSubscriptionsPrivate: false,
+        uploadDefaultVisibility: "public",
+        uploadDefaultComments: true,
+        watermarkEnabled: false,
       },
     }),
   ),
   http.patch("*/studio/settings", async ({ request }) => {
-    captured.studioSettingsPatches.push(await request.json());
-    const body = captured.studioSettingsPatches[
-      captured.studioSettingsPatches.length - 1
-    ] as Record<string, unknown>;
+    const body = (await request.json()) as Record<string, unknown>;
+    captured.studioSettingsPatches.push(body);
+    // Handle uniqueness is server-enforced: "taken" is already used.
+    if (body.handle === "taken") {
+      return json(
+        { error: { code: "HANDLE_TAKEN", message: "Handle is already taken" } },
+        400,
+      );
+    }
     return json({
       _id: "user1",
       name: body.name ?? "Test User",
       desc: body.desc ?? "Test channel",
+      handle: body.handle ?? "testuser",
     });
   }),
   http.get("*/studio/playlists", () => json(fixturePlaylists)),
@@ -370,9 +536,54 @@ export const handlers = [
       watchlater: [],
       saved: [fixtureVideos[2]],
       liked: [],
-      playlists: fixturePlaylists,
+      playlists: [...fixturePlaylists, fixtureSavedPlaylist],
     }),
   ),
+  // Phase 5 fix: library entry add/remove (kind "saved" | "watchlater" | "liked").
+  http.post("*/studio/library", async ({ request }) => {
+    const body = await request.json();
+    captured.libraryAdds.push(body);
+    return json({ message: "Added to library" });
+  }),
+  http.delete("*/studio/library/:kind/:videoid", ({ params }) => {
+    captured.libraryRemoves.push({
+      kind: String(params.kind),
+      videoid: String(params.videoid),
+    });
+    return json({ message: "Removed from library" });
+  }),
+  // Phase 5 fix contract: ranked suggestions with a reason per item.
+  http.get("*/watch/:id/suggestions", ({ params }) => {
+    captured.videoSuggestionCalls.push(String(params.id));
+    return json(fixtureWatchSuggestions);
+  }),
+  // Phase 5 fix contract: creator pins a comment.
+  http.post("*/comment/:id/pin", ({ params }) => {
+    captured.commentPins.push(String(params.id));
+    return json({ _id: String(params.id), pinnedByCreator: "user1" });
+  }),
+  // Phase 5 fix contract: soft-delete restore.
+  http.post("*/video/:id/restore", ({ params }) => {
+    captured.videoRestores.push(String(params.id));
+    return json({ _id: String(params.id), deletedAt: null });
+  }),
+  // Phase 5 fix contract (proposed paths — see Api/index.ts):
+  // history-pause flag + watch-progress persistence.
+  http.get("*/user/history-paused", () => json(fixtureHistoryPaused)),
+  http.patch("*/user/history-paused", async ({ request }) => {
+    const body = (await request.json()) as { paused?: boolean };
+    captured.historyPausedPatches.push(Boolean(body.paused));
+    fixtureHistoryPaused.paused = Boolean(body.paused);
+    return json({ paused: fixtureHistoryPaused.paused });
+  }),
+  http.patch("*/video/history/:videoid/progress", async ({ params, request }) => {
+    const body = (await request.json()) as { progressSec?: number };
+    captured.historyProgress.push({
+      videoid: String(params.videoid),
+      progressSec: Number(body.progressSec ?? 0),
+    });
+    return json({});
+  }),
   http.post("*/studio/playlists", async ({ request }) => {
     const body = await request.json();
     captured.playlistCreates.push(body);
@@ -398,7 +609,7 @@ export const handlers = [
   // Registered LAST among the /video/* GETs so the specific handlers
   // above (getvideos, getallhistory, ...) still match first.
   http.get("*/video/:id", ({ params }) => {
-    const found = fixtureVideos.find((v) => v._id === params.id);
+    const found = fixtureStudioVideos.find((v) => v._id === params.id);
     if (!found) return new HttpResponse(null, { status: 404 });
     return json(found);
   }),
