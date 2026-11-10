@@ -6,10 +6,13 @@
 import React, { useState } from "react";
 import {
   useAddLibraryEntry,
+  useAddWatchLater,
   useCreatePlaylist,
+  useDeleteWatchLater,
   useRemoveLibraryEntry,
   useStudioPlaylists,
   useUpdatePlaylist,
+  useWatchLater,
 } from "../../query/hooks";
 import { useAppSelector } from "../../store";
 
@@ -20,6 +23,25 @@ export default function SaveMenu({ videoid }: { videoid: string }) {
   const removeLibrary = useRemoveLibraryEntry();
   const updatePlaylist = useUpdatePlaylist();
   const createPlaylist = useCreatePlaylist();
+  // Phase 5 fix (verify): Watch Later lives here now, not in the legacy
+  // action bar — the Watch page had two "Save" controls (this menu's
+  // "Save to library" and the legacy bar's Watch-Later toggle) plus a
+  // dead Share icon in the legacy bar. One menu, one Share button.
+  const watchLater = useWatchLater();
+  const addWatchLater = useAddWatchLater();
+  const deleteWatchLater = useDeleteWatchLater();
+  const viewerId = currentuser?.result._id;
+  // Local override (null = follow the server list): the mutation's
+  // optimistic cache entry is replaced by the refetched list, so a
+  // purely derived label would flip back after every toggle.
+  const [watchLaterLocal, setWatchLaterLocal] = useState<boolean | null>(
+    null,
+  );
+  const inWatchLater =
+    watchLaterLocal ??
+    (watchLater.data ?? []).some(
+      (e) => e.videoid === videoid && e.viewer === viewerId,
+    );
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -33,6 +55,16 @@ export default function SaveMenu({ videoid }: { videoid: string }) {
     } else {
       addLibrary.mutate({ videoid, kind: "saved" });
       setSaved(true);
+    }
+  };
+
+  const toggleWatchLater = () => {
+    if (!viewerId) return;
+    setWatchLaterLocal(!inWatchLater);
+    if (inWatchLater) {
+      deleteWatchLater.mutate({ videoid, viewer: viewerId });
+    } else {
+      addWatchLater.mutate({ videoid, viewer: viewerId });
     }
   };
 
@@ -65,6 +97,14 @@ export default function SaveMenu({ videoid }: { videoid: string }) {
             onClick={toggleSaved}
           >
             {saved ? "✓ Saved to library" : "Save to library"}
+          </button>
+          <button
+            type="button"
+            className="acube-btn-secondary"
+            style={{ marginTop: 8 }}
+            onClick={toggleWatchLater}
+          >
+            {inWatchLater ? "✓ Watch later" : "Watch later"}
           </button>
           <p style={{ margin: "12px 0 4px", fontWeight: 700 }}>
             Save to playlist

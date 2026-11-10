@@ -7,6 +7,7 @@ import { screen, waitFor } from "@testing-library/react";
 import { captured, fixtureVideos } from "../mocks/handlers";
 import { renderWithProviders, testSession } from "./testUtils";
 import Likewatchlatersavebtns from "../Pages/Videopage/Likewatchlatersavebtns";
+import SaveMenu from "../Pages/Watch/SaveMenu";
 
 function renderButtons() {
   return renderWithProviders(
@@ -40,17 +41,28 @@ describe("Like / save buttons", () => {
     ]);
   });
 
-  it("saves and unsaves a video via watch-later", async () => {
+  // Phase 5 fix (verify): Watch Later moved out of the legacy action
+  // bar into the Watch page's Save menu — the page had two "Save"
+  // controls and a dead Share icon. The toggle itself is unchanged
+  // (same legacy watch-later endpoint), only its home moved.
+  it("saves and unsaves a video via watch-later from the Save menu", async () => {
     const user = userEvent.setup();
-    renderButtons();
-    await user.click(await screen.findByText("Save"));
+    renderWithProviders(<SaveMenu videoid="vid1" />, {
+      session: testSession,
+    });
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Watch later" }),
+    );
     await waitFor(() => expect(captured.addWatchLater).toHaveLength(1));
     expect(captured.addWatchLater[0]).toEqual({
       videoid: "vid1",
       viewer: "user1",
     });
 
-    await user.click(await screen.findByText("Saved"));
+    await user.click(
+      await screen.findByRole("button", { name: "✓ Watch later" }),
+    );
     await waitFor(() => expect(captured.deleteWatchLater).toHaveLength(1));
     expect(captured.deleteWatchLater[0]).toEqual({
       videoid: "vid1",

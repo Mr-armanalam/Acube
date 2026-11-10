@@ -361,7 +361,7 @@ real aggregate from the seed, labelled demo test data in the UI
 | CC / HD buttons | Explicit cut | No captions or renditions exist. Needs Arman's decision. |
 | Chapters (list, ticks, gesture map, keyboard J/L/CC) | Explicit cut | No chapter data exists; chapter ticks were removed rather than faked. Player has no chapter list, gesture hints, or chapter shortcuts. Needs Arman's decision if chapters are wanted. |
 | Autoplay toggle in showcase | Differs | Preview shows "Autoplay ON"; implementation has Play all / Shuffle off / Loop off / Save a copy — no Autoplay control. |
-| Duplicate Save/Share | Differs | Two Save + Share rows render (legacy action row and the Phase 5 pill row). |
+| Duplicate Save/Share | Fixed in verification close-out | Legacy bar's Watch-Later Save and dead Share icon removed; Watch Later moved into the Save menu (same legacy endpoint, covered by the moved likeSave test). One Save menu + one working Share button now render. `watch.png` re-taken by the Phase 5 e2e run after the fix. |
 | Counts | Demo data | Comments 6 on this video (preview: 24); playlist 3/4 watched (preview: 4/6). |
 
 **I · History** — `phase5-history-full.png`
@@ -443,15 +443,16 @@ fixed and tested. What still differs, plainly:
    (no referrer stored), comment heart backend (session-local only),
    banner/avatar file upload (preview-only, no endpoint), chapters
    (no chapter data).
-2. **Nine remaining UI diffs (no decision needed, just work):**
+2. **Eight remaining UI diffs (no decision needed, just work):**
    mobile Content table overflow (547 px), mobile Settings Links
    overflow (580 px), Content "View analytics" overlapping
-   Delete/Restore, duplicate Save/Share on Watch, Draft listed in
+   Delete/Restore, Draft listed in
    Top videos (Dashboard + Analytics), Comments list-not-table with
    no Unreplied filter and no pinned badge in the inbox, no
    handle-availability check, no Autoplay toggle, History missing
-   per-row like/save annotations. None blocks the PR; all are visible
-   in the screenshots.
+   per-row like/save annotations. (The ninth, duplicate Save/Share
+   on Watch, was fixed in the verification close-out — see §8.7.)
+   None blocks the PR; all are visible in the screenshots.
 3. **Demo-data differences:** per-channel totals (613 vs preview's
    1503), illustrative titles/names, all-"less than a minute ago" /
    "7 minutes ago" timestamps, blank/broken `example.com` media.
@@ -470,3 +471,28 @@ for that call. `ci.yml` + screenshots still need Arman's local push
 (connector cannot push binaries/workflow files) — noted in the PR
 body when updating PR #2.
 
+
+### 8.7 Verification close-out (coordinator, after §8)
+
+- **Duplicate Save/Share on Watch — FIXED.** The legacy action bar
+  (`Likewatchlatersavebtns`) rendered a Watch-Later "Save" toggle and
+  a Share icon with no handler, next to the Phase 5 Save menu
+  ("Save to library" + playlists) and the working Share button.
+  Watch Later moved into the Save menu (same legacy
+  `POST /video/watchlater` endpoint, same viewer-scoped toggle, with
+  a local override so the label does not flip back after refetch);
+  the legacy bar keeps Like / Dislike / Thanks / Download only. The
+  likeSave test moved with the toggle (Save menu, "Watch later" /
+  "✓ Watch later") — 4/4 pass. `watch.png` re-taken by the Phase 5
+  e2e run after the fix.
+- **Final uncached re-run after the fix:** `pnpm test --force`
+  API 181/181 (11 files) + web 107/107 (16 files) = 288, exit 0;
+  lint 0 errors / 7 warnings (pre-existing); typecheck 3/3; build
+  exit 0; Playwright Phase 5 e2e 10/10; Phase 4 e2e 14 passed,
+  1 skipped. No flakes in this run. `/tmp` cleaned of orphaned
+  `mongo-mem-*` dirs before the e2e runs.
+- **§8.6(2) is now eight remaining UI diffs** (duplicate Save/Share
+  removed from the list); §8.6(1) six explicit cuts are unchanged
+  and still need Arman's decision. The verdict stands: **not "no
+  single difference"** — the remaining diffs are listed in §8.3/§8.6,
+  none hidden.
