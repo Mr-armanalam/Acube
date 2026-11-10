@@ -123,14 +123,6 @@ export const handlePaymentStatusSchema = z.object({
 });
 // No body fields are read by these handlers; any object body is accepted.
 export const emptyBodySchema = z.object({});
-export const uploadVideoBodySchema = z.object({
-    title: nonEmptyString,
-    chanel: nonEmptyString,
-    // Phase 3b: `uploader` is ignored server-side — the uploader is
-    // req.userid (see Controllers/video.js). Kept in the schema only so
-    // older clients are not rejected for sending it.
-    uploader: z.string().optional(),
-});
 // Phase 3b: liking is a toggle, not an absolute count. The client sends
 // { action: "like" | "unlike" } and the server $inc's the counter by
 // +1 / -1 (floored at 0). A body like { Like: 5 } is 400 — absolute
@@ -145,6 +137,43 @@ export const videoIdParamSchema = z.object({ id: objectId });
 // Phase 5 fix: "draft" joins the enum — a draft is visible to its owner
 // only (same rule as private) and never appears in feeds/search.
 export const visibilitySchema = z.enum(["public", "unlisted", "private", "draft"]);
+// POST /video/uploadvideo (multipart FormData — every field arrives as
+// a string). Phase 5 fix: description / tags / visibility / thumbnailUrl
+// are part of the validated body now — before this they were stripped by
+// validateBody and the upload silently dropped them, so "Save as draft"
+// created a public video with no description or tags. `tags` arrives as
+// one comma-separated string from FormData (or an array from a JSON
+// client); it is normalised to a trimmed string[] (max 20, each max 50).
+// visibility defaults to "public" when omitted.
+export const uploadVideoBodySchema = z.object({
+    title: nonEmptyString,
+    chanel: nonEmptyString,
+    // Phase 3b: `uploader` is ignored server-side — the uploader is
+    // req.userid (see Controllers/video.js). Kept in the schema only so
+    // older clients are not rejected for sending it.
+    uploader: z.string().optional(),
+    description: z.string().max(5000).optional(),
+    tags: z
+        .union([
+        z.string(),
+        z.array(z.string().min(1, "must not be empty").max(50)),
+    ])
+        .optional()
+        .transform((v) => {
+        if (v === undefined)
+            return undefined;
+        // A JSON client may send an array whose elements themselves
+        // carry commas ("a, b") — split those too, so every input
+        // normalises the same way as the FormData string.
+        const raw = typeof v === "string" ? v.split(",") : v.flatMap((t) => t.split(","));
+        return raw
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0)
+            .slice(0, 20);
+    }),
+    visibility: visibilitySchema.optional(),
+    thumbnailUrl: z.string().url("must be a valid URL").max(1000).optional(),
+});
 // PATCH /video/:id — title / visibility / description / tags /
 // thumbnailUrl / durationSec only (updateVideoSchema is strict: any
 // other field is 400). At least one field is required. Views, Like and

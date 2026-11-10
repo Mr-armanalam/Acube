@@ -521,6 +521,59 @@ export const getPlaylist = async (req, res, next) => {
   }
 };
 
+// Phase 5 fix: public playlists containing one video, for the Watch
+// page's playlist showcase. The Watch page used to find the showcase
+// in the OWNER-only GET /studio/playlists list, so it only ever
+// rendered for the channel owner — every other viewer saw no playlist
+// section at all, although the preview shows it to viewers. Only
+// `public` playlists are revealed here: an unlisted playlist stays
+// link-only and a private one stays owner-only, exactly like the
+// public playlist read. Member videos use the same videoVisibleTo
+// rule as GET /studio/playlists/:id, and a playlist whose videos are
+// all invisible to this viewer is omitted. The video itself follows
+// the same 404 rules as the suggestions endpoint (missing, deleted,
+// or private/draft for a non-owner → 404).
+export const getPlaylistsForVideo = async (req, res, next) => {
+  try {
+    const video = await Videofile.findById(req.params.id).lean();
+    if (!video || video.deletedAt != null) {
+      return res.status(404).json(NOT_FOUND("Video not found"));
+    }
+    const viewerId = req.userid != null ? String(req.userid) : null;
+    const isOwner =
+      viewerId != null && String(video.videochanel) === viewerId;
+    const visibility = video.visibility ?? "public";
+    if ((visibility === "private" || visibility === "draft") && !isOwner) {
+      return res.status(404).json(NOT_FOUND("Video not found"));
+    }
+    const playlists = await Playlist.find({
+      videoIds: String(video._id),
+      visibility: "public",
+    })
+      .sort({ createdAt: -1, _id: -1 })
+      .lean();
+    const items = [];
+    for (const playlist of playlists) {
+      const videos = playlist.videoIds.length
+        ? await Videofile.find({ _id: { $in: playlist.videoIds } }).lean()
+        : [];
+      const byId = new Map(videos.map((v) => [String(v._id), v]));
+      const ordered = playlist.videoIds
+        .map((id) => byId.get(String(id)))
+        .filter((v) => v && videoVisibleTo(v, viewerId));
+      if (ordered.length === 0) continue;
+      items.push({
+        ...playlist,
+        videoCount: playlist.videoIds.length,
+        videos: ordered,
+      });
+    }
+    return res.status(200).json({ items });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 export const createPlaylist = async (req, res, next) => {
   try {
     const owner = String(req.userid);

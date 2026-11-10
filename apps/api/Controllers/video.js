@@ -54,12 +54,36 @@ export const uploadvideo = async (req, res) => {
         uploader: uploader.username ?? uploader.name ?? uploader.email,
         duration: video.duration ?? null,
         thumbnail: video.thumbnail_url ?? null,
+        // Phase 5 fix: persist the wizard's details on the created
+        // video. These arrive validated by uploadVideoBodySchema
+        // (validateBody runs before this controller); before this fix
+        // they were stripped there and silently dropped, so a "Save as
+        // draft" upload became a public video with no description/tags.
+        // durationSec mirrors the Cloudinary duration under the
+        // contract field name (duration keeps the legacy name).
+        description: req.body.description ?? "",
+        tags: req.body.tags ?? [],
+        visibility: req.body.visibility ?? "public",
+        thumbnailUrl: req.body.thumbnailUrl ?? null,
+        durationSec: video.duration ?? null,
       });
       // console.log(file)
       await file.save();
       // Phase 5: a new upload changes the creator's Studio totals.
       invalidateChannelCache(String(req.body.chanel));
-      res.status(200).send("File uploaded successfully");
+      // Phase 5 fix: return the created video id (JSON, not bare text)
+      // so the upload wizard can link to the new video and PATCH it.
+      res.status(200).json({
+        message: "File uploaded successfully",
+        video: {
+          id: String(file._id),
+          videotitle: file.videotitle,
+          visibility: file.visibility,
+          description: file.description,
+          tags: file.tags,
+          thumbnailUrl: file.thumbnailUrl,
+        },
+      });
     } catch (error) {
       res.status(404).json(error.message);
       return;

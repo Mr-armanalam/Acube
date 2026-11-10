@@ -99,8 +99,12 @@ export const getallhistorycontroller=async(req,res)=>{
         // Phase 5 fix: each row also carries durationSec (the video's
         // durationSec ?? duration) so the client can render progress
         // as a fraction; progressSec is stored on the row itself.
+        // Phase 5 fix: newest first — the History page groups by day
+        // with Today on top (preview screen I: "newest first"). The
+        // list used to sort oldest-first, so Yesterday rendered above
+        // Today.
         const page = await paginate(
-            history.find({ viewer: String(req.userid) }).sort({ likedon: 1, _id: 1 }),
+            history.find({ viewer: String(req.userid) }).sort({ likedon: -1, _id: -1 }),
             paginationOf(req),
         );
         // Legacy history rows can hold non-ObjectId videoids ("vid-1"

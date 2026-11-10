@@ -24,6 +24,31 @@ describe("history / watchlater / likedvideo", () => {
     expect(await History.countDocuments({ viewer: String(user._id) })).toBe(0);
   });
 
+  it("GET /video/getallhistory lists newest first", async () => {
+    const user = await createUser();
+    const now = Date.now();
+    await History.create({
+      videoid: "vid-old",
+      viewer: String(user._id),
+      likedon: new Date(now - 24 * 60 * 60 * 1000),
+    });
+    await History.create({
+      videoid: "vid-new",
+      viewer: String(user._id),
+      likedon: new Date(now),
+    });
+    const listed = await api
+      .get("/video/getallhistory")
+      .set(authHeader(user));
+    expect(listed.status).toBe(200);
+    // Phase 5 fix: newest first (preview screen I) — Today groups
+    // above Yesterday on the History page.
+    expect(listed.body.items.map((h) => h.videoid)).toEqual([
+      "vid-new",
+      "vid-old",
+    ]);
+  });
+
   it("POST /video/watchlater + GET + DELETE round-trip", async () => {
     const user = await createUser();
     const added = await api

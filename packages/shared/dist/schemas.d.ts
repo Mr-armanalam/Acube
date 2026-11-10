@@ -76,11 +76,6 @@ export declare const handlePaymentStatusSchema: z.ZodObject<{
     sessionId: z.ZodString;
 }, z.core.$strip>;
 export declare const emptyBodySchema: z.ZodObject<{}, z.core.$strip>;
-export declare const uploadVideoBodySchema: z.ZodObject<{
-    title: z.ZodString;
-    chanel: z.ZodString;
-    uploader: z.ZodOptional<z.ZodString>;
-}, z.core.$strip>;
 export declare const likeVideoSchema: z.ZodObject<{
     action: z.ZodEnum<{
         like: "like";
@@ -96,6 +91,20 @@ export declare const visibilitySchema: z.ZodEnum<{
     private: "private";
     draft: "draft";
 }>;
+export declare const uploadVideoBodySchema: z.ZodObject<{
+    title: z.ZodString;
+    chanel: z.ZodString;
+    uploader: z.ZodOptional<z.ZodString>;
+    description: z.ZodOptional<z.ZodString>;
+    tags: z.ZodPipe<z.ZodOptional<z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>>, z.ZodTransform<string[] | undefined, string | string[] | undefined>>;
+    visibility: z.ZodOptional<z.ZodEnum<{
+        public: "public";
+        unlisted: "unlisted";
+        private: "private";
+        draft: "draft";
+    }>>;
+    thumbnailUrl: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
 export declare const updateVideoSchema: z.ZodObject<{
     title: z.ZodOptional<z.ZodString>;
     visibility: z.ZodOptional<z.ZodEnum<{

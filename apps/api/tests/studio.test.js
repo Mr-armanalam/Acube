@@ -719,6 +719,116 @@ describe("playlists", () => {
   });
 });
 
+// Phase 5 fix: the Watch page's playlist showcase reads the PUBLIC
+// GET /watch/:id/playlists (any viewer), not the owner-only
+// /studio/playlists list — before this the showcase only rendered
+// for the channel owner.
+describe("GET /watch/:id/playlists (Watch playlist showcase)", () => {
+  it("returns the public playlists containing the video, for any viewer", async () => {
+    const owner = await createUser();
+    const viewer = await createUser();
+    const v1 = await ownVideo(owner);
+    const v2 = await ownVideo(owner);
+    const playlist = await Playlist.create({
+      owner: String(owner._id),
+      title: "Learning Path",
+      visibility: "public",
+      videoIds: [String(v1._id), String(v2._id)],
+    });
+    // A public playlist by someone else containing this video DOES
+    // appear (visibility, not ownership, decides); an unlisted one by
+    // the owner does NOT.
+    await Playlist.create({
+      owner: String(viewer._id),
+      title: "Other list",
+      visibility: "public",
+      videoIds: [String(v1._id)],
+    });
+    await Playlist.create({
+      owner: String(owner._id),
+      title: "Secret list",
+      visibility: "unlisted",
+      videoIds: [String(v1._id)],
+    });
+    // Anonymous (no token) and a non-owner both see the showcase.
+    const anon = await api.get(`/watch/${v1._id}/playlists`);
+    expect(anon.status).toBe(200);
+    expect(anon.body.items).toHaveLength(2);
+    expect(anon.body.items.map((p) => p.title).sort()).toEqual([
+      "Learning Path",
+      "Other list",
+    ]);
+    const learning = anon.body.items.find((p) => p.title === "Learning Path");
+    expect(learning._id).toBe(String(playlist._id));
+    expect(learning.videos).toHaveLength(2);
+    expect(learning.videos.map((v) => String(v._id))).toEqual([
+      String(v1._id),
+      String(v2._id),
+    ]);
+    const asViewer = await api
+      .get(`/watch/${v1._id}/playlists`)
+      .set(authHeader(viewer));
+    expect(asViewer.status).toBe(200);
+    expect(asViewer.body.items).toHaveLength(2);
+  });
+
+  it("reveals no private playlist, hides invisible member videos, empty when in none", async () => {
+    const owner = await createUser();
+    const viewer = await createUser();
+    const v1 = await ownVideo(owner);
+    const ownPrivate = await ownVideo(owner, { visibility: "private" });
+    await Playlist.create({
+      owner: String(owner._id),
+      title: "Private list",
+      visibility: "private",
+      videoIds: [String(v1._id)],
+    });
+    await Playlist.create({
+      owner: String(owner._id),
+      title: "Mixed list",
+      visibility: "public",
+      videoIds: [String(v1._id), String(ownPrivate._id)],
+    });
+    // The private playlist is not revealed; the public one's private
+    // member video is hidden from a non-owner (but visible to the owner).
+    const asViewer = await api
+      .get(`/watch/${v1._id}/playlists`)
+      .set(authHeader(viewer));
+    expect(asViewer.status).toBe(200);
+    expect(asViewer.body.items).toHaveLength(1);
+    expect(asViewer.body.items[0].title).toBe("Mixed list");
+    expect(asViewer.body.items[0].videos).toHaveLength(1);
+    expect(String(asViewer.body.items[0].videos[0]._id)).toBe(String(v1._id));
+    const asOwner = await api
+      .get(`/watch/${v1._id}/playlists`)
+      .set(authHeader(owner));
+    expect(asOwner.body.items[0].videos).toHaveLength(2);
+    // A video in no public playlist → empty items, still 200.
+    const lonely = await ownVideo(owner);
+    const empty = await api.get(`/watch/${lonely._id}/playlists`);
+    expect(empty.status).toBe(200);
+    expect(empty.body.items).toEqual([]);
+  });
+
+  it("404s for a missing video, a soft-deleted video, and a private video for a non-owner", async () => {
+    const owner = await createUser();
+    const viewer = await createUser();
+    const missing = new mongoose.Types.ObjectId();
+    expect((await api.get(`/watch/${missing}/playlists`)).status).toBe(404);
+    const gone = await ownVideo(owner, { deletedAt: new Date() });
+    expect((await api.get(`/watch/${gone._id}/playlists`)).status).toBe(404);
+    const priv = await ownVideo(owner, { visibility: "private" });
+    const asViewer = await api
+      .get(`/watch/${priv._id}/playlists`)
+      .set(authHeader(viewer));
+    expect(asViewer.status).toBe(404);
+    const asOwner = await api
+      .get(`/watch/${priv._id}/playlists`)
+      .set(authHeader(owner));
+    expect(asOwner.status).toBe(200);
+  });
+});
+
 describe("GET / POST / DELETE /studio/library", () => {
   it("saved entries plus legacy watch-later/liked rows, combined", async () => {
     const user = await createUser();
