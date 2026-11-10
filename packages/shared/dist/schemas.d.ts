@@ -32,6 +32,7 @@ export declare const commentListQuerySchema: z.ZodObject<{
     page: z.ZodDefault<z.ZodCoercedNumber<unknown>>;
     limit: z.ZodPipe<z.ZodOptional<z.ZodCoercedNumber<unknown>>, z.ZodTransform<number, number | undefined>>;
     videoid: z.ZodOptional<z.ZodString>;
+    parentId: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export declare const chatUserSchema: z.ZodObject<{
     searchquery: z.ZodOptional<z.ZodString>;
@@ -62,6 +63,7 @@ export declare const postCommentSchema: z.ZodObject<{
     userid: z.ZodOptional<z.ZodString>;
     commentbody: z.ZodString;
     usercommented: z.ZodOptional<z.ZodString>;
+    parentId: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export declare const commentIdParamSchema: z.ZodObject<{
     id: z.ZodString;
@@ -88,6 +90,75 @@ export declare const likeVideoSchema: z.ZodObject<{
 export declare const videoIdParamSchema: z.ZodObject<{
     id: z.ZodString;
 }, z.core.$strip>;
+export declare const visibilitySchema: z.ZodEnum<{
+    public: "public";
+    unlisted: "unlisted";
+    private: "private";
+}>;
+export declare const updateVideoSchema: z.ZodObject<{
+    title: z.ZodOptional<z.ZodString>;
+    visibility: z.ZodOptional<z.ZodEnum<{
+        public: "public";
+        unlisted: "unlisted";
+        private: "private";
+    }>>;
+}, z.core.$strict>;
+export declare const studioAnalyticsQuerySchema: z.ZodObject<{
+    range: z.ZodDefault<z.ZodEnum<{
+        7: "7";
+        28: "28";
+        90: "90";
+    }>>;
+}, z.core.$strip>;
+export declare const studioSettingsSchema: z.ZodObject<{
+    name: z.ZodOptional<z.ZodString>;
+    desc: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+export declare const playlistIdParamSchema: z.ZodObject<{
+    id: z.ZodString;
+}, z.core.$strip>;
+export declare const createPlaylistSchema: z.ZodObject<{
+    title: z.ZodString;
+    description: z.ZodOptional<z.ZodString>;
+    visibility: z.ZodDefault<z.ZodEnum<{
+        public: "public";
+        unlisted: "unlisted";
+        private: "private";
+    }>>;
+    videoIds: z.ZodDefault<z.ZodArray<z.ZodString>>;
+}, z.core.$strip>;
+export declare const updatePlaylistSchema: z.ZodObject<{
+    title: z.ZodOptional<z.ZodString>;
+    description: z.ZodOptional<z.ZodString>;
+    visibility: z.ZodOptional<z.ZodEnum<{
+        public: "public";
+        unlisted: "unlisted";
+        private: "private";
+    }>>;
+    addVideoIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    removeVideoIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
+}, z.core.$strip>;
+export declare const libraryKindSchema: z.ZodEnum<{
+    watchlater: "watchlater";
+    saved: "saved";
+    liked: "liked";
+}>;
+export declare const libraryEntrySchema: z.ZodObject<{
+    videoid: z.ZodString;
+    kind: z.ZodEnum<{
+        watchlater: "watchlater";
+        saved: "saved";
+        liked: "liked";
+    }>;
+}, z.core.$strip>;
+export declare const libraryEntryParamSchema: z.ZodObject<{
+    kind: z.ZodEnum<{
+        watchlater: "watchlater";
+        saved: "saved";
+        liked: "liked";
+    }>;
+    videoid: z.ZodString;
+}, z.core.$strip>;
 export declare const historyEntrySchema: z.ZodObject<{
     videoid: z.ZodString;
     viewer: z.ZodString;
@@ -108,6 +179,12 @@ export type CreatePaymentRequestInput = z.infer<typeof createPaymentRequestSchem
 export type HandlePaymentStatusInput = z.infer<typeof handlePaymentStatusSchema>;
 export type UploadVideoBodyInput = z.infer<typeof uploadVideoBodySchema>;
 export type PostCommentInput = z.infer<typeof postCommentSchema>;
+export type UpdateVideoInput = z.infer<typeof updateVideoSchema>;
+export type StudioAnalyticsQueryInput = z.infer<typeof studioAnalyticsQuerySchema>;
+export type StudioSettingsInput = z.infer<typeof studioSettingsSchema>;
+export type CreatePlaylistInput = z.infer<typeof createPlaylistSchema>;
+export type UpdatePlaylistInput = z.infer<typeof updatePlaylistSchema>;
+export type LibraryEntryInput = z.infer<typeof libraryEntrySchema>;
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
 export type SendGroupMessageInput = z.infer<typeof sendGroupMessageSchema>;

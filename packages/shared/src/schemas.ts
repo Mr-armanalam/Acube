@@ -87,6 +87,10 @@ export const paginationQuerySchema = z.object({
 // Comment list additionally accepts an optional ?videoid= filter.
 export const commentListQuerySchema = paginationQuerySchema.extend({
   videoid: z.string().optional(),
+  // Phase 5: fetch only the direct replies of one comment. Omit it to
+  // get the flat list (every item carries its parentId, so clients can
+  // thread top-level comments + replies themselves).
+  parentId: z.string().optional(),
 });
 
 export const chatUserSchema = z.object({
@@ -119,6 +123,10 @@ export const postCommentSchema = z.object({
   userid: z.string().optional(),
   commentbody: nonEmptyString,
   usercommented: z.string().optional(),
+  // Phase 5: nested comments. parentId must reference a comment on the
+  // same video (enforced in the controller — a missing / other-video /
+  // deleted parent is 400). Top-level when omitted.
+  parentId: objectId.optional(),
 });
 
 export const commentIdParamSchema = z.object({ id: objectId });
@@ -162,6 +170,82 @@ export const likeVideoSchema = z.object({
 
 export const videoIdParamSchema = z.object({ id: objectId });
 
+// Phase 5 — Creator Studio (see PHASE5_PLAN.md Reconciliation).
+// Visibility: public = in feeds/search; unlisted = direct link only;
+// private = owner only (other viewers get 404, not 403).
+export const visibilitySchema = z.enum(["public", "unlisted", "private"]);
+
+// PATCH /video/:id — only title (1–100 chars) and/or visibility are
+// writable. Strict: any other field (views, Like, …) is 400, not
+// silently stripped. At least one of the two is required.
+export const updateVideoSchema = z
+  .object({
+    title: z.string().min(1, "must not be empty").max(100).optional(),
+    visibility: visibilitySchema.optional(),
+  })
+  .strict()
+  .refine((v) => v.title !== undefined || v.visibility !== undefined, {
+    message: "at least one of title or visibility is required",
+  });
+
+// GET /studio/analytics?range=7|28|90 (default 28). Anything else is 400.
+export const studioAnalyticsQuerySchema = z.object({
+  range: z.enum(["7", "28", "90"]).default("28"),
+});
+
+// PATCH /studio/settings — the caller's own channel (name/desc). Reuses
+// the channel-edit fields; at least one is required.
+export const studioSettingsSchema = z
+  .object({
+    name: z.string().min(1, "must not be empty").max(100).optional(),
+    desc: z.string().max(500).optional(),
+  })
+  .refine((v) => v.name !== undefined || v.desc !== undefined, {
+    message: "at least one of name or desc is required",
+  });
+
+export const playlistIdParamSchema = z.object({ id: objectId });
+
+export const createPlaylistSchema = z.object({
+  title: z.string().min(1, "must not be empty").max(100),
+  description: z.string().max(500).optional(),
+  visibility: visibilitySchema.default("public"),
+  videoIds: z.array(objectId).default([]),
+});
+
+// PATCH /studio/playlists/:id — scalar edits and/or add/remove videoIds.
+// At least one field is required.
+export const updatePlaylistSchema = z
+  .object({
+    title: z.string().min(1, "must not be empty").max(100).optional(),
+    description: z.string().max(500).optional(),
+    visibility: visibilitySchema.optional(),
+    addVideoIds: z.array(objectId).optional(),
+    removeVideoIds: z.array(objectId).optional(),
+  })
+  .refine(
+    (v) =>
+      v.title !== undefined ||
+      v.description !== undefined ||
+      v.visibility !== undefined ||
+      v.addVideoIds !== undefined ||
+      v.removeVideoIds !== undefined,
+    { message: "at least one field is required" },
+  );
+
+export const libraryKindSchema = z.enum(["watchlater", "saved", "liked"]);
+
+// POST /studio/library — add one video to one library tab.
+export const libraryEntrySchema = z.object({
+  videoid: objectId,
+  kind: libraryKindSchema,
+});
+
+export const libraryEntryParamSchema = z.object({
+  kind: libraryKindSchema,
+  videoid: objectId,
+});
+
 export const historyEntrySchema = z.object({
   videoid: nonEmptyString,
   viewer: nonEmptyString,
@@ -193,6 +277,14 @@ export type HandlePaymentStatusInput = z.infer<
 >;
 export type UploadVideoBodyInput = z.infer<typeof uploadVideoBodySchema>;
 export type PostCommentInput = z.infer<typeof postCommentSchema>;
+export type UpdateVideoInput = z.infer<typeof updateVideoSchema>;
+export type StudioAnalyticsQueryInput = z.infer<
+  typeof studioAnalyticsQuerySchema
+>;
+export type StudioSettingsInput = z.infer<typeof studioSettingsSchema>;
+export type CreatePlaylistInput = z.infer<typeof createPlaylistSchema>;
+export type UpdatePlaylistInput = z.infer<typeof updatePlaylistSchema>;
+export type LibraryEntryInput = z.infer<typeof libraryEntrySchema>;
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
 export type SendGroupMessageInput = z.infer<typeof sendGroupMessageSchema>;

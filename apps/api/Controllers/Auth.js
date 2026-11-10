@@ -8,6 +8,7 @@ import {
   POINTS_PER_WATCH_COMPLETE,
 } from "@acube/shared";
 import { verifyGoogleIdToken } from "../utils/googleAuth.js";
+import { recordWatchComplete } from "../utils/analytics.js";
 
 // Phase 3a: login no longer trusts body email/name/picture. It succeeds
 // with EITHER a Google ID token verified server-side against
@@ -149,6 +150,12 @@ export const watchComplete = async (req, res) => {
     if (!video) {
       return res.status(404).json({ error: "Video not found" });
     }
+
+    // Phase 5: every completed watch writes the analytics event
+    // (completions +1, watchMinutes += min(duration, 600)/60) — even
+    // when the points cap below is already reached, the watch happened.
+    // See utils/analytics.js.
+    await recordWatchComplete({ viewer: userId, video });
 
     const day = new Date().toISOString().slice(0, 10);
     const alreadyAwarded = await PointsAward.aggregate([

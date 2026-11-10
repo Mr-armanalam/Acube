@@ -1,5 +1,6 @@
 import videofile from "../Models/videofile.js";
 import mongoose from "mongoose";
+import { recordLikeDelta } from "../utils/analytics.js";
 
 // Phase 3b: likes are a TOGGLE, not an absolute count. The old code did
 // `$set: { Like }` with a client-supplied number, so any caller could
@@ -37,6 +38,9 @@ export const likevideocontroller = async (req, res, next) => {
         if (!updatelike) {
             return res.status(404).send("video unavailable..")
         }
+        // Phase 5: the toggle also moves the channel's daily likes
+        // (+1 / -1, clamped at 0) — see utils/analytics.js.
+        await recordLikeDelta({ video: updatelike, delta });
         res.status(200).json(updatelike)
     } catch (error) {
         // Phase 1: Express 5 removed the two-arg res.json(body, status)

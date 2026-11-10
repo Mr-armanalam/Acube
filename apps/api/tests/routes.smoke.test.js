@@ -52,7 +52,7 @@ vi.mock("stripe", () => ({
   },
 }));
 
-// Smoke test: every route in the API (38) plus GET / and GET /health (40
+// Smoke test: every route in the API (55) plus GET / and GET /health (57
 // endpoints total) is hit once with a valid-shaped request and must answer
 // with its expected status — never a 404 "route not found" and never a 500
 // crash. Auth-required routes are also hit without a token and must 401.
@@ -64,7 +64,12 @@ vi.mock("stripe", () => ({
 // empty body is 400 (a session id is required since 3b), and the new
 // routes GET /user/me, POST /user/watch-complete and
 // POST /download/webhook are covered.
-describe("route smoke test — all 40 endpoints", () => {
+// Phase 5 changes pinned here: GET /video/:id is public (200 for a
+// public video), PATCH/DELETE /video/:id need an owned video (the
+// seeded video's channel is "test-channel", so a second video owned by
+// userA is used), and the 14 /studio/* routes are covered —
+// GET /studio/playlists/:id is the one public studio route.
+describe("route smoke test — all 57 endpoints", () => {
   it("every route responds with its expected status", async () => {
     const userA = await createUser();
     const userB = await createUser();
@@ -102,6 +107,18 @@ describe("route smoke test — all 40 endpoints", () => {
 
     const uid = String(userA._id);
     const vid = String(video._id);
+    // Phase 5: a video owned by userA (videochanel = their id) for the
+    // PATCH/DELETE /video/:id rows — the seeded video belongs to the
+    // "test-channel" fixture, so userA cannot edit it.
+    const ownedVideo = await createVideo({ videochanel: uid });
+    const ownedVid = String(ownedVideo._id);
+    // Phase 5: a playlist owned by userA for the playlist :id rows.
+    const playlistRes = await api
+      .post("/studio/playlists")
+      .set(headersA)
+      .send({ title: "Smoke playlist", videoIds: [vid] });
+    expect(playlistRes.status).toBe(201);
+    const playlistId = playlistRes.body._id;
 
     // [method, path, headers-or-null, body-or-null, expectedStatus]
     const table = [
@@ -146,10 +163,28 @@ describe("route smoke test — all 40 endpoints", () => {
       ["POST", "/video/likevideo", headersA, { videoid: vid, viewer: uid }, 200],
       ["GET", "/video/getalllikevide", headersA, null, 200],
       ["DELETE", `/video/deletelikevideo/${vid}/${uid}`, headersA, null, 200],
+      ["GET", `/video/${vid}`, null, null, 200],
+      ["PATCH", `/video/${ownedVid}`, headersA, { title: "Smoke edit" }, 200],
+      ["GET", "/studio/overview", headersA, null, 200],
+      ["GET", "/studio/analytics?range=7", headersA, null, 200],
+      ["GET", "/studio/videos", headersA, null, 200],
+      ["GET", "/studio/comments", headersA, null, 200],
+      ["GET", "/studio/settings", headersA, null, 200],
+      ["PATCH", "/studio/settings", headersA, { name: "Smoke Studio" }, 200],
+      ["GET", "/studio/playlists", headersA, null, 200],
+      ["POST", "/studio/playlists", headersA, { title: "Smoke list" }, 201],
+      ["GET", `/studio/playlists/${playlistId}`, null, null, 200],
+      ["PATCH", `/studio/playlists/${playlistId}`, headersA, { title: "Smoke renamed" }, 200],
+      ["GET", "/studio/library", headersA, null, 200],
+      ["POST", "/studio/library", headersA, { videoid: vid, kind: "saved" }, 200],
+      ["DELETE", `/studio/library/saved/${vid}`, headersA, null, 200],
+      ["DELETE", `/studio/playlists/${playlistId}`, headersA, null, 200],
+      // DELETE /video/:id last — it removes the owned video.
+      ["DELETE", `/video/${ownedVid}`, headersA, null, 200],
     ];
 
-    // 38 API routes + GET / + GET /health = 40 endpoints.
-    expect(table).toHaveLength(40);
+    // 55 API routes + GET / + GET /health = 57 endpoints.
+    expect(table).toHaveLength(57);
 
     for (const [method, path, headers, body, expected] of table) {
       let req = api[method.toLowerCase()](path);
@@ -209,9 +244,24 @@ describe("route smoke test — all 40 endpoints", () => {
       ["POST", "/video/likevideo", { videoid: vid, viewer: uid }],
       ["GET", "/video/getalllikevide", null],
       ["DELETE", `/video/deletelikevideo/${vid}/${uid}`, null],
+      ["PATCH", `/video/${vid}`, { title: "x" }],
+      ["DELETE", `/video/${vid}`, null],
+      ["GET", "/studio/overview", null],
+      ["GET", "/studio/analytics?range=7", null],
+      ["GET", "/studio/videos", null],
+      ["GET", "/studio/comments", null],
+      ["GET", "/studio/settings", null],
+      ["PATCH", "/studio/settings", { name: "x" }],
+      ["GET", "/studio/playlists", null],
+      ["POST", "/studio/playlists", { title: "x" }],
+      ["PATCH", `/studio/playlists/${validId}`, { title: "x" }],
+      ["DELETE", `/studio/playlists/${validId}`, null],
+      ["GET", "/studio/library", null],
+      ["POST", "/studio/library", { videoid: vid, kind: "saved" }],
+      ["DELETE", `/studio/library/saved/${vid}`, null],
     ];
 
-    expect(unauthenticated).toHaveLength(31);
+    expect(unauthenticated).toHaveLength(46);
 
     for (const [method, path, body] of unauthenticated) {
       let req = api[method.toLowerCase()](path);

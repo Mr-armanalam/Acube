@@ -1,18 +1,25 @@
 import express from "express";
 import { likevideocontroller } from "../Controllers/like.js";
 import { viewscontroller } from "../Controllers/views.js";
-import { uploadvideo, getallvideos } from "../Controllers/video.js";
-import { historycontroller, deletehistory, getallhistorycontroller } from "../Controllers/History.js";
+import {
+  uploadvideo,
+  getallvideos,
+  getVideoById,
+  updateVideo,
+  deleteVideo,
+} from "../Controllers/video.js";
+import { historycontroller, deletehistory, deletehistoryitem, getallhistorycontroller } from "../Controllers/History.js";
 import { watchlatercontroller, getallwatchlatervontroller, deletewatchlater } from "../Controllers/watchlater.js";
 import { likedvideocontroller, getalllikedvideo, deletelikedvideo } from "../Controllers/likedvideo.js";
 import upload from "../Helper/filehelper.js";
-import auth from "../middleware/auth.js";
+import auth, { optionalAuth } from "../middleware/auth.js";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate.js";
 import {
   deleteHistoryParamSchema,
   historyEntrySchema,
   likeVideoSchema,
   paginationQuerySchema,
+  updateVideoSchema,
   uploadVideoBodySchema,
   videoIdParamSchema,
   videoViewerParamSchema,
@@ -46,6 +53,13 @@ routes.delete(
   validateParams(deleteHistoryParamSchema),
   deletehistory,
 );
+// Phase 5: delete one history row (owner = viewer only, 403 otherwise).
+routes.delete(
+  "/deletehistory/:videoid/:viewer",
+  auth,
+  validateParams(videoViewerParamSchema),
+  deletehistoryitem,
+);
 
 routes.post("/watchlater", auth, validateBody(historyEntrySchema), watchlatercontroller);
 routes.get("/getallwatchlater", auth, validateQuery(paginationQuerySchema), getallwatchlatervontroller);
@@ -64,5 +78,21 @@ routes.delete(
   validateParams(videoViewerParamSchema),
   deletelikedvideo,
 );
+
+// Phase 5: single-video read + owner edit/delete. GET /:id is LAST on
+// purpose — it is a one-segment path, so it would swallow /getvideos,
+// /getallhistory, /getallwatchlater and /getalllikevide if it were
+// defined before them. PATCH/DELETE /:id cannot collide with
+// /like/:id or /view/:id (two segments), but they live here with the
+// GET for readability.
+routes.get("/:id", optionalAuth, validateParams(videoIdParamSchema), getVideoById);
+routes.patch(
+  "/:id",
+  auth,
+  validateParams(videoIdParamSchema),
+  validateBody(updateVideoSchema),
+  updateVideo,
+);
+routes.delete("/:id", auth, validateParams(videoIdParamSchema), deleteVideo);
 
 export default routes;

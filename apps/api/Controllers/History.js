@@ -51,3 +51,21 @@ export const deletehistory =async(req,res)=>{
         return
     }
 }
+
+// Phase 5: delete ONE history row — the viewer (req.userid) is the only
+// owner; a :viewer that is not the caller is 403, never a silent no-op.
+export const deletehistoryitem = async (req, res) => {
+    const { videoid, viewer } = req.params;
+    if (String(viewer) !== String(req.userid)) {
+        return res.status(403).json({ error: { code: "FORBIDDEN", message: "You can only remove your own history" } });
+    }
+    try {
+        const removed = await history.deleteOne({ videoid, viewer });
+        if (removed.deletedCount === 0) {
+            return res.status(404).json({ error: { code: "NOT_FOUND", message: "History entry not found" } });
+        }
+        res.status(200).json({ message: "removed from history" });
+    } catch (error) {
+        res.status(400).json(error.message);
+    }
+}

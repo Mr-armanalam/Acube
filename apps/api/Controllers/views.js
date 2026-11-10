@@ -1,5 +1,6 @@
 import videofile from "../Models/videofile.js";
 import mongoose from "mongoose";
+import { recordView } from "../utils/analytics.js";
 export const viewscontroller = async (req, res, next) => {
     const { id: _id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(_id)) {
@@ -18,6 +19,12 @@ export const viewscontroller = async (req, res, next) => {
         if (!updateview) {
             return res.status(404).send("video unavailable..");
         }
+        // Phase 5: record the view event + daily stat (deduped: one
+        // counted view per viewer per video per UTC day — see
+        // utils/analytics.js). The per-video counter above still
+        // increments on every call (Phase 3b behaviour, pinned by
+        // tests); the daily stat is the deduped count.
+        await recordView({ viewer: req.userid, video: updateview });
         res.status(200).json(updateview)
     } catch (error) {
         // Phase 1: Express 5 removed the two-arg res.json(body, status)
