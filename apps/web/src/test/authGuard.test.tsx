@@ -1,0 +1,66 @@
+import { describe, it, expect } from "vitest";
+// Auth guard (Phase 2b RequireAuth): guarded routes redirect logged-out
+// users to "/" and render for signed-in users.
+import { screen } from "@testing-library/react";
+import { renderWithProviders, testSession } from "./testUtils";
+import { InternetStatusProvider } from "../utils/internetStatusContext";
+import Allroutes from "../Allroutes";
+
+function renderRoutes(route: string, session: typeof testSession | null) {
+  return renderWithProviders(
+    <InternetStatusProvider>
+      <Allroutes
+        seteditcreatechanelbtn={() => {}}
+        setvideouploadpage={() => {}}
+      />
+    </InternetStatusProvider>,
+    { route, session },
+  );
+}
+
+describe("Auth guard", () => {
+  it("redirects a logged-out user from /Library to Home", async () => {
+    renderRoutes("/Library", null);
+    expect(
+      await screen.findByText("Python Basics Tutorial"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("History")).not.toBeInTheDocument();
+  });
+
+  it("renders /Library for a signed-in user", async () => {
+    renderRoutes("/Library", testSession);
+    expect(await screen.findByText("History")).toBeInTheDocument();
+  });
+
+  // Phase 3c: /Likedvideo, /Watchhistory and /Watchlater are behind
+  // RequireAuth too (they used to render a "Plz login" message).
+  // Logged-out users are redirected to Home; signed-in users see the
+  // list page header.
+  it.each([
+    ["/Likedvideo", "Liked Video"],
+    ["/Watchhistory", "History"],
+    ["/Watchlater", "Watch Later"],
+  ])(
+    "redirects a logged-out user from %s to Home",
+    async (route, page) => {
+      renderRoutes(route, null);
+      expect(
+        await screen.findByText("Python Basics Tutorial"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(`Your ${page} Shown Here`),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    ["/Likedvideo", "Liked Video"],
+    ["/Watchhistory", "History"],
+    ["/Watchlater", "Watch Later"],
+  ])("renders %s for a signed-in user", async (route, page) => {
+    renderRoutes(route, testSession);
+    expect(
+      await screen.findByText(`Your ${page} Shown Here`),
+    ).toBeInTheDocument();
+  });
+});

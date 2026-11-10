@@ -1,0 +1,56 @@
+{
+  "dependencies": {
+    "@acube/shared": "workspace:*",
+    "@react-oauth/google": "^0.12.1",
+    "@reduxjs/toolkit": "^2.14.0",
+    "@tanstack/react-query": "^5.107.1",
+    "axios": "^1.7.2",
+    "crypto-js": "^4.2.0",
+    "date-fns": "^4.1.0",
+    "jwt-decode": "^4.0.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-icons": "^5.2.1",
+    "react-redux": "^9.1.2",
+    "react-router": "^8.3.1",
+    "recordrtc": "^5.6.2",
+    "simple-peer": "^9.11.1",
+    "socket.io-client": "^4.8.1",
+    "web-vitals": "^5.1.0"
+  },
+  "devDependencies": {
+    "@acube/config": "workspace:*",
+    "@playwright/test": "^1.65.0",
+    "@tanstack/react-query-devtools": "^5.107.1",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.9",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^10.14.0",
+    "jsdom": "^31.0.0",
+    "msw": "^2.15.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.8",
+    "vite-plugin-node-polyfills": "^0.28.0",
+    "vitest": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=22.22.0"
+  },
+  "name": "@acube/web",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "lint": "eslint .",
+    "test:e2e": "VITE_BACKEND_URL=http://localhost:5000 VITE_CLIENT_ID=e2e-test.apps.googleusercontent.com VITE_ENCRYPTED_KEY=e2e-test-key vite build && playwright test"
+  },
+  "type": "module",
+  "version": "0.1.0"
+}

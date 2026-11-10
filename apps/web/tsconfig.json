@@ -1,0 +1,1 @@
+{"$schema":"https://json.schemastore.org/tsconfig","compilerOptions":{"allowJs":true,"checkJs":false,"jsx":"react-jsx","lib":["ES2022","DOM","DOM.Iterable"]},"extends":"@acube/config/tsconfig","include":["src","vite.config.ts"]}

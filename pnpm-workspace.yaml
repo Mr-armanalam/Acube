@@ -1,0 +1,26 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  core-js: true
+  core-js-pure: true
+  esbuild: true
+  mongodb-memory-server: true
+  msw: true
+minimumReleaseAgeExclude:
+  - express-rate-limit@8.7.4
+  - "@testing-library/user-event@14.6.9"
+# pnpm 12 blocks postinstall scripts unless approved. These four are
+# reviewed and safe:
+# - core-js / core-js-pure: postinstall only prints a banner.
+# - esbuild: postinstall installs the platform-specific binary Vite needs
+#   to run/build. Without it, `vite` fails to load.
+# - mongodb-memory-server: postinstall downloads the mongod binary used by
+#   the API test suite (apps/api/tests). Without it, tests must download
+#   the binary on first run instead.
+
+# Workspace-wide TypeScript pin (kept after the CRA removal in Phase 2a:
+# nothing here needs TS 7, and the pin keeps every workspace on one
+# compiler). Revisit if a tool ever requires TS 7.
+overrides:
+  typescript: ^5.9.3

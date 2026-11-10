@@ -1,0 +1,28 @@
+{
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "description": "Acube shared constants + Zod route schemas (API + web client)",
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@acube/config": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "default": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "name": "@acube/shared",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.0.0"
+}

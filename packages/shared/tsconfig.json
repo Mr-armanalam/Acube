@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@acube/config/tsconfig",
+  "compilerOptions": {
+    // This package SHIPS compiled output (unlike the apps, which typecheck
+    // only): the web client imports the Zod schemas and their inferred
+    // types, so the build must emit JS + .d.ts into dist/.
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    // NodeNext so the emitted ESM keeps the explicit "./constants.js"
+    // specifiers the sources use (they resolve to .ts at build time).
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
+  },
+  "include": ["src"]
+}
