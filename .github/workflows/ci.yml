@@ -1,0 +1,47 @@
+# Acube CI — runs on every pull request (and every push to the
+# feat/acube-professional-rebuild branch). Node 22, pnpm 12 with a
+# frozen lockfile, then lint -> typecheck -> test -> build.
+#
+# NOTE: this workflow is NOT verified live from this environment — CI
+# runs on GitHub, not locally. The same commands are verified locally
+# in PHASE3_REPORT.md (pnpm install --frozen-lockfile, pnpm lint,
+# pnpm typecheck, pnpm test, pnpm build, all exit 0).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [feat/acube-professional-rebuild, feat/acube-phase5-studio]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.18.0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test (API + web)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
