@@ -69,10 +69,14 @@ function HistoryRow({
   const dur = entry.durationSec ?? video.durationSec ?? video.duration ?? 0;
   const pos = progressSecOf(entry, video);
   const finished = dur > 0 && pos >= dur - 2;
+  // Phase 5 fix: a finished watch restarts from the beginning — the
+  // title/Resume links carry no ?t= and the button says "Watch again",
+  // not "Resume from 7:00" on a 7:00 video.
+  const startAt = finished ? 0 : pos;
   return (
     <div className="studio-list-row">
       <div style={{ flex: 1 }}>
-        <Link to={`/watch/${video._id}${pos > 0 ? `?t=${pos}` : ""}`} style={{ color: "var(--text)", fontWeight: 600 }}>
+        <Link to={`/watch/${video._id}${startAt > 0 ? `?t=${startAt}` : ""}`} style={{ color: "var(--text)", fontWeight: 600 }}>
           {video.videotitle}
         </Link>
         <div style={{ color: "var(--text-2)", fontSize: 13 }}>
@@ -99,10 +103,14 @@ function HistoryRow({
         ) : null}
       </div>
       <Link
-        to={`/watch/${video._id}${pos > 0 ? `?t=${pos}` : ""}`}
+        to={`/watch/${video._id}${startAt > 0 ? `?t=${startAt}` : ""}`}
         className="acube-btn-secondary"
       >
-        {pos > 0 ? `Resume from ${formatTime(pos)}` : "Resume"}
+        {finished
+          ? "Watch again"
+          : startAt > 0
+            ? `Resume from ${formatTime(startAt)}`
+            : "Resume"}
       </Link>
       <button
         type="button"

@@ -79,6 +79,7 @@ export default [
       "src/mocks/**/*",
       "src/test/**/*",
       "e2e/**/*",
+      "e2e-phase5/**/*",
     ],
     languageOptions: {
       globals: {

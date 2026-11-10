@@ -129,8 +129,11 @@ test.describe("Acube Phase 5 click-through", () => {
     await expect(
       page.getByLabel(`Visibility for ${SEEDED_VIDEO_TITLE}`),
     ).toBeVisible();
+    // Preview screen C names the row action "Edit details" (it edits
+    // title + description + tags + thumbnail), not "Edit title" — the
+    // spec was stale after the frontend fix renamed the button.
     await expect(
-      page.getByRole("button", { name: "Edit title" }),
+      page.getByRole("button", { name: "Edit details" }),
     ).toBeVisible();
     expect(errors).toEqual([]);
     await page.screenshot({ path: shot("studio-content.png") });
@@ -205,7 +208,9 @@ test.describe("Acube Phase 5 click-through", () => {
     await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
     // Nested comment + playlist showcase (seeded playlist owns the video).
     await expect(page.getByText("Great tutorial!")).toBeVisible();
-    await expect(page.getByText("Playlist: My favourites")).toBeVisible();
+    // Preview screen H renders the showcase as "Playlist · <title>"
+    // (middle dot), not "Playlist: <title>" — the spec's colon was stale.
+    await expect(page.getByText("Playlist · My favourites")).toBeVisible();
     await expect(page.getByText("Up next")).toBeVisible();
     expect(errors).toEqual([]);
     await page.screenshot({ path: shot("watch.png") });
@@ -237,7 +242,12 @@ test.describe("Acube Phase 5 click-through", () => {
     await seedFakeSession(page);
     await page.goto("/library");
     await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Saved" })).toBeVisible();
+    // exact:true — "Saved" is a substring of the "Your playlists &
+    // Saved playlists" heading, so a loose match is a strict-mode
+    // violation; the Saved shelf heading is exactly "Saved".
+    await expect(
+      page.getByRole("heading", { name: "Saved", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText(SEEDED_VIDEO_TITLE)).toBeVisible();
     await expect(page.getByText("My favourites")).toBeVisible();
     expect(errors).toEqual([]);
@@ -249,7 +259,7 @@ test.describe("Acube Phase 5 click-through", () => {
     await seedFakeSession(page);
     await page.goto("/studio/content");
     await expect(page.getByText(SEEDED_VIDEO_TITLE)).toBeVisible();
-    await page.getByRole("button", { name: "Edit title" }).click();
+    await page.getByRole("button", { name: "Edit details" }).click();
     const input = page.getByLabel("Video title");
     await input.fill("E2E Smoke Video (Edited)");
     await page.getByRole("button", { name: "Save" }).click();

@@ -852,6 +852,23 @@ export function useWatchSuggestions(id: string | undefined) {
   });
 }
 
+// Phase 5 fix: public playlists containing a video — the Watch page's
+// playlist showcase. This replaces the owner-only useStudioPlaylists
+// lookup the Watch page used before (the showcase only ever rendered
+// for the channel owner); the endpoint is public, so any viewer sees
+// the showcase for a public playlist.
+export function useWatchPlaylists(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.watchPlaylists(id ?? ""),
+    queryFn: async (): Promise<Playlist[]> => {
+      const { data } = await api.getWatchPlaylists(id as string);
+      const d = data as { items?: Playlist[] } | Playlist[];
+      return Array.isArray(d) ? d : (d.items ?? []);
+    },
+    enabled: Boolean(id),
+  });
+}
+
 /** Creator pins a comment on their own video (server-enforced). */
 export function usePinComment() {
   const queryClient = useQueryClient();

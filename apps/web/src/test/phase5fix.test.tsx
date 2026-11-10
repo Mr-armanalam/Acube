@@ -137,7 +137,7 @@ describe("C — Content", () => {
     const user = userEvent.setup();
     renderRoutes("/studio/content", testSession);
     expect(await screen.findByText("Python Basics Tutorial")).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: "Edit details" })[0]);
+    await user.click(screen.getAllByRole("button", { name: /Edit details/ })[0]);
     const desc = screen.getByLabelText("Video description");
     await user.clear(desc);
     await user.type(desc, "Updated description");
@@ -234,10 +234,19 @@ describe("E — Upload wizard", () => {
       // in this environment, so the test asserts the title (the field
       // the wizard controls), not the raw filename.
       expect(captured.uploads).toContainEqual(
-        expect.objectContaining({ title: "How I plan my week" }),
+        expect.objectContaining({
+          title: "How I plan my week",
+          description: "Sunday routine",
+          tags: "planning, routine",
+          visibility: "public",
+        }),
       );
     });
     expect(await screen.findByText("Your video was uploaded.")).toBeInTheDocument();
+    // Phase 5 fix: the upload response carries the new video id, so the
+    // wizard links straight to the video.
+    const watchLink = screen.getByRole("link", { name: "Watch video" });
+    expect(watchLink.getAttribute("href")).toBe("/watch/vid-uploaded");
   });
 
   it("Save as draft is offered and title is required", async () => {
@@ -253,6 +262,16 @@ describe("E — Upload wizard", () => {
     expect(await screen.findByText(/Step 3 of 3/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save as draft" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Draft" })).toBeInTheDocument();
+    // Phase 5 fix: Save as draft actually submits visibility=draft
+    // (before the backend fix the field was dropped and the upload
+    // became a public video).
+    await user.click(screen.getByRole("button", { name: "Save as draft" }));
+    await waitFor(() => {
+      expect(captured.uploads).toContainEqual(
+        expect.objectContaining({ title: "Draft title", visibility: "draft" }),
+      );
+    });
+    expect(await screen.findByText("Your video was uploaded.")).toBeInTheDocument();
   });
 
   it("rejects files over 10 MB", async () => {

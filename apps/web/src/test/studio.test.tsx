@@ -9,6 +9,7 @@ import { server } from "../mocks/server";
 import {
   captured,
   fixtureStudioAnalytics,
+  fixtureStudioVideos,
 } from "../mocks/handlers";
 import { renderWithProviders, testSession } from "./testUtils";
 import { InternetStatusProvider } from "../utils/internetStatusContext";
@@ -50,7 +51,7 @@ describe("Studio", () => {
     expect(
       await screen.findByText("Python Basics Tutorial"),
     ).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: "Edit details" })[0]);
+    await user.click(screen.getAllByRole("button", { name: /Edit details/ })[0]);
     const input = screen.getByLabelText("Video title");
     await user.clear(input);
     await user.type(input, "Python Basics Updated");
@@ -94,6 +95,44 @@ describe("Studio", () => {
     await waitFor(() => {
       expect(captured.videoDeletes).toContain("vid1");
     });
+  });
+
+  it("Content shows a server-side soft-deleted row as Deleted with Restore", async () => {
+    // Phase 5 fix: the row's deletedAt (from GET /studio/videos) —
+    // not only an in-session delete — drives the Deleted badge.
+    server.use(
+      http.get("*/studio/videos", () =>
+        HttpResponse.json({
+          items: [
+            ...fixtureStudioVideos,
+            {
+              _id: "vid-deleted",
+              videotitle: "Retired: Old Trailer",
+              videochanel: "ch1",
+              filepath: "/videos/old.mp4",
+              uploader: "alice",
+              Like: 0,
+              views: 0,
+              createdat: "2026-11-01T00:00:00.000Z",
+              visibility: "public",
+              deletedAt: "2026-11-10T00:00:00.000Z",
+            },
+          ],
+          page: 1,
+          limit: 50,
+          total: 5,
+          totalPages: 1,
+        }),
+      ),
+    );
+    renderRoutes("/studio/content", testSession);
+    expect(
+      await screen.findByText("Retired: Old Trailer"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Deleted")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Restore" }),
+    ).toBeInTheDocument();
   });
 
   it("Analytics renders the chart from the mocked series", async () => {

@@ -143,9 +143,12 @@ const Allroutes = ({
                 </RequireAuth>
               }
             />
+            {/* No `caseSensitive`: React Router matches case-insensitively
+              by default, so the pre-Phase-5 capital-L URL /Library
+              (bookmarks, Phase 4 e2e) still hits this guarded route
+              instead of the 404 page. */}
             <Route
               path="/library"
-              caseSensitive
               element={
                 <RequireAuth>
                   <LibraryHub />

@@ -227,7 +227,13 @@ export default function Content() {
             </thead>
             <tbody>
               {items.map((v) => {
-                const isDeleted = deletedIds.has(v._id);
+                // Phase 5 fix: a row is deleted when the SERVER says so
+                // (deletedAt set) — not only when this session deleted
+                // it. Before this, a video soft-deleted earlier (e.g.
+                // the seeded "Retired: Channel Trailer 2024") rendered
+                // as a live row with no Deleted badge and no Restore.
+                const isDeleted =
+                  v.deletedAt != null || deletedIds.has(v._id);
                 return (
                   <tr key={v._id}>
                     <td>
@@ -323,6 +329,7 @@ export default function Content() {
                           <button
                             type="button"
                             className="acube-btn-secondary"
+                            aria-label={`Edit details for ${v.videotitle}`}
                             onClick={() => startEdit(v)}
                           >
                             Edit details

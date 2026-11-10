@@ -179,10 +179,14 @@ export default function LibraryHub() {
         </section>
 
         <section style={{ marginBottom: 32 }}>
-          <h2>
-            Saved · {savedVideos.length}{" "}
+          {/* Heading is exactly "Saved": the count lives in the line
+              below, so a heading query for "Saved" never collides with
+              "Your playlists & Saved playlists" (see e2e test 9). */}
+          <h2>Saved</h2>
+          <p style={{ color: "var(--text-2)" }}>
+            {savedVideos.length}{" "}
             {savedVideos.length === 1 ? "video" : "videos"}
-          </h2>
+          </p>
           {firstSaved ? (
             <Link to={`/watch/${firstSaved._id}`} className="acube-btn-secondary">
               Play all

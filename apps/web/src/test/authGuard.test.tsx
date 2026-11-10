@@ -32,6 +32,23 @@ describe("Auth guard", () => {
     expect(await screen.findByText("Your library")).toBeInTheDocument();
   });
 
+  // Phase 5 regression (fix pass): the /library route was rewritten
+  // with `caseSensitive`, so the old capital-L URL /Library (bookmarks,
+  // Phase 4 e2e) fell through to the 404 page instead of the auth
+  // guard. Both casings must hit the guarded route.
+  it("redirects a logged-out user from /Library (capital L) to Home", async () => {
+    renderRoutes("/Library", null);
+    expect(
+      await screen.findByText("Python Basics Tutorial"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Your library")).not.toBeInTheDocument();
+  });
+
+  it("renders /Library (capital L) for a signed-in user", async () => {
+    renderRoutes("/Library", testSession);
+    expect(await screen.findByText("Your library")).toBeInTheDocument();
+  });
+
   // Phase 3c: /Likedvideo, /Watchhistory and /Watchlater are behind
   // RequireAuth too (they used to render a "Plz login" message).
   // Logged-out users are redirected to Home; signed-in users see the

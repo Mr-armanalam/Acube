@@ -253,7 +253,13 @@ export const captured = {
   addWatchLater: [] as unknown[],
   deleteWatchLater: [] as Array<{ videoid: string; viewer: string }>,
   downloads: [] as unknown[],
-  uploads: [] as Array<{ title: string | null; fileName: string | null }>,
+  uploads: [] as Array<{
+    title: string | null;
+    fileName: string | null;
+    description: string | null;
+    tags: string | null;
+    visibility: string | null;
+  }>,
   paymentStatus: [] as unknown[],
   paymentRequests: [] as unknown[],
   chatSend: [] as unknown[],
@@ -313,13 +319,35 @@ export const handlers = [
     // is not a Node File). Read the raw multipart body and pull the
     // title / filename out of it instead.
     const text = await request.text();
+    const field = (name: string) =>
+      new RegExp(`name="${name}"\\r?\\n\\r?\\n([^\\r\\n]*)`).exec(text)?.[1] ??
+      null;
     const titleMatch = /name="title"\r?\n\r?\n([^\r\n]+)/.exec(text);
     const fileMatch = /filename="([^"]+)"/.exec(text);
     captured.uploads.push({
       title: titleMatch?.[1] ?? null,
       fileName: fileMatch?.[1] ?? null,
+      description: field("description"),
+      tags: field("tags"),
+      visibility: field("visibility"),
     });
-    return json({ success: true });
+    // Phase 5 fix: the real endpoint returns the created video id +
+    // persisted details — the mock mirrors that shape so the wizard's
+    // "Watch video" link is exercised.
+    return json({
+      message: "File uploaded successfully",
+      video: {
+        id: "vid-uploaded",
+        videotitle: field("title") ?? "",
+        visibility: field("visibility") ?? "public",
+        description: field("description") ?? "",
+        tags: (field("tags") ?? "")
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0),
+        thumbnailUrl: field("thumbnailUrl"),
+      },
+    });
   }),
   http.get("*/comment/get", () => json(pageOf([]))),
   http.delete("*/comment/delete/:id", () => json({})),
@@ -444,7 +472,10 @@ export const handlers = [
     const visibility = url.searchParams.get("visibility") ?? "";
     const page = Number(url.searchParams.get("page") ?? 1);
     const limit = Number(url.searchParams.get("limit") ?? 50);
-    let items = fixtureStudioVideos.filter((v) => !v.deletedAt);
+    // Phase 5 fix: the real GET /studio/videos returns soft-deleted
+    // rows too (the owner restores them from Content) — the mock used
+    // to filter them out, hiding the Deleted/Restore state from tests.
+    let items = fixtureStudioVideos;
     if (q) {
       items = items.filter(
         (v) =>
@@ -556,6 +587,21 @@ export const handlers = [
   http.get("*/watch/:id/suggestions", ({ params }) => {
     captured.videoSuggestionCalls.push(String(params.id));
     return json(fixtureWatchSuggestions);
+  }),
+  // Phase 5 fix: public playlists containing a video (Watch showcase).
+  // The mock mirrors the real endpoint: only playlists whose videoIds
+  // include this video, with their videos in playlist order.
+  http.get("*/watch/:id/playlists", ({ params }) => {
+    const items = fixturePlaylists
+      .filter((p) => p.videoIds.includes(String(params.id)))
+      .map((p) => ({
+        ...p,
+        videoCount: p.videoIds.length,
+        videos: p.videoIds
+          .map((vid) => fixtureVideos.find((v) => v._id === vid))
+          .filter(Boolean),
+      }));
+    return json({ items });
   }),
   // Phase 5 fix contract: creator pins a comment.
   http.post("*/comment/:id/pin", ({ params }) => {

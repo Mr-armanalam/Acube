@@ -75,6 +75,9 @@ export default function UploadWizard() {
   };
 
   if (done) {
+    // Phase 5 fix: the upload response carries the created video id —
+    // link straight to the new video (Watch), not just to Content.
+    const uploadedId = uploadMutation.data?.video?.id;
     return (
       <StudioShell>
         <h1>Upload video</h1>
@@ -83,6 +86,11 @@ export default function UploadWizard() {
             Your video was uploaded.
           </p>
           <p>{title}</p>
+          {uploadedId ? (
+            <Link to={`/watch/${uploadedId}`} className="acube-btn">
+              Watch video
+            </Link>
+          ) : null}{" "}
           <Link to="/studio/content" className="acube-btn">
             View in Content
           </Link>

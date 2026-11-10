@@ -3,7 +3,7 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from "axios";
-import { readStoredSession } from "../types";
+import { readStoredSession, type UploadVideoResponse } from "../types";
 // Phase 3c: request shapes come from @acube/shared — the same Zod schemas
 // the API validates at runtime. The client no longer re-declares them.
 // (Response/model shapes stay in ../types.ts: @acube/shared has no
@@ -69,7 +69,8 @@ export const fetchallchannel = (page = 1, limit = 50) =>
 export const uploadvideo = (
   filedata: unknown,
   fileoption: AxiosRequestConfig | undefined,
-) => API.post("/video/uploadvideo", filedata, fileoption);
+) =>
+  API.post<UploadVideoResponse>("/video/uploadvideo", filedata, fileoption);
 export const getvideos = (page = 1, limit = 50) =>
   API.get("/video/getvideos", { params: { page, limit } });
 // Phase 3b: liking is a toggle — { action: "like" | "unlike" }. The
@@ -247,6 +248,11 @@ export const restoreVideo = (id: string) =>
 // Phase 5 fix contract: ranked suggestions with a reason per item.
 export const getWatchSuggestions = (id: string) =>
   API.get(`/watch/${id}/suggestions`);
+// Phase 5 fix: public playlists containing a video — the Watch page's
+// playlist showcase. The page used to read the owner-only
+// /studio/playlists list, so the showcase only rendered for the owner.
+export const getWatchPlaylists = (id: string) =>
+  API.get(`/watch/${id}/playlists`);
 // Phase 5 fix contract: creator pins a comment (creator only, server).
 export const pinComment = (id: string) => API.post(`/comment/${id}/pin`);
 // Phase 5 fix contract: library entries (kind "saved" | "watchlater" |

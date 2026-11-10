@@ -93,7 +93,7 @@ describe("Watch Player", () => {
 
   it("has exactly one seek control and no fake chapter ticks", () => {
     const { container } = renderPlayer();
-    expect(screen.getByRole("slider", { name: "Seek" })).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Seek slider" })).toBeInTheDocument();
     // The duplicated native range slider is gone; only Volume remains.
     expect(screen.getByLabelText("Volume")).toBeInTheDocument();
     expect(container.querySelectorAll(".acube-seek-tick")).toHaveLength(0);
@@ -118,7 +118,7 @@ describe("Watch Player", () => {
     const video = container.querySelector("video");
     if (!video) throw new Error("video element not found");
     const media = stubMedia(video, 0, 100);
-    const track = screen.getByRole("slider", { name: "Seek" });
+    const track = screen.getByRole("slider", { name: "Seek slider" });
     vi.spyOn(track, "getBoundingClientRect").mockReturnValue({
       left: 0,
       width: 200,
@@ -143,7 +143,7 @@ describe("Watch Player", () => {
     if (!video) throw new Error("video element not found");
     stubMedia(video, 0, 120);
     fireEvent(video, new Event("loadedmetadata"));
-    const track = screen.getByRole("slider", { name: "Seek" });
+    const track = screen.getByRole("slider", { name: "Seek slider" });
     vi.spyOn(track, "getBoundingClientRect").mockReturnValue({
       left: 0,
       width: 200,

@@ -27,5 +27,7 @@ export const queryKeys = {
   studioLibrary: ["studio", "library"] as const,
   // Phase 5 fix.
   watchSuggestions: (id: string) => ["watch", id, "suggestions"] as const,
+  // Phase 5 fix: public playlists containing a video (Watch showcase).
+  watchPlaylists: (id: string) => ["watch", id, "playlists"] as const,
   historyPaused: ["history", "paused"] as const,
 };

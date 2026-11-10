@@ -19,12 +19,12 @@ import {
   useAddToHistory,
   useCreatePlaylist,
   useHistory,
-  useStudioPlaylists,
   useUpdateVideoProgress,
   useVideo,
   useVideos,
   useViewVideo,
   useWatchComplete,
+  useWatchPlaylists,
   useWatchSuggestions,
 } from "../../query/hooks";
 import Likewatchlatersavebtns from "../Videopage/Likewatchlatersavebtns";
@@ -50,7 +50,7 @@ const Watch = () => {
   const viewMutation = useViewVideo();
   const historyMutation = useAddToHistory();
   const watchCompleteMutation = useWatchComplete();
-  const playlistsQuery = useStudioPlaylists();
+  const playlistsQuery = useWatchPlaylists(id);
   const historyQuery = useHistory();
   const progressMutation = useUpdateVideoProgress();
   const createPlaylist = useCreatePlaylist();
@@ -84,7 +84,14 @@ const Watch = () => {
     }
     return 0;
   }, [historyQuery.data, id]);
-  const initialTime = Number(searchParams.get("t") ?? 0) || storedProgressSec;
+  const initialTime = (() => {
+    const raw = Number(searchParams.get("t") ?? 0) || storedProgressSec;
+    // A finished watch (progress at/past the duration) starts over —
+    // "Resumed from 7:00" on a 7:00 video is the end, not a resume
+    // point. Unknown duration (0) keeps the stored position.
+    const durationSec = vv?.durationSec ?? vv?.duration ?? 0;
+    return durationSec > 0 && raw >= durationSec ? 0 : raw;
+  })();
 
   const handleProgress = useCallback(
     (sec: number) => {
@@ -97,10 +104,12 @@ const Watch = () => {
   );
 
   const suggestions = suggestionsQuery.data ?? [];
-  const playlist = useMemo(() => {
-    if (!id || !playlistsQuery.data) return undefined;
-    return playlistsQuery.data.find((p) => p.videoIds.includes(id));
-  }, [id, playlistsQuery.data]);
+  // Phase 5 fix: GET /watch/:id/playlists already returns only the
+  // public playlists containing THIS video (with their videos), for
+  // any viewer — the first one is the showcase. The old lookup ran
+  // the owner-only /studio/playlists list and searched it for the
+  // video, so the showcase only ever rendered for the channel owner.
+  const playlist = playlistsQuery.data?.[0];
 
   const playlistVideos = useMemo(() => {
     if (!playlist) return [];

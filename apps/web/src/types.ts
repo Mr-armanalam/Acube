@@ -39,6 +39,20 @@ export interface SessionProfile {
 
 export type VideoVisibility = "public" | "unlisted" | "private" | "draft";
 
+/** POST /video/uploadvideo response (Phase 5 fix): the created video's
+ * id + persisted details, so the wizard can link straight to it. */
+export interface UploadVideoResponse {
+  message: string;
+  video: {
+    id: string;
+    videotitle: string;
+    visibility: VideoVisibility;
+    description: string;
+    tags: string[];
+    thumbnailUrl: string | null;
+  };
+}
+
 /** A real chapter, from the server. No chapter data exists yet, so the
  * player renders NO chapter ticks until the backend returns chapters —
  * never fake ones (Phase 5 fix audit). */
