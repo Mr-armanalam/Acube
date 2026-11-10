@@ -57,21 +57,27 @@ test.describe("Acube smoke", () => {
   }) => {
     const pageErrors: string[] = [];
     page.on("pageerror", (err) => pageErrors.push(String(err)));
+    // Phase 5: /videopage/:id redirects to the rebuilt /watch/:id page.
     await page.goto(`/videopage/${SEEDED_VIDEO_ID}`);
-    await expect(page.locator(".video_title_VideoPage")).toHaveText(
-      SEEDED_VIDEO_TITLE,
-    );
-    const video = page.locator(".video-container video");
+    await expect(page).toHaveURL(new RegExp(`/watch/${SEEDED_VIDEO_ID}$`));
+    await expect(
+      page.getByRole("heading", { name: SEEDED_VIDEO_TITLE }),
+    ).toBeVisible();
+    const video = page.locator(".watch-page video");
     await expect(video).toHaveCount(1);
-    const playButton = page.locator(".play-pause-btn");
+    const playButton = page.getByRole("button", {
+      name: "Play",
+      exact: true,
+    });
     await expect(playButton).toBeVisible();
     // The seeded filepath (/videos/e2e-smoke.mp4) does not exist, so the
     // media cannot actually play — what is asserted is that the play
     // attempt toggles the player to the playing state without throwing.
     // A rejected play() promise must not surface as an unhandled error.
-    await expect(playButton.locator(".play-icon")).toHaveCount(1);
     await playButton.click();
-    await expect(playButton.locator(".pause-icon")).toHaveCount(1);
+    await expect(
+      page.getByRole("button", { name: "Pause" }),
+    ).toBeVisible();
     expect(pageErrors).toEqual([]);
   });
 

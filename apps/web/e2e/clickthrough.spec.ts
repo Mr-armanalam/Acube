@@ -138,15 +138,21 @@ test.describe("Acube click-through", () => {
       dialogs.push(d.message());
       void d.accept();
     });
+    // Phase 5: /videopage/:id redirects to the rebuilt /watch/:id page.
     await page.goto(`/videopage/${SEEDED_VIDEO_ID}`);
-    await expect(page.locator(".video_title_VideoPage")).toHaveText(
-      SEEDED_VIDEO_TITLE,
-    );
-    const playButton = page.locator(".play-pause-btn");
+    await expect(page).toHaveURL(new RegExp(`/watch/${SEEDED_VIDEO_ID}$`));
+    await expect(
+      page.getByRole("heading", { name: SEEDED_VIDEO_TITLE }),
+    ).toBeVisible();
+    const playButton = page.getByRole("button", {
+      name: "Play",
+      exact: true,
+    });
     await expect(playButton).toBeVisible();
-    await expect(playButton.locator(".play-icon")).toHaveCount(1);
     await playButton.click();
-    await expect(playButton.locator(".pause-icon")).toHaveCount(1);
+    await expect(
+      page.getByRole("button", { name: "Pause" }),
+    ).toBeVisible();
     // Logged-out like: the app alerts instead of toggling.
     await page.locator(".like_videoPage").first().click();
     expect(dialogs).toContain("please login to like video");
@@ -155,7 +161,6 @@ test.describe("Acube click-through", () => {
       page.locator(".like_videoPage").first().locator("svg").first(),
     ).toBeVisible();
     // Comments section renders (heading; no comments seeded).
-    await expect(page.locator(".comments_VideoPage")).toBeVisible();
     await expect(page.getByText("Comments").first()).toBeVisible();
     expect(pageErrors).toEqual([]);
     await page.screenshot({ path: shot("videopage.png") });
@@ -281,7 +286,9 @@ test.describe("Acube click-through", () => {
       }
     });
     await seedFakeSession(page);
+    // Phase 5: /videopage/:id redirects to the rebuilt /watch/:id page.
     await page.goto(`/videopage/${SEEDED_VIDEO_ID}`);
+    await expect(page).toHaveURL(new RegExp(`/watch/${SEEDED_VIDEO_ID}$`));
     const upgradeBtn = page.getByRole("button", { name: /Upgrade/i });
     await expect(upgradeBtn).toBeVisible();
     await upgradeBtn.click();
@@ -300,9 +307,9 @@ test.describe("Acube click-through", () => {
       type: "payment-responses",
       description: JSON.stringify(paymentResponses),
     });
-    expect(page.url()).toContain(`/videopage/${SEEDED_VIDEO_ID}`);
+    expect(page.url()).toContain(`/watch/${SEEDED_VIDEO_ID}`);
     // Premium must NOT be granted: reload and the Upgrade button is back.
-    await page.goto(`/videopage/${SEEDED_VIDEO_ID}`);
+    await page.goto(`/watch/${SEEDED_VIDEO_ID}`);
     await expect(
       page.getByRole("button", { name: /Upgrade/i }),
     ).toBeVisible();
