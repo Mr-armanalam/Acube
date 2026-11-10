@@ -93,6 +93,9 @@ export const getallhistory = (page = 1, limit = 50) =>
   API.get("/video/getallhistory", { params: { page, limit } });
 export const deletehistory = (userid: string) =>
   API.delete(`/video/deletehistory/${userid}`);
+// Phase 5: delete one history row (owner = viewer only, 403 otherwise).
+export const deleteHistoryItem = (videoid: string, viewer: string) =>
+  API.delete(`/video/deletehistory/${videoid}/${viewer}`);
 
 export const addtolikevideo = (likedvideodata: unknown) =>
   API.post("/video/likevideo", likedvideodata);
@@ -153,3 +156,56 @@ export const sendOtp = (authdata: SendOtpInput) =>
   API.post("/auth/send-otp", authdata);
 export const verifyOtp = (authOtp: VerifyOtpInput) =>
   API.post("/auth/verify-otp", authOtp);
+
+// Phase 5 — Creator Studio (contract in PHASE5_PLAN.md Reconciliation).
+// The backend is built to this exact contract; shapes live in types.ts.
+export const getStudioOverview = () => API.get("/studio/overview");
+export const getStudioAnalytics = (range: 7 | 28 | 90 = 28) =>
+  API.get("/studio/analytics", { params: { range } });
+export const getStudioVideos = (page = 1, limit = 50) =>
+  API.get("/studio/videos", { params: { page, limit } });
+export const getStudioComments = (page = 1, limit = 50) =>
+  API.get("/studio/comments", { params: { page, limit } });
+export const getStudioSettings = () => API.get("/studio/settings");
+// Phase 5 contract fix: the server's studioSettingsSchema accepts
+// only { name?, desc? } — `description`/`handle`/`links` were silently
+// stripped by Zod, so they are not sent at all.
+export const patchStudioSettings = (data: {
+  name?: string;
+  desc?: string;
+}) => API.patch("/studio/settings", data);
+export const getStudioPlaylists = () => API.get("/studio/playlists");
+// Public read (visibility rules server-side) — the /playlist/:id page
+// uses this, not the owner-only list.
+export const getStudioPlaylist = (id: string) =>
+  API.get(`/studio/playlists/${id}`);
+export const getLibrary = () => API.get("/studio/library");
+export const createStudioPlaylist = (data: {
+  title: string;
+  description?: string;
+  visibility?: string;
+  videoIds?: string[];
+}) => API.post("/studio/playlists", data);
+export const patchStudioPlaylist = (
+  id: string,
+  data: {
+    title?: string;
+    description?: string;
+    visibility?: string;
+    // Phase 5 contract fix: the server takes addVideoIds/removeVideoIds
+    // — a bare `videoIds` was stripped by Zod and the PATCH 400d.
+    addVideoIds?: string[];
+    removeVideoIds?: string[];
+  },
+) => API.patch(`/studio/playlists/${id}`, data);
+export const deleteStudioPlaylist = (id: string) =>
+  API.delete(`/studio/playlists/${id}`);
+// Phase 5: single-video read with visibility rules server-side
+// (private → 404 for non-owners, unlisted readable by link). The Watch
+// page uses this — never the page-1 feed filter.
+export const getVideo = (id: string) => API.get(`/video/${id}`);
+export const patchVideo = (
+  id: string,
+  data: { title?: string; visibility?: string },
+) => API.patch(`/video/${id}`, data);
+export const deleteVideo = (id: string) => API.delete(`/video/${id}`);

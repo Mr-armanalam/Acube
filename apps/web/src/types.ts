@@ -37,6 +37,8 @@ export interface SessionProfile {
   token: string;
 }
 
+export type VideoVisibility = "public" | "unlisted" | "private";
+
 export interface Video {
   _id: string;
   videotitle: string;
@@ -51,6 +53,9 @@ export interface Video {
   createdat?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** Phase 5: visibility + processing status (server-owned). */
+  visibility?: VideoVisibility;
+  status?: "ready" | "processing";
 }
 
 export interface Channel {
@@ -77,6 +82,10 @@ export interface CommentItem {
   commenton?: string;
   commentedon?: string;
   createdAt?: string;
+  /** Phase 5: null = top-level comment; otherwise the parent comment id. */
+  parentId?: string | null;
+  /** Phase 5: video title attached by /studio/comments. */
+  videotitle?: string;
 }
 
 /** History / liked / watch-later rows all share this shape. */
@@ -86,6 +95,91 @@ export interface VideoListEntry {
   viewer: string;
   likedon?: string;
   createdAt?: string;
+  /** Phase 5: watch progress 0–1 when the server reports it; absent = unknown. */
+  progress?: number;
+}
+
+/** Phase 5 — Creator Studio + playlists (API contract, PHASE5_PLAN.md).
+ * Shapes match the backend exactly: bestDay is an object (or null),
+ * settings nest under `channel`, PATCH /studio/settings takes
+ * { name?, desc? } — there are no handle/links fields on the server. */
+export interface StudioOverview {
+  channel?: {
+    _id: string;
+    name?: string;
+    email?: string;
+    desc?: string;
+    picture?: string;
+    username?: string;
+  };
+  totals: {
+    totalViews: number;
+    totalLikes: number;
+    totalVideos: number;
+    totalComments: number;
+    watchMinutes: number;
+    completions: number;
+  };
+  /** Sums of the per-video counters, including pre-Phase 5 traffic. */
+  allTime?: { views: number; likes: number; note: string };
+  /** First day with an event row, or null. */
+  statsSince?: string | null;
+  topVideos: Video[];
+  latestComments: CommentItem[];
+}
+
+export interface StudioAnalyticsDay {
+  date: string;
+  views: number;
+  watchMinutes: number;
+  likes: number;
+}
+
+export interface StudioAnalytics {
+  range: number;
+  days: StudioAnalyticsDay[];
+  totals: { views: number; watchMinutes: number; likes: number; completions?: number };
+  bestDay: { date: string; views: number } | null;
+}
+
+export interface StudioSettings {
+  channel: {
+    _id: string;
+    name?: string;
+    email?: string;
+    desc?: string;
+    picture?: string;
+    username?: string;
+  };
+}
+
+export interface Playlist {
+  _id: string;
+  owner: string;
+  title: string;
+  description?: string;
+  visibility: VideoVisibility;
+  videoIds: string[];
+  createdAt?: string;
+  /** GET /studio/playlists/:id only: videos in playlist order. */
+  videos?: Video[];
+  videoCount?: number;
+}
+
+/** GET /studio/library: full video objects per tab + own playlists. */
+export interface LibraryData {
+  watchlater: Video[];
+  saved: Video[];
+  liked: Video[];
+  playlists: Playlist[];
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 export interface ChatUser {

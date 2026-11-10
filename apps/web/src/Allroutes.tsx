@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from "react";
-import { Navigate, Routes, Route } from "react-router";
+import { Navigate, Routes, Route, useParams } from "react-router";
 import Home from "./Pages/Home/Home";
 import { useInternetStatus } from "./utils/internetStatusContext";
 import { useAppSelector } from "./store";
@@ -9,7 +9,6 @@ import LoadingCard from "./Component/LoadingCard";
 // StreamRoom (simple-peer + recordrtc) are the heavy chunks and no longer
 // ship in the initial bundle. Home stays eager so first paint is fast.
 const Search = lazy(() => import("./Pages/Search/Search"));
-const Videopage = lazy(() => import("./Pages/Videopage/Videopage"));
 const Channel = lazy(() => import("./Pages/Channel/Channel"));
 const Library = lazy(() => import("./Pages/Library/Library"));
 const Likedvideo = lazy(() => import("./Pages/Likedvideo/Likedvideo"));
@@ -20,6 +19,16 @@ const Chat = lazy(() => import("./Pages/chat/Chat"));
 const StreamRoom = lazy(() => import("./Pages/videostream/StreamRoom"));
 const OtpAuth = lazy(() => import("./Pages/Auth/OTP_Auth"));
 const PaymentStatus = lazy(() => import("./Component/PaymentStatus"));
+// Phase 5 — Creator Studio, rebuilt Watch, History/Library hub, Playlist.
+const StudioDashboard = lazy(() => import("./Pages/Studio/Dashboard"));
+const StudioContent = lazy(() => import("./Pages/Studio/Content"));
+const StudioAnalytics = lazy(() => import("./Pages/Studio/Analytics"));
+const StudioComments = lazy(() => import("./Pages/Studio/Comments"));
+const StudioSettings = lazy(() => import("./Pages/Studio/Settings"));
+const Watch = lazy(() => import("./Pages/Watch/Watch"));
+const HistoryPage = lazy(() => import("./Pages/History/History"));
+const LibraryHub = lazy(() => import("./Pages/Library/LibraryHub"));
+const PlaylistPage = lazy(() => import("./Pages/Playlist/Playlist"));
 
 // There is no dedicated /login route in this app — Google sign-in lives in
 // the Navbar — so guarded routes redirect to "/" (where the Navbar offers
@@ -30,6 +39,12 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;
+};
+
+// Phase 5: old video-page URLs redirect to the rebuilt Watch page.
+const VideopageRedirect = () => {
+  const { vid } = useParams();
+  return <Navigate to={`/watch/${vid ?? ""}`} replace />;
 };
 
 const NotFound = () => (
@@ -64,9 +79,82 @@ const Allroutes = ({
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/search/:Searchquery" element={<Search />} />
-            <Route path="/videopage/:vid" element={<Videopage />} />
+            {/* Phase 5: the old /videopage/:id redirects to /watch/:id. */}
+            <Route
+              path="/videopage/:vid"
+              element={<VideopageRedirect />}
+            />
+            <Route path="/watch/:id" element={<Watch />} />
+            <Route
+              path="/studio"
+              element={
+                <RequireAuth>
+                  <StudioDashboard
+                    onUpload={() => setvideouploadpage(true)}
+                  />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/studio/content"
+              element={
+                <RequireAuth>
+                  <StudioContent />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/studio/analytics"
+              element={
+                <RequireAuth>
+                  <StudioAnalytics />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/studio/comments"
+              element={
+                <RequireAuth>
+                  <StudioComments />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/studio/settings"
+              element={
+                <RequireAuth>
+                  <StudioSettings />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <RequireAuth>
+                  <HistoryPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/library"
+              caseSensitive
+              element={
+                <RequireAuth>
+                  <LibraryHub />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/playlist/:id"
+              element={
+                <RequireAuth>
+                  <PlaylistPage />
+                </RequireAuth>
+              }
+            />
             <Route
               path="/Library"
+              caseSensitive
               element={
                 <RequireAuth>
                   <Library />
