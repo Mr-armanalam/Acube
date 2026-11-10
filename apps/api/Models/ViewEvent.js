@@ -16,6 +16,8 @@ const viewEventSchema = new mongoose.Schema(
     day: { type: String, required: true },
     watchSeconds: { type: Number, default: 0 },
     completed: { type: Boolean, default: false },
+    // Phase 5 fix: demo seed marker (see Models/Auth.js).
+    demo: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

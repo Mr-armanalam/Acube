@@ -17,6 +17,19 @@ export const likevideocontroller = async (req, res, next) => {
         return res.status(404).send("video unavailable..")
     }
     try {
+        // Phase 5 fix: a soft-deleted video, or another creator's
+        // private/draft video, is not likeable either.
+        const existing = await videofile.findById(_id).select("videochanel visibility deletedAt").lean();
+        if (!existing || existing.deletedAt != null) {
+            return res.status(404).send("video unavailable..");
+        }
+        const visibility = existing.visibility ?? "public";
+        if (
+            (visibility === "private" || visibility === "draft") &&
+            String(existing.videochanel) !== String(req.userid)
+        ) {
+            return res.status(404).send("video unavailable..");
+        }
         const delta = action === "like" ? 1 : -1;
         const updatelike=await videofile.findByIdAndUpdate(
             _id,

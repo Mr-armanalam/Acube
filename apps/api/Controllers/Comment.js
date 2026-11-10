@@ -118,7 +118,24 @@ export const getcomment = async (req, res) => {
             comment.find(filter).sort({ commentedon: 1, _id: 1 }),
             paginationOf(req),
         );
-        res.status(200).send(page)
+        // Phase 5 fix: hasReply — true when at least one reply names
+        // this comment as its parent (drives the Studio "Unreplied"
+        // filter client-side too).
+        const itemIds = page.items.map((c) => String(c._id));
+        const repliedParentIds =
+            itemIds.length > 0
+                ? await comment
+                    .distinct("parentId", { parentId: { $in: itemIds } })
+                    .catch(() => [])
+                : [];
+        const replied = new Set(repliedParentIds.map((id) => String(id)));
+        res.status(200).send({
+            ...page,
+            items: page.items.map((c) => ({
+                ...c,
+                hasReply: replied.has(String(c._id)),
+            })),
+        })
     } catch (error) {
         res.status(400).json(error.message)
         return
@@ -221,6 +238,63 @@ export const editcomment = async (req, res) => {
             { returnDocument: "after" },
         )
         res.status(200).json(updatecomment)
+    } catch (error) {
+        res.status(400).json(error.message)
+        return
+    }
+}
+
+// Phase 5 fix: pin a comment (POST /comment/:id/pin). ONLY the creator
+// of the video the comment is on may pin — the comment's author, any
+// other viewer, and a stranger all get 403. Pinning unpins every other
+// comment on the same video, so there is exactly one pinned comment
+// per video. pinnedByCreator holds the pinning creator's user id (or
+// null when not pinned) — a string id, not a boolean, so the client
+// can tell WHO pinned it. Pinning an already-pinned comment is a 200
+// no-op; a soft-deleted comment cannot be pinned (400).
+export const pincomment = async (req, res) => {
+    const { id: _id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(_id)) {
+        return res.status(400).send("Comments unavailable..")
+    }
+    try {
+        const found = await comment.findById(_id);
+        if (!found) {
+            return res.status(404).send("Comments unavailable..");
+        }
+        if (found.deleted) {
+            return res.status(400).json({
+                error: {
+                    code: "VALIDATION_ERROR",
+                    message: "A deleted comment cannot be pinned",
+                },
+            });
+        }
+        if (!mongoose.Types.ObjectId.isValid(String(found.videoid))) {
+            return res.status(404).send("Comments unavailable..");
+        }
+        const video = await videofile
+            .findById(found.videoid)
+            .select("videochanel")
+            .lean();
+        if (!video || String(video.videochanel) !== String(req.userid)) {
+            return res.status(403).json({
+                error: {
+                    code: "FORBIDDEN",
+                    message: "Only the creator of the video can pin a comment",
+                },
+            });
+        }
+        await comment.updateMany(
+            { videoid: found.videoid, _id: { $ne: found._id } },
+            { $set: { pinnedByCreator: null } },
+        );
+        const updated = await comment.findByIdAndUpdate(
+            _id,
+            { $set: { pinnedByCreator: String(req.userid) } },
+            { returnDocument: "after" },
+        );
+        return res.status(200).json(updated);
     } catch (error) {
         res.status(400).json(error.message)
         return

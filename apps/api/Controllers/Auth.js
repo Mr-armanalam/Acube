@@ -126,6 +126,42 @@ export const getMe = async (req, res) => {
   }
 };
 
+// GET /user/history-paused — the caller's own history-pause flag.
+// The client reads `paused` (historyPaused is the same value under
+// the model field name). See Models/Auth.js historyPaused.
+export const getHistoryPaused = async (req, res) => {
+  try {
+    const user = await users.findById(req.userid).select("historyPaused").lean();
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const paused = user.historyPaused ?? false;
+    return res.status(200).json({ paused, historyPaused: paused });
+  } catch (error) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// PATCH /user/history-paused { paused: boolean } — the caller's own
+// flag only (req.userid is the only user this can ever touch).
+export const setHistoryPaused = async (req, res) => {
+  try {
+    const { paused } = req.body;
+    const updated = await users.findByIdAndUpdate(
+      req.userid,
+      { $set: { historyPaused: paused } },
+      { returnDocument: "after" },
+    );
+    if (!updated) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const value = updated.historyPaused ?? false;
+    return res.status(200).json({ paused: value, historyPaused: value });
+  } catch (error) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 // Phase 3b: watch-complete points — REPLACES updatePoints (deleted).
 // The old endpoint trusted a client-supplied `points` number, so any
 // caller could mint arbitrary reputation. This endpoint takes only a

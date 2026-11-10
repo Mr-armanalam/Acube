@@ -7,6 +7,19 @@ export const viewscontroller = async (req, res, next) => {
         return res.status(404).send("video unavailable..")
     }
     try {
+        // Phase 5 fix: a soft-deleted video, or another creator's
+        // private/draft video, is not viewable — and not countable.
+        const existing = await videofile.findById(_id).select("videochanel visibility deletedAt").lean();
+        if (!existing || existing.deletedAt != null) {
+            return res.status(404).send("video unavailable..");
+        }
+        const visibility = existing.visibility ?? "public";
+        if (
+            (visibility === "private" || visibility === "draft") &&
+            String(existing.videochanel) !== String(req.userid)
+        ) {
+            return res.status(404).send("video unavailable..");
+        }
         // Phase 3b: atomic $inc — the old read-then-$set lost increments
         // under concurrent views. (Auth was also added to this route in
         // Phase 3b: view counts are now recorded for signed-in users

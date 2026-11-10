@@ -17,7 +17,9 @@ import {
   paginationQuerySchema,
   playlistIdParamSchema,
   studioAnalyticsQuerySchema,
+  studioCommentsQuerySchema,
   studioSettingsSchema,
+  studioVideosQuerySchema,
   updatePlaylistSchema,
 } from "@acube/shared";
 import {
@@ -49,13 +51,13 @@ router.get(
 router.get(
   "/videos",
   auth,
-  validateQuery(paginationQuerySchema),
+  validateQuery(studioVideosQuerySchema),
   getStudioVideos,
 );
 router.get(
   "/comments",
   auth,
-  validateQuery(paginationQuerySchema),
+  validateQuery(studioCommentsQuerySchema),
   getStudioComments,
 );
 router.get("/settings", auth, getSettings);

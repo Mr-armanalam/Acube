@@ -1,13 +1,8 @@
 import { uploadOnCloudinary } from "../cloudinary.js";
 import videofile from "../Models/videofile.js";
 import User from "../Models/Auth.js";
-import History from "../Models/history.js";
 import Likedvideo from "../Models/likevideo.js";
-import Watchlater from "../Models/watchlater.js";
-import Comment from "../Models/comment.js";
 import ViewEvent from "../Models/ViewEvent.js";
-import LibraryEntry from "../Models/LibraryEntry.js";
-import Playlist from "../Models/Playlist.js";
 import { MAX_UPLOAD_BYTES, SUPPORTED_VIDEO_MIMETYPES } from "@acube/shared";
 import { paginate, paginationOf } from "../utils/pagination.js";
 import { invalidateChannelCache } from "../utils/studioCache.js";
@@ -77,8 +72,11 @@ export const uploadvideo = async (req, res) => {
 // (the backfill in the plan); unlisted and private videos never appear
 // here. There is no server-side search endpoint — the web client
 // searches over this feed, so the same filter covers search.
+// Phase 5 fix: drafts never appear here either, and soft-deleted
+// videos (deletedAt set) are excluded from every public list.
 const PUBLIC_FEED_FILTER = {
   $or: [{ visibility: "public" }, { visibility: { $exists: false } }],
+  deletedAt: null,
 };
 
 export const getallvideos = async (req, res) => {
@@ -103,10 +101,13 @@ export const getallvideos = async (req, res) => {
 // non-owners (not 403, so private ids are not enumerable). The owner
 // always sees their own video. `optionalAuth` on the route sets
 // req.userid when a valid token is present; anonymous otherwise.
+// Phase 5 fix: drafts behave like private (owner only), and a
+// soft-deleted video is 404 for EVERYONE, owner included — restore it
+// via POST /video/:id/restore first.
 export const getVideoById = async (req, res, next) => {
   try {
     const video = await videofile.findById(req.params.id).lean();
-    if (!video) {
+    if (!video || video.deletedAt != null) {
       return res.status(404).json({
         error: { code: "NOT_FOUND", message: "Video not found" },
       });
@@ -115,7 +116,7 @@ export const getVideoById = async (req, res, next) => {
     const isOwner =
       req.userid != null &&
       String(video.videochanel) === String(req.userid);
-    if (visibility === "private" && !isOwner) {
+    if ((visibility === "private" || visibility === "draft") && !isOwner) {
       return res.status(404).json({
         error: { code: "NOT_FOUND", message: "Video not found" },
       });
@@ -126,13 +127,14 @@ export const getVideoById = async (req, res, next) => {
   }
 };
 
-// Phase 5: edit own video — title (1–100 chars) and/or visibility
-// only (updateVideoSchema is strict: any other field is 400).
-// Non-owner → 403; missing video → 404.
+// Phase 5: edit own video — title / visibility / description / tags /
+// thumbnailUrl / durationSec (updateVideoSchema is strict: any other
+// field is 400). Non-owner → 403; missing video → 404; a soft-deleted
+// video is 404 until restored.
 export const updateVideo = async (req, res, next) => {
   try {
     const video = await videofile.findById(req.params.id);
-    if (!video) {
+    if (!video || video.deletedAt != null) {
       return res.status(404).json({
         error: { code: "NOT_FOUND", message: "Video not found" },
       });
@@ -150,6 +152,16 @@ export const updateVideo = async (req, res, next) => {
     if (req.body.visibility !== undefined) {
       updates.visibility = req.body.visibility;
     }
+    if (req.body.description !== undefined) {
+      updates.description = req.body.description;
+    }
+    if (req.body.tags !== undefined) updates.tags = req.body.tags;
+    if (req.body.thumbnailUrl !== undefined) {
+      updates.thumbnailUrl = req.body.thumbnailUrl;
+    }
+    if (req.body.durationSec !== undefined) {
+      updates.durationSec = req.body.durationSec;
+    }
     const updated = await videofile.findByIdAndUpdate(
       req.params.id,
       { $set: updates },
@@ -162,12 +174,13 @@ export const updateVideo = async (req, res, next) => {
   }
 };
 
-// Phase 5: delete own video + its per-video rows (history, liked,
-// watch-later, comments, view events, library entries) and pull it out
-// of every playlist. ChannelDailyStat rows are KEPT as historical
-// aggregates — deleting them would rewrite the channel's past
-// analytics — and PointsAward rows are kept as the points audit trail.
-// Non-owner → 403; missing video → 404.
+// Phase 5 fix: DELETE is now a SOFT delete — it sets deletedAt and
+// keeps every per-video row (history, liked, watch-later, comments,
+// view events, library entries, playlist membership) so
+// POST /video/:id/restore brings the video back exactly as it was.
+// ChannelDailyStat rows were already kept as historical aggregates.
+// Non-owner → 403; missing video → 404; deleting an already-deleted
+// video is a 200 no-op. Nothing is hard-deleted any more.
 export const deleteVideo = async (req, res, next) => {
   try {
     const video = await videofile.findById(req.params.id);
@@ -184,22 +197,189 @@ export const deleteVideo = async (req, res, next) => {
         },
       });
     }
-    const vid = String(video._id);
-    await Promise.all([
-      videofile.findByIdAndDelete(req.params.id),
-      History.deleteMany({ videoid: vid }),
-      Likedvideo.deleteMany({ videoid: vid }),
-      Watchlater.deleteMany({ videoid: vid }),
-      Comment.deleteMany({ videoid: vid }),
-      ViewEvent.deleteMany({ videoid: vid }),
-      LibraryEntry.deleteMany({ videoid: vid }),
-      Playlist.updateMany(
-        { videoIds: vid },
-        { $pull: { videoIds: vid } },
-      ),
-    ]);
+    if (video.deletedAt != null) {
+      return res
+        .status(200)
+        .json({ message: "Video already deleted", deletedAt: video.deletedAt });
+    }
+    const deletedAt = new Date();
+    await videofile.findByIdAndUpdate(req.params.id, {
+      $set: { deletedAt },
+    });
     invalidateChannelCache(String(req.userid));
-    return res.status(200).json({ message: "Video deleted" });
+    return res.status(200).json({ message: "Video deleted", deletedAt });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// Phase 5 fix: restore a soft-deleted video (owner only). A video
+// that was never deleted is 400 — there is nothing to restore.
+export const restoreVideo = async (req, res, next) => {
+  try {
+    const video = await videofile.findById(req.params.id);
+    if (!video) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Video not found" },
+      });
+    }
+    if (String(video.videochanel) !== String(req.userid)) {
+      return res.status(403).json({
+        error: {
+          code: "FORBIDDEN",
+          message: "You can only restore your own videos",
+        },
+      });
+    }
+    if (video.deletedAt == null) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Video is not deleted",
+        },
+      });
+    }
+    const restored = await videofile.findByIdAndUpdate(
+      req.params.id,
+      { $set: { deletedAt: null } },
+      { returnDocument: "after" },
+    );
+    invalidateChannelCache(String(req.userid));
+    return res.status(200).json(restored);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// Phase 5 fix: ranked "Up next" suggestions for the watch page
+// (GET /watch/:id/suggestions — mounted at /watch, see Routes/watch.js).
+// Works for unlisted videos by link: the SOURCE may be unlisted, but
+// candidates are public videos only (plus the owner's own videos when
+// the owner is watching), never another creator's unlisted/private/
+// draft or soft-deleted video. Rank: same channel first, then same
+// tags, then co-watched (videos sharing likers/viewers with the
+// source), then closest duration. Cap 12. Each item is
+// { video, reason } with reason one of "Same channel" / "Same topic" /
+// "Viewers also watched" / "Similar length" — "Similar length" is the
+// closest-duration remainder, so the label is relative, never faked.
+export const getSuggestions = async (req, res, next) => {
+  try {
+    const video = await videofile.findById(req.params.id).lean();
+    if (!video || video.deletedAt != null) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Video not found" },
+      });
+    }
+    const viewerId = req.userid != null ? String(req.userid) : null;
+    const isOwner =
+      viewerId != null && String(video.videochanel) === viewerId;
+    const visibility = video.visibility ?? "public";
+    if ((visibility === "private" || visibility === "draft") && !isOwner) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Video not found" },
+      });
+    }
+    const sourceId = String(video._id);
+    const candidateFilter = {
+      _id: { $ne: video._id },
+      deletedAt: null,
+    };
+    if (isOwner) {
+      candidateFilter.$or = [
+        { visibility: "public" },
+        { visibility: "unlisted" },
+        { visibility: { $exists: false } },
+        { videochanel: viewerId },
+      ];
+    } else {
+      candidateFilter.$or = [
+        { visibility: "public" },
+        { visibility: { $exists: false } },
+      ];
+    }
+    const candidates = await videofile
+      .find(candidateFilter)
+      .sort({ views: -1, createdAt: -1 })
+      .limit(100)
+      .lean();
+    if (candidates.length === 0) {
+      return res.status(200).json({
+        items: [],
+        page: 1,
+        limit: 12,
+        total: 0,
+        totalPages: 1,
+      });
+    }
+    // Co-watched: the source video's audience (viewers + likers), then
+    // every other video that audience viewed or liked.
+    const [sourceViewers, sourceLikers] = await Promise.all([
+      ViewEvent.distinct("viewer", { videoid: sourceId }),
+      Likedvideo.distinct("viewer", { videoid: sourceId }),
+    ]);
+    const audience = [
+      ...new Set(
+        [...sourceViewers, ...sourceLikers].map((v) => String(v)),
+      ),
+    ];
+    let coWatchedIds = new Set();
+    if (audience.length > 0) {
+      const [coViewed, coLiked] = await Promise.all([
+        ViewEvent.distinct("videoid", {
+          viewer: { $in: audience },
+          videoid: { $ne: sourceId },
+        }),
+        Likedvideo.distinct("videoid", {
+          viewer: { $in: audience },
+          videoid: { $ne: sourceId },
+        }),
+      ]);
+      coWatchedIds = new Set(
+        [...coViewed, ...coLiked].map((id) => String(id)),
+      );
+    }
+    const sourceTags = new Set(
+      (video.tags ?? []).map((t) => String(t).toLowerCase()),
+    );
+    const sourceDuration = video.durationSec ?? video.duration ?? null;
+    const scored = candidates.map((candidate) => {
+      const tags = (candidate.tags ?? []).map((t) =>
+        String(t).toLowerCase(),
+      );
+      const sharedTags = tags.filter((t) => sourceTags.has(t));
+      const duration = candidate.durationSec ?? candidate.duration ?? null;
+      let reason;
+      let score;
+      if (String(candidate.videochanel) === String(video.videochanel)) {
+        reason = "Same channel";
+        score = 300;
+      } else if (sharedTags.length > 0) {
+        reason = "Same topic";
+        score = 200 + sharedTags.length;
+      } else if (coWatchedIds.has(String(candidate._id))) {
+        reason = "Viewers also watched";
+        score = 100;
+      } else {
+        reason = "Similar length";
+        const diff =
+          sourceDuration != null && duration != null
+            ? Math.abs(sourceDuration - duration)
+            : 86400;
+        score = -diff;
+      }
+      return { video: candidate, reason, score, views: candidate.views ?? 0 };
+    });
+    scored.sort((a, b) => b.score - a.score || b.views - a.views);
+    const items = scored
+      .slice(0, 12)
+      .map(({ video: itemVideo, reason }) => ({ video: itemVideo, reason }));
+    return res.status(200).json({
+      items,
+      page: 1,
+      limit: 12,
+      total: items.length,
+      totalPages: 1,
+    });
   } catch (error) {
     return next(error);
   }

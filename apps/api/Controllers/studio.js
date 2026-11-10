@@ -23,16 +23,29 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-/** A video doc is visible to `viewerId` (null = anonymous). */
+/** A video doc is visible to `viewerId` (null = anonymous). Soft-deleted
+ * videos are visible to nobody here (their owner sees them only in
+ * GET /studio/videos, to restore them); drafts behave like private. */
 function videoVisibleTo(video, viewerId) {
+  if (video.deletedAt != null) return false;
   const visibility = video.visibility ?? "public";
   if (visibility === "public" || visibility === "unlisted") return true;
   return viewerId != null && String(video.videochanel) === String(viewerId);
 }
 
-/** Own videos, newest first — used by the overview + comments tabs. */
+/** Escape a user-supplied string for use inside a RegExp. */
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Own videos, newest first — used by the overview + comments tabs.
+ * Soft-deleted videos are excluded: their comments and counts leave
+ * the Studio views with them (restore brings them back). */
 async function ownVideoIds(channelId) {
-  const ids = await Videofile.distinct("_id", { videochanel: channelId });
+  const ids = await Videofile.distinct("_id", {
+    videochanel: channelId,
+    deletedAt: null,
+  });
   return ids;
 }
 
@@ -50,7 +63,8 @@ export const getOverview = async (req, res, next) => {
         User.findById(channelId).lean(),
         getChannelTotals(channelId),
         Videofile.aggregate([
-          { $match: { videochanel: channelId } },
+          // Soft-deleted videos leave the Studio totals with them.
+          { $match: { videochanel: channelId, deletedAt: null } },
           {
             $group: {
               _id: null,
@@ -60,7 +74,7 @@ export const getOverview = async (req, res, next) => {
             },
           },
         ]),
-        Videofile.find({ videochanel: channelId })
+        Videofile.find({ videochanel: channelId, deletedAt: null })
           .sort({ views: -1, createdAt: -1 })
           .limit(5)
           .lean(),
@@ -141,6 +155,7 @@ export const getOverview = async (req, res, next) => {
         commentedon: c.commentedon,
         parentId: c.parentId ?? null,
         deleted: c.deleted ?? false,
+        pinnedByCreator: c.pinnedByCreator ?? null,
       })),
     };
     setCached(cacheKey, body);
@@ -196,6 +211,12 @@ export const getAnalytics = async (req, res, next) => {
       (bestSoFar, d) => (d.views > bestSoFar.views ? d : bestSoFar),
       { date: null, views: 0 },
     );
+    // Phase 5 fix, traffic sources: DELIBERATELY ABSENT. No referrer
+    // is stored anywhere (ViewEvent has no referrer/source field), so
+    // a source split cannot be derived honestly from existing data —
+    // the field is omitted (the client renders a "not tracked yet"
+    // empty state) rather than invented. Adding it needs Arman's
+    // decision: record a referrer/source on ViewEvent first.
     const body = {
       range,
       days: series,
@@ -213,8 +234,24 @@ export const getAnalytics = async (req, res, next) => {
 
 export const getStudioVideos = async (req, res, next) => {
   try {
+    // Phase 5 fix: server-side search/filter. q matches the title
+    // (case-insensitive substring); visibility filters to one
+    // visibility — "public" also matches legacy rows with no visibility
+    // field. Soft-deleted videos STAY listed here (owner-only view) so
+    // the owner can restore them; the public feed never lists them.
+    const filter = { videochanel: String(req.userid) };
+    const q = req.pagination?.q;
+    if (q) {
+      filter.videotitle = { $regex: escapeRegExp(q), $options: "i" };
+    }
+    const visibility = req.pagination?.visibility;
+    if (visibility) {
+      // $in with null matches "public" and a missing field alike.
+      filter.visibility =
+        visibility === "public" ? { $in: ["public", null] } : visibility;
+    }
     const page = await paginate(
-      Videofile.find({ videochanel: String(req.userid) }).sort({
+      Videofile.find(filter).sort({
         createdAt: -1,
         _id: -1,
       }),
@@ -233,11 +270,36 @@ export const getStudioComments = async (req, res, next) => {
     const channelId = String(req.userid);
     const videoIds = await ownVideoIds(channelId);
     const idStrings = videoIds.map((id) => String(id));
+    // Phase 5 fix: filter + sort. filter=unreplied keeps top-level
+    // comments (parentId null, not soft-deleted) with no child reply;
+    // sort=newest (default) / oldest orders by commentedon. Every item
+    // carries hasReply (true when at least one reply exists).
+    const filter = req.pagination?.filter ?? "all";
+    const sort = req.pagination?.sort ?? "newest";
+    const query = { videoid: { $in: idStrings } };
+    const childParentIds = idStrings.length
+      ? await Comment.distinct("parentId", {
+          videoid: { $in: idStrings },
+          parentId: { $ne: null },
+        })
+      : [];
+    const repliedIds = new Set(childParentIds.map((id) => String(id)));
+    if (filter === "unreplied") {
+      query.parentId = null;
+      query.deleted = { $ne: true };
+      // _id is an ObjectId while parentId is stored as a string: the
+      // $nin list must hold ObjectIds to match anything.
+      const repliedObjectIds = [...repliedIds]
+        .filter((id) => mongoose.Types.ObjectId.isValid(id))
+        .map((id) => new mongoose.Types.ObjectId(id));
+      if (repliedObjectIds.length > 0) query._id = { $nin: repliedObjectIds };
+    }
+    const sortOrder =
+      sort === "oldest"
+        ? { commentedon: 1, _id: 1 }
+        : { commentedon: -1, _id: -1 };
     const page = await paginate(
-      Comment.find({ videoid: { $in: idStrings } }).sort({
-        commentedon: -1,
-        _id: -1,
-      }),
+      Comment.find(query).sort(sortOrder),
       paginationOf(req),
     );
     const titles = new Map(
@@ -252,6 +314,7 @@ export const getStudioComments = async (req, res, next) => {
       items: page.items.map((c) => ({
         ...c,
         videotitle: titles.get(String(c.videoid)) ?? null,
+        hasReply: repliedIds.has(String(c._id)),
       })),
     });
   } catch (error) {
@@ -267,6 +330,9 @@ export const getSettings = async (req, res, next) => {
     if (!user) {
       return res.status(404).json(NOT_FOUND("Channel not found"));
     }
+    // Phase 5 fix: the full channel shape (see
+    // apps/web/src/types.ts StudioSettings). avatarUrl falls back to
+    // the Google picture when unset; the client renders picture then.
     return res.status(200).json({
       channel: {
         _id: user._id,
@@ -275,6 +341,18 @@ export const getSettings = async (req, res, next) => {
         desc: user.desc,
         picture: user.picture,
         username: user.username,
+        handle: user.handle ?? null,
+        links: user.links ?? [],
+        contactEmail: user.contactEmail ?? null,
+        country: user.country ?? null,
+        language: user.language ?? null,
+        bannerUrl: user.bannerUrl ?? null,
+        avatarUrl: user.avatarUrl ?? user.picture ?? null,
+        channelPublic: user.channelPublic ?? true,
+        keepSubscriptionsPrivate: user.keepSubscriptionsPrivate ?? false,
+        uploadDefaultVisibility: user.uploadDefaultVisibility ?? "public",
+        uploadDefaultComments: user.uploadDefaultComments ?? true,
+        watermarkEnabled: user.watermarkEnabled ?? false,
       },
     });
   } catch (error) {
@@ -285,7 +363,38 @@ export const getSettings = async (req, res, next) => {
 export const updateSettings = async (req, res, next) => {
   try {
     const channelId = String(req.userid);
-    const { name, desc } = req.body;
+    const {
+      name,
+      desc,
+      handle,
+      links,
+      contactEmail,
+      country,
+      language,
+      bannerUrl,
+      avatarUrl,
+      channelPublic,
+      keepSubscriptionsPrivate,
+      uploadDefaultVisibility,
+      uploadDefaultComments,
+      watermarkEnabled,
+    } = req.body;
+    // Phase 5 fix: handles are unique (case-insensitive). A handle
+    // held by another channel is 409 HANDLE_TAKEN, not a silent
+    // overwrite — the client shows "handle already taken".
+    if (handle !== undefined) {
+      const taken = await User.findOne({
+        _id: { $ne: channelId },
+        handle: { $regex: `^${escapeRegExp(handle)}$`, $options: "i" },
+      })
+        .select("_id")
+        .lean();
+      if (taken) {
+        return res.status(409).json({
+          error: { code: "HANDLE_TAKEN", message: "Handle is already taken" },
+        });
+      }
+    }
     // Same fields as the existing channel edit (PATCH /user/update/:id):
     // a name change also renames the uploader on the channel's videos.
     if (name !== undefined) {
@@ -295,8 +404,24 @@ export const updateSettings = async (req, res, next) => {
       );
     }
     const updates = {};
-    if (name !== undefined) updates.name = name;
-    if (desc !== undefined) updates.desc = desc;
+    for (const [key, value] of Object.entries({
+      name,
+      desc,
+      handle,
+      links,
+      contactEmail,
+      country,
+      language,
+      bannerUrl,
+      avatarUrl,
+      channelPublic,
+      keepSubscriptionsPrivate,
+      uploadDefaultVisibility,
+      uploadDefaultComments,
+      watermarkEnabled,
+    })) {
+      if (value !== undefined) updates[key] = value;
+    }
     const updated = await User.findByIdAndUpdate(
       channelId,
       { $set: updates },
@@ -317,15 +442,23 @@ export const updateSettings = async (req, res, next) => {
 async function validatePlaylistVideos(videoIds, ownerId) {
   const deduped = [...new Set(videoIds)];
   if (deduped.length === 0) return { videoIds: deduped };
-  const videos = await Videofile.find({ _id: { $in: deduped } })
+  // Soft-deleted videos do not exist for playlist purposes (restore
+  // first); a deleted id is a 404, not a silent skip.
+  const videos = await Videofile.find({
+    _id: { $in: deduped },
+    deletedAt: null,
+  })
     .select("videochanel visibility")
     .lean();
   if (videos.length !== deduped.length) {
     return { error: NOT_FOUND("One or more videos do not exist") };
   }
+  // Phase 5 fix: drafts behave like private — only their owner may
+  // add them to a playlist.
   const privateOfOther = videos.find(
     (v) =>
-      (v.visibility ?? "public") === "private" &&
+      ((v.visibility ?? "public") === "private" ||
+        (v.visibility ?? "public") === "draft") &&
       String(v.videochanel) !== String(ownerId),
   );
   if (privateOfOther) {

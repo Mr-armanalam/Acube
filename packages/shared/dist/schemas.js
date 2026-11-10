@@ -142,33 +142,109 @@ export const videoIdParamSchema = z.object({ id: objectId });
 // Phase 5 — Creator Studio (see PHASE5_PLAN.md Reconciliation).
 // Visibility: public = in feeds/search; unlisted = direct link only;
 // private = owner only (other viewers get 404, not 403).
-export const visibilitySchema = z.enum(["public", "unlisted", "private"]);
-// PATCH /video/:id — only title (1–100 chars) and/or visibility are
-// writable. Strict: any other field (views, Like, …) is 400, not
-// silently stripped. At least one of the two is required.
+// Phase 5 fix: "draft" joins the enum — a draft is visible to its owner
+// only (same rule as private) and never appears in feeds/search.
+export const visibilitySchema = z.enum(["public", "unlisted", "private", "draft"]);
+// PATCH /video/:id — title / visibility / description / tags /
+// thumbnailUrl / durationSec only (updateVideoSchema is strict: any
+// other field is 400). At least one field is required. Views, Like and
+// counters are never writable — the server owns them.
 export const updateVideoSchema = z
     .object({
     title: z.string().min(1, "must not be empty").max(100).optional(),
     visibility: visibilitySchema.optional(),
+    description: z.string().max(5000).optional(),
+    tags: z
+        .array(z.string().min(1, "must not be empty").max(50))
+        .max(20)
+        .optional(),
+    thumbnailUrl: z.string().url("must be a valid URL").max(1000).optional(),
+    durationSec: z.number().min(0).max(86400).optional(),
 })
     .strict()
-    .refine((v) => v.title !== undefined || v.visibility !== undefined, {
-    message: "at least one of title or visibility is required",
-});
+    .refine((v) => v.title !== undefined ||
+    v.visibility !== undefined ||
+    v.description !== undefined ||
+    v.tags !== undefined ||
+    v.thumbnailUrl !== undefined ||
+    v.durationSec !== undefined, { message: "at least one field is required" });
 // GET /studio/analytics?range=7|28|90 (default 28). Anything else is 400.
 export const studioAnalyticsQuerySchema = z.object({
     range: z.enum(["7", "28", "90"]).default("28"),
 });
-// PATCH /studio/settings — the caller's own channel (name/desc). Reuses
-// the channel-edit fields; at least one is required.
+// PATCH /studio/settings — the caller's own channel. Phase 5 fix: the
+// full channel shape (see apps/web/src/types.ts StudioSettingsPatch).
+// handle: 3–30 chars, letters/digits/dot/underscore/hyphen; uniqueness
+// is enforced in the controller (409 HANDLE_TAKEN). links: at most 10
+// { label, url } pairs. At least one field is required. There is no
+// subscribe/follower field anywhere — no follow system exists.
 export const studioSettingsSchema = z
     .object({
     name: z.string().min(1, "must not be empty").max(100).optional(),
     desc: z.string().max(500).optional(),
+    handle: z
+        .string()
+        .regex(/^[a-zA-Z0-9._-]{3,30}$/, "handle must be 3–30 characters: letters, digits, dot, underscore or hyphen")
+        .optional(),
+    links: z
+        .array(z.object({
+        label: z.string().min(1, "must not be empty").max(50),
+        url: z.string().url("must be a valid URL").max(1000),
+    }))
+        .max(10)
+        .optional(),
+    contactEmail: z.string().email("must be a valid email").optional(),
+    country: z.string().min(1, "must not be empty").max(100).optional(),
+    language: z.string().min(1, "must not be empty").max(50).optional(),
+    bannerUrl: z.string().url("must be a valid URL").max(1000).optional(),
+    avatarUrl: z.string().url("must be a valid URL").max(1000).optional(),
+    channelPublic: z.boolean().optional(),
+    keepSubscriptionsPrivate: z.boolean().optional(),
+    uploadDefaultVisibility: visibilitySchema.optional(),
+    uploadDefaultComments: z.boolean().optional(),
+    watermarkEnabled: z.boolean().optional(),
 })
-    .refine((v) => v.name !== undefined || v.desc !== undefined, {
-    message: "at least one of name or desc is required",
+    .refine((v) => v.name !== undefined ||
+    v.desc !== undefined ||
+    v.handle !== undefined ||
+    v.links !== undefined ||
+    v.contactEmail !== undefined ||
+    v.country !== undefined ||
+    v.language !== undefined ||
+    v.bannerUrl !== undefined ||
+    v.avatarUrl !== undefined ||
+    v.channelPublic !== undefined ||
+    v.keepSubscriptionsPrivate !== undefined ||
+    v.uploadDefaultVisibility !== undefined ||
+    v.uploadDefaultComments !== undefined ||
+    v.watermarkEnabled !== undefined, { message: "at least one field is required" });
+// GET /studio/videos?q=&visibility= — server-side content search/filter.
+// q matches the title (case-insensitive substring); visibility filters
+// to one visibility (draft included). Both are optional.
+export const studioVideosQuerySchema = paginationQuerySchema.extend({
+    q: z.string().max(100).optional(),
+    visibility: visibilitySchema.optional(),
 });
+// GET /studio/comments?filter=&sort= — filter=all (default) lists every
+// comment on the caller's videos; filter=unreplied lists top-level
+// comments with no reply. sort=newest (default) / oldest.
+export const studioCommentsQuerySchema = paginationQuerySchema.extend({
+    filter: z.enum(["all", "unreplied"]).default("all"),
+    sort: z.enum(["newest", "oldest"]).default("newest"),
+});
+// PATCH /video/history/:videoid/progress — resume position in seconds.
+// The controller clamps it to 0..durationSec (durationSec ?? duration);
+// a video with no known duration clamps only at 0.
+export const videoProgressSchema = z.object({
+    progressSec: z.number().min(0, "must be 0 or more"),
+});
+export const historyProgressParamSchema = z.object({ videoid: objectId });
+// PATCH /user/history-paused — the caller's own history-pause flag.
+export const historyPausedSchema = z.object({
+    paused: z.boolean(),
+});
+// GET /watch/:id/suggestions — the :id is the watched video.
+export const watchSuggestionsParamSchema = z.object({ id: objectId });
 export const playlistIdParamSchema = z.object({ id: objectId });
 export const createPlaylistSchema = z.object({
     title: z.string().min(1, "must not be empty").max(100),

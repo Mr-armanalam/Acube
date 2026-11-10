@@ -62,6 +62,14 @@ await Videofiles.create({
 });
 
 if (PHASE5_SEED) {
+  // Phase 5 fix: the Phase 5 e2e mode now seeds the SAME demo dataset
+  // as `pnpm seed:demo` (3 demo channels, 7 public videos, 1,503
+  // views / 113 likes across 28 days, comments, playlists, library,
+  // history) — the e2e user's own rows below are added on top, so the
+  // Phase 5 specs' expectations for that user (7 views / 2 likes /
+  // 12.5 watch minutes, one comment, one playlist) are unchanged.
+  const { seedDemoData } = await import("./scripts/seedDemo.js");
+  await seedDemoData();
   const { default: User } = await import("./Models/Auth.js");
   const { default: ChannelDailyStat } = await import("./Models/ChannelDailyStat.js");
   const { default: Comment } = await import("./Models/comment.js");

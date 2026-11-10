@@ -7,8 +7,9 @@ import {
   getVideoById,
   updateVideo,
   deleteVideo,
+  restoreVideo,
 } from "../Controllers/video.js";
-import { historycontroller, deletehistory, deletehistoryitem, getallhistorycontroller } from "../Controllers/History.js";
+import { historycontroller, deletehistory, deletehistoryitem, getallhistorycontroller, updateHistoryProgress } from "../Controllers/History.js";
 import { watchlatercontroller, getallwatchlatervontroller, deletewatchlater } from "../Controllers/watchlater.js";
 import { likedvideocontroller, getalllikedvideo, deletelikedvideo } from "../Controllers/likedvideo.js";
 import upload from "../Helper/filehelper.js";
@@ -17,11 +18,13 @@ import { validateBody, validateParams, validateQuery } from "../middleware/valid
 import {
   deleteHistoryParamSchema,
   historyEntrySchema,
+  historyProgressParamSchema,
   likeVideoSchema,
   paginationQuerySchema,
   updateVideoSchema,
   uploadVideoBodySchema,
   videoIdParamSchema,
+  videoProgressSchema,
   videoViewerParamSchema,
 } from "@acube/shared";
 
@@ -44,6 +47,17 @@ routes.patch(
 routes.patch("/view/:id", auth, validateParams(videoIdParamSchema), viewscontroller);
 
 routes.post("/history", auth, validateBody(historyEntrySchema), historycontroller);
+// Phase 5 fix: resume position for one (viewer, video) pair — the
+// viewer is req.userid, so the row is the caller's own by construction.
+// Clamped server-side to 0..durationSec; a paused history is a 200
+// no-op (recorded:false).
+routes.patch(
+  "/history/:videoid/progress",
+  auth,
+  validateParams(historyProgressParamSchema),
+  validateBody(videoProgressSchema),
+  updateHistoryProgress,
+);
 // Phase 3b: history / watch-later / liked lists are authed and scoped
 // to the caller (see the controllers).
 routes.get("/getallhistory", auth, validateQuery(paginationQuerySchema), getallhistorycontroller);
@@ -94,5 +108,12 @@ routes.patch(
   updateVideo,
 );
 routes.delete("/:id", auth, validateParams(videoIdParamSchema), deleteVideo);
+// Phase 5 fix: restore a soft-deleted video (owner only).
+routes.post(
+  "/:id/restore",
+  auth,
+  validateParams(videoIdParamSchema),
+  restoreVideo,
+);
 
 export default routes;

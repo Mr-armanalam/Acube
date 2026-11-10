@@ -17,6 +17,8 @@ const libraryEntrySchema = new mongoose.Schema(
       required: true,
     },
     addedAt: { type: Date, default: Date.now },
+    // Phase 5 fix: demo seed marker (see Models/Auth.js).
+    demo: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

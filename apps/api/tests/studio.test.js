@@ -337,7 +337,7 @@ describe("PATCH / DELETE /video/:id", () => {
     ).toBe(401);
   });
 
-  it("owner delete removes the video and its rows but keeps daily stats", async () => {
+  it("owner delete soft-deletes: the row stays with deletedAt, per-video rows are kept, feed/GET hide it, restore brings it back", async () => {
     const owner = await createUser();
     const viewer = await createUser();
     const video = await ownVideo(owner);
@@ -348,7 +348,7 @@ describe("PATCH / DELETE /video/:id", () => {
     await Comment.create({
       videoid: vid,
       userid: String(viewer._id),
-      commentbody: "gone with the video",
+      commentbody: "kept for restore",
     });
     await ViewEvent.create({
       videoid: vid,
@@ -367,14 +367,19 @@ describe("PATCH / DELETE /video/:id", () => {
       .delete(`/video/${video._id}`)
       .set(authHeader(owner));
     expect(res.status).toBe(200);
-    expect(await Videofile.findById(video._id)).toBeNull();
-    expect(await History.countDocuments({ videoid: vid })).toBe(0);
-    expect(await Watchlater.countDocuments({ videoid: vid })).toBe(0);
-    expect(await Likedvideo.countDocuments({ videoid: vid })).toBe(0);
-    expect(await Comment.countDocuments({ videoid: vid })).toBe(0);
-    expect(await ViewEvent.countDocuments({ videoid: vid })).toBe(0);
+    expect(res.body.deletedAt).toBeTruthy();
+    // Phase 5 fix: soft delete — the video row stays, with deletedAt.
+    const kept = await Videofile.findById(video._id);
+    expect(kept).not.toBeNull();
+    expect(kept.deletedAt).not.toBeNull();
+    // Per-video rows are KEPT so restore brings the video back whole.
+    expect(await History.countDocuments({ videoid: vid })).toBe(1);
+    expect(await Watchlater.countDocuments({ videoid: vid })).toBe(1);
+    expect(await Likedvideo.countDocuments({ videoid: vid })).toBe(1);
+    expect(await Comment.countDocuments({ videoid: vid })).toBe(1);
+    expect(await ViewEvent.countDocuments({ videoid: vid })).toBe(1);
     expect(await LibraryEntry.countDocuments({ videoid: vid })).toBe(0);
-    expect((await Playlist.findById(playlist._id)).videoIds).toEqual([]);
+    expect((await Playlist.findById(playlist._id)).videoIds).toEqual([vid]);
     // Historical aggregates are kept, not rewritten.
     expect(
       await ChannelDailyStat.findOne({
@@ -382,6 +387,31 @@ describe("PATCH / DELETE /video/:id", () => {
         day: today(),
       }),
     ).not.toBeNull();
+    // The feed and the single-video read hide it — even for the owner.
+    const feed = await api.get("/video/getvideos");
+    expect(feed.body.items.some((v) => String(v._id) === vid)).toBe(false);
+    expect((await api.get(`/video/${video._id}`)).status).toBe(404);
+    expect(
+      (await api.get(`/video/${video._id}`).set(authHeader(owner))).status,
+    ).toBe(404);
+    // A second delete is a 200 no-op, not an error.
+    expect(
+      (await api.delete(`/video/${video._id}`).set(authHeader(owner))).status,
+    ).toBe(200);
+    // Restore brings it back, rows and all.
+    const restored = await api
+      .post(`/video/${video._id}/restore`)
+      .set(authHeader(owner));
+    expect(restored.status).toBe(200);
+    expect(restored.body.deletedAt).toBeNull();
+    expect((await Videofile.findById(video._id)).deletedAt).toBeNull();
+    expect((await api.get(`/video/${video._id}`)).status).toBe(200);
+    expect(await History.countDocuments({ videoid: vid })).toBe(1);
+    // Restoring a live video is 400.
+    expect(
+      (await api.post(`/video/${video._id}/restore`).set(authHeader(owner)))
+        .status,
+    ).toBe(400);
   });
 
   it("non-owner delete is 403, missing video 404, no token 401", async () => {

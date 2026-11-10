@@ -53,15 +53,51 @@ const videofileschema=new mongoose.Schema(
         // status is "ready" for every upload today — there is no
         // transcoding pipeline yet; the field exists so Studio can
         // show a processing state when one lands.
+        // Phase 5 fix: "draft" joins the enum (owner-only, never in
+        // feeds/search, like private). description/tags/thumbnailUrl/
+        // durationSec are the contract field names (see
+        // apps/web/src/types.ts Video); duration/thumbnail stay as the
+        // legacy Cloudinary field names alongside them.
         visibility:{
             type:String,
-            enum:["public","unlisted","private"],
+            enum:["public","unlisted","private","draft"],
             default:"public",
         },
         status:{
             type:String,
             enum:["ready","processing"],
             default:"ready",
+        },
+        description:{
+            type:String,
+            default:"",
+        },
+        tags:{
+            type:[String],
+            default:[],
+        },
+        thumbnailUrl:{
+            type:String,
+            default:null,
+        },
+        durationSec:{
+            type:Number,
+            default:null,
+        },
+        // Phase 5 fix: soft delete. DELETE /video/:id sets this
+        // (nothing is hard-deleted any more); POST /video/:id/restore
+        // clears it. A soft-deleted video is 404 on GET /video/:id,
+        // excluded from the feed/search/suggestions/library, and still
+        // listed in GET /studio/videos so its owner can restore it.
+        // Missing field (pre-fix rows) means "not deleted".
+        deletedAt:{
+            type:Date,
+            default:null,
+        },
+        // Phase 5 fix: demo seed marker (see Models/Auth.js).
+        demo:{
+            type:Boolean,
+            default:false,
         }
     },
     {
@@ -75,4 +111,8 @@ videofileschema.index({ createdAt: -1 });
 // public feed (public videos, newest first).
 videofileschema.index({ videochanel: 1, createdAt: -1 });
 videofileschema.index({ visibility: 1, createdAt: -1 });
+// Phase 5 fix: soft-delete + tag filters (feed/suggestions exclude
+// deletedAt != null; Studio search filters on tags).
+videofileschema.index({ deletedAt: 1 });
+videofileschema.index({ tags: 1 });
 export default mongoose.model("Videofiles",videofileschema);

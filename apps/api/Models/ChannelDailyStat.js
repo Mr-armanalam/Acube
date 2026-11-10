@@ -18,6 +18,8 @@ const channelDailyStatSchema = new mongoose.Schema(
     // A completed watch adds 1 here; watchMinutes is capped by duration
     // (min(durationSeconds, 600) / 60 per completion).
     completions: { type: Number, default: 0 },
+    // Phase 5 fix: demo seed marker (see Models/Auth.js).
+    demo: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

@@ -94,6 +94,7 @@ export declare const visibilitySchema: z.ZodEnum<{
     public: "public";
     unlisted: "unlisted";
     private: "private";
+    draft: "draft";
 }>;
 export declare const updateVideoSchema: z.ZodObject<{
     title: z.ZodOptional<z.ZodString>;
@@ -101,7 +102,12 @@ export declare const updateVideoSchema: z.ZodObject<{
         public: "public";
         unlisted: "unlisted";
         private: "private";
+        draft: "draft";
     }>>;
+    description: z.ZodOptional<z.ZodString>;
+    tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    thumbnailUrl: z.ZodOptional<z.ZodString>;
+    durationSec: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strict>;
 export declare const studioAnalyticsQuerySchema: z.ZodObject<{
     range: z.ZodDefault<z.ZodEnum<{
@@ -113,6 +119,61 @@ export declare const studioAnalyticsQuerySchema: z.ZodObject<{
 export declare const studioSettingsSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     desc: z.ZodOptional<z.ZodString>;
+    handle: z.ZodOptional<z.ZodString>;
+    links: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        label: z.ZodString;
+        url: z.ZodString;
+    }, z.core.$strip>>>;
+    contactEmail: z.ZodOptional<z.ZodString>;
+    country: z.ZodOptional<z.ZodString>;
+    language: z.ZodOptional<z.ZodString>;
+    bannerUrl: z.ZodOptional<z.ZodString>;
+    avatarUrl: z.ZodOptional<z.ZodString>;
+    channelPublic: z.ZodOptional<z.ZodBoolean>;
+    keepSubscriptionsPrivate: z.ZodOptional<z.ZodBoolean>;
+    uploadDefaultVisibility: z.ZodOptional<z.ZodEnum<{
+        public: "public";
+        unlisted: "unlisted";
+        private: "private";
+        draft: "draft";
+    }>>;
+    uploadDefaultComments: z.ZodOptional<z.ZodBoolean>;
+    watermarkEnabled: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strip>;
+export declare const studioVideosQuerySchema: z.ZodObject<{
+    page: z.ZodDefault<z.ZodCoercedNumber<unknown>>;
+    limit: z.ZodPipe<z.ZodOptional<z.ZodCoercedNumber<unknown>>, z.ZodTransform<number, number | undefined>>;
+    q: z.ZodOptional<z.ZodString>;
+    visibility: z.ZodOptional<z.ZodEnum<{
+        public: "public";
+        unlisted: "unlisted";
+        private: "private";
+        draft: "draft";
+    }>>;
+}, z.core.$strip>;
+export declare const studioCommentsQuerySchema: z.ZodObject<{
+    page: z.ZodDefault<z.ZodCoercedNumber<unknown>>;
+    limit: z.ZodPipe<z.ZodOptional<z.ZodCoercedNumber<unknown>>, z.ZodTransform<number, number | undefined>>;
+    filter: z.ZodDefault<z.ZodEnum<{
+        all: "all";
+        unreplied: "unreplied";
+    }>>;
+    sort: z.ZodDefault<z.ZodEnum<{
+        newest: "newest";
+        oldest: "oldest";
+    }>>;
+}, z.core.$strip>;
+export declare const videoProgressSchema: z.ZodObject<{
+    progressSec: z.ZodNumber;
+}, z.core.$strip>;
+export declare const historyProgressParamSchema: z.ZodObject<{
+    videoid: z.ZodString;
+}, z.core.$strip>;
+export declare const historyPausedSchema: z.ZodObject<{
+    paused: z.ZodBoolean;
+}, z.core.$strip>;
+export declare const watchSuggestionsParamSchema: z.ZodObject<{
+    id: z.ZodString;
 }, z.core.$strip>;
 export declare const playlistIdParamSchema: z.ZodObject<{
     id: z.ZodString;
@@ -124,6 +185,7 @@ export declare const createPlaylistSchema: z.ZodObject<{
         public: "public";
         unlisted: "unlisted";
         private: "private";
+        draft: "draft";
     }>>;
     videoIds: z.ZodDefault<z.ZodArray<z.ZodString>>;
 }, z.core.$strip>;
@@ -134,6 +196,7 @@ export declare const updatePlaylistSchema: z.ZodObject<{
         public: "public";
         unlisted: "unlisted";
         private: "private";
+        draft: "draft";
     }>>;
     addVideoIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
     removeVideoIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
@@ -182,6 +245,10 @@ export type PostCommentInput = z.infer<typeof postCommentSchema>;
 export type UpdateVideoInput = z.infer<typeof updateVideoSchema>;
 export type StudioAnalyticsQueryInput = z.infer<typeof studioAnalyticsQuerySchema>;
 export type StudioSettingsInput = z.infer<typeof studioSettingsSchema>;
+export type StudioVideosQueryInput = z.infer<typeof studioVideosQuerySchema>;
+export type StudioCommentsQueryInput = z.infer<typeof studioCommentsQuerySchema>;
+export type VideoProgressInput = z.infer<typeof videoProgressSchema>;
+export type HistoryPausedInput = z.infer<typeof historyPausedSchema>;
 export type CreatePlaylistInput = z.infer<typeof createPlaylistSchema>;
 export type UpdatePlaylistInput = z.infer<typeof updatePlaylistSchema>;
 export type LibraryEntryInput = z.infer<typeof libraryEntrySchema>;
