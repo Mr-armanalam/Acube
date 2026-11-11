@@ -1549,4 +1549,8 @@ snapshot pushes).
 **PR #6 state.** Branch `feat/acube-home-channel-account` pushed via the
 GitHub connector snapshot push from main @ `804c0571` (PR #5 merge); PR #6
 created with base `main`, title "Home: real tag categories + preview cards;
-Channel: preview page; Account: Library/History tabs".
+Channel: preview page; Account: Library/History tabs" —
+https://github.com/Mr-armanalam/Acube/pull/6, head
+`602d1e229cf7c3a0d254cc623d592e96db1f6369` (snapshot commit; local head
+`30c7bde`). Screenshots are not in the PR (binaries are excluded from
+snapshot pushes).
