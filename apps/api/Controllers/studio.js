@@ -12,6 +12,7 @@ import Playlist from "../Models/Playlist.js";
 import LibraryEntry from "../Models/LibraryEntry.js";
 import Watchlater from "../Models/watchlater.js";
 import Likedvideo from "../Models/likevideo.js";
+import ViewEvent from "../Models/ViewEvent.js";
 import { paginate, paginationOf } from "../utils/pagination.js";
 import { getCached, setCached, invalidateChannelCache } from "../utils/studioCache.js";
 import { getChannelTotals } from "../utils/analytics.js";
@@ -267,6 +268,109 @@ export const getAnalytics = async (req, res, next) => {
 };
 
 // ------------------------------------------------------------ videos list
+
+// Per-video analytics (Content "View analytics" link target). The only
+// analytics endpoint before this was the channel-level
+// GET /studio/analytics, so every Content row linked to the same
+// channel page — there was no per-video target at all. This is the
+// owner-only per-video equivalent: the daily series comes from the
+// ViewEvent audit trail (one counted view per viewer per video per
+// day, same dedup rule as recordView), so `days` carries views +
+// completions per day. watchMinutes is derived from completions with
+// the SAME capped formula recordWatchComplete uses for the channel
+// stat (min(durationSec ?? duration, 600) / 60 per completion) — it
+// is exactly this video's contribution to the channel total, never
+// invented. Daily likes are DELIBERATELY ABSENT: ChannelDailyStat
+// likes are channel-level toggle deltas with no per-video split, and
+// Likedvideo rows only record current likers (an unlike deletes the
+// row), so no honest per-day like series exists for one video — the
+// all-time Like counter lives on `video.likes` instead. Deliberately
+// NOT cached (unlike the channel endpoint): the aggregate is one
+// indexed query, and a view that just happened should show at once.
+// Owner only: a non-owner gets 403 even for a public video (Studio
+// data, like the other owner-only video endpoints); a missing or
+// soft-deleted video is 404.
+export const getVideoAnalytics = async (req, res, next) => {
+  try {
+    const video = await Videofile.findById(req.params.id).lean();
+    if (!video || video.deletedAt != null) {
+      return res.status(404).json(NOT_FOUND("Video not found"));
+    }
+    if (String(video.videochanel) !== String(req.userid)) {
+      return res
+        .status(403)
+        .json(FORBIDDEN("You can only view analytics for your own videos"));
+    }
+    const range = Number(req.pagination.range);
+    // UTC day strings, ending today, oldest first (same as getAnalytics).
+    const days = [];
+    for (let i = range - 1; i >= 0; i -= 1) {
+      days.push(
+        new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10),
+      );
+    }
+    const rows = await ViewEvent.aggregate([
+      {
+        $match: {
+          videoid: String(video._id),
+          day: { $gte: days[0], $lte: days[days.length - 1] },
+        },
+      },
+      {
+        $group: {
+          _id: "$day",
+          views: { $sum: 1 },
+          completions: {
+            $sum: { $cond: ["$completed", 1, 0] },
+          },
+        },
+      },
+    ]);
+    const byDay = new Map(rows.map((r) => [r._id, r]));
+    const durationSec = video.durationSec ?? video.duration ?? 0;
+    const minutesPerCompletion = Math.min(durationSec, 600) / 60;
+    const series = days.map((date) => {
+      const row = byDay.get(date);
+      const completions = row?.completions ?? 0;
+      return {
+        date,
+        views: row?.views ?? 0,
+        completions,
+        watchMinutes: round2(completions * minutesPerCompletion),
+      };
+    });
+    const totals = series.reduce(
+      (acc, d) => ({
+        views: acc.views + d.views,
+        completions: acc.completions + d.completions,
+        watchMinutes: round2(acc.watchMinutes + d.watchMinutes),
+      }),
+      { views: 0, completions: 0, watchMinutes: 0 },
+    );
+    const best = series.reduce(
+      (bestSoFar, d) => (d.views > bestSoFar.views ? d : bestSoFar),
+      { date: null, views: 0 },
+    );
+    return res.status(200).json({
+      video: {
+        _id: video._id,
+        videotitle: video.videotitle,
+        visibility: video.visibility ?? "public",
+        views: video.views ?? 0,
+        likes: video.Like ?? 0,
+        createdAt: video.createdAt,
+      },
+      range,
+      days: series,
+      totals,
+      bestDay: best.views > 0 ? { date: best.date, views: best.views } : null,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
 
 export const getStudioVideos = async (req, res, next) => {
   try {

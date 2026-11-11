@@ -9,7 +9,7 @@
 // public read.
 import { describe, it, expect } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
 import {
@@ -130,10 +130,16 @@ describe("C — Content", () => {
     const user = userEvent.setup();
     renderRoutes("/studio/content", testSession);
     expect(await screen.findByText("Python Basics Tutorial")).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: "Delete" })[0]);
-    await user.click(screen.getByRole("button", { name: "Confirm delete" }));
+    await user.click(
+      screen.getByRole("button", { name: "Row actions for Python Basics Tutorial" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await user.click(screen.getByRole("menuitem", { name: "Confirm delete" }));
     expect(await screen.findByText("Deleted")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Restore" }));
+    await user.click(
+      screen.getByRole("button", { name: "Row actions for Python Basics Tutorial" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Restore" }));
     await waitFor(() => {
       expect(captured.videoRestores).toContain("vid1");
     });
@@ -143,7 +149,10 @@ describe("C — Content", () => {
     const user = userEvent.setup();
     renderRoutes("/studio/content", testSession);
     expect(await screen.findByText("Python Basics Tutorial")).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: /Edit details/ })[0]);
+    await user.click(
+      screen.getByRole("button", { name: "Row actions for Python Basics Tutorial" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Edit details" }));
     const desc = screen.getByLabelText("Video description");
     await user.clear(desc);
     await user.type(desc, "Updated description");
@@ -194,12 +203,37 @@ describe("C — Content", () => {
     expect(await screen.findByText("Python Basics Tutorial")).toBeInTheDocument();
   });
 
-  it("draft visibility is offered in the per-row select", async () => {
+  it("draft visibility is offered in the Change visibility chooser, and no per-row controls remain", async () => {
+    const user = userEvent.setup();
     renderRoutes("/studio/content", testSession);
     expect(await screen.findByText("Python Basics Tutorial")).toBeInTheDocument();
-    const select = screen.getByLabelText("Visibility for Python Basics Tutorial");
-    expect(within(select).getByText("Draft")).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "View analytics" }).length).toBeGreaterThan(0);
+    // No per-row buttons, dropdown, or inline edit inputs in the table.
+    expect(
+      screen.queryByRole("button", { name: "Edit details" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "View analytics" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Visibility for Python Basics Tutorial"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Video description"),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Row actions for Python Basics Tutorial" }),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: "View analytics" }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("menuitem", { name: "Change visibility" }),
+    );
+    for (const label of ["Public", "Unlisted", "Private", "Draft"]) {
+      expect(
+        screen.getByRole("menuitemradio", { name: label }),
+      ).toBeInTheDocument();
+    }
   });
 });
 

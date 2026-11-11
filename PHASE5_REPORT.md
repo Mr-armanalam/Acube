@@ -1074,3 +1074,178 @@ held another. The first e2e runs failed with 401s because the spec
 copied the displayed placeholder. Rule: never copy a secret from
 rendered tool output; read the file bytes (`od`/hexdump) or the
 minting code.
+
+#### 8.9.11 Content cleanup (11 Nov 2026, branch `feat/acube-content-cleanup`)
+
+Studio Content rebuilt to the preview image-20 layout, on the
+cleanup branch off the upload-wizard work; nothing merged, nothing
+pushed. The per-video analytics endpoint the menu links to did not
+exist before this branch — every Content row previously linked to
+the same channel-level page.
+
+**What changed vs image-19 (old UI) and image-21 (old inline edit).**
+Image-19: each row had an "Edit details" button under the title, a
+visibility `<select>` next to the pill, and "View analytics" +
+"Delete" buttons stacked in an ACTIONS column; no thumbnails.
+Image-21: clicking Edit details turned the row itself into inputs
+(title / description / tags / thumbnail URL) with Save / Cancel
+inside the row. Both are gone. The new table (image-20) is Video
+(gradient thumb + title) / Visibility (pill only) / Date / Views /
+Likes, with only a pencil ✎ and a ⋯ icon button per row; every
+action lives in a popup menu — Edit details (opens a modal, never
+inline editing), Change visibility (chooser), View analytics
+(navigates to the per-video page), Delete (soft-delete, Restore
+offered in the same menu). Draft rows show "—" for date/views/likes.
+Bulk-select stays as a slim hover checkbox column with a bulk bar
+that appears only while a selection exists (the preview's subtitle
+already promises "bulk-select"; image-20 itself shows no checkbox
+column, so this is the one deliberate deviation from the image).
+The footer note now reads "(soft-delete, restorable)" — see the
+restore wording below.
+
+**Per-video analytics endpoint + wiring.** New
+`GET /studio/videos/:id/analytics` (`apps/api/Controllers/studio.js`
+`getVideoAnalytics`, route in `apps/api/Routes/studio.js` with
+`videoIdParamSchema` + the analytics range query schema). Owner
+only: a non-owner gets 403 even for a public video; a missing or
+soft-deleted video is 404. The daily series comes from the
+`ViewEvent` audit trail (one counted view per viewer per video per
+day, the same dedup rule as `recordView`); `watchMinutes` is derived
+from completions with the SAME capped formula `recordWatchComplete`
+uses for the channel stat (`min(durationSec ?? duration, 600) / 60`
+per completion), so it is exactly this video's contribution to the
+channel total, never invented. Daily likes are DELIBERATELY ABSENT:
+`ChannelDailyStat` likes are channel-level toggle deltas with no
+per-video split, and `Likedvideo` rows only record current likers
+(an unlike deletes the row), so no honest per-day like series exists
+for one video — the all-time Like counter lives on `video.likes`
+instead. Deliberately NOT cached (unlike the channel endpoint): the
+aggregate is one indexed query, and a view that just happened
+should show at once. Client wiring: `getStudioVideoAnalytics` in
+`apps/web/src/Api/index.ts`, query key
+`["studio", "videos", id, "analytics", range]`,
+`useStudioVideoAnalytics` in `apps/web/src/query/hooks.ts`; the
+Analytics page reads `?video=` (`useSearchParams`) and renders the
+per-video view (title + pill, Views/Completions/Watch time/Best day
+cards, all-time views · likes note) instead of the channel view;
+without `?video=` the page is exactly the channel view it always
+was. The Content menu's "View analytics" links to
+`/studio/analytics?video=<id>`.
+
+**Honest restore wording (indefinite — no 30-day enforcement).**
+The preview image-20's own note says "soft-delete, 30-day
+restore", but the API enforces no expiry anywhere: a soft-deleted
+video stays listed in the owner-only `GET /studio/videos` (so the
+owner can restore it) with no deadline, and restore is a plain
+owner-checked endpoint. The UI now says what is true instead of
+repeating the preview's claim: the table note reads
+"(soft-delete, restorable)" and the delete confirm reads
+"Soft-delete — restorable any time from this menu." The only place
+that still said "30-day restore" was a stale unit-test expectation
+(`studioPreview.test.tsx`), fixed in verification to match the
+product. After the fix, the only "30-day" string left in
+`apps/web/src` / `apps/api` is the code comment stating there is no
+30-day expiry.
+
+**Fresh counts (all exit 0, uncached, real exit codes).**
+
+| Check | Command | Result |
+|---|---|---|
+| Typecheck | `pnpm typecheck --force` | exit 0 |
+| API tests | `pnpm --filter @acube/api test` (vitest run) | **209/209 (15 files)** — incl. 8 new `studio-content.test.js` (Content rows incl. fields the table renders, per-video analytics series + totals + bestDay, range=7 / zero-event 0s, 400/401/403/404 incl. soft-deleted 404, non-owner 403 regression across edit/visibility/delete/restore/analytics) |
+| Web tests | `pnpm --filter @acube/web test` (vitest run) | **143/143 (18 files)** — incl. 11 new `studioContent.test.tsx` (menu open/close incl. Escape + backdrop, edit modal save, visibility chooser, delete confirm → soft-delete → Restore, thumbnail fallback) |
+| Lint | `pnpm lint --force` | exit 0, **0 errors, 6 warnings** (pre-existing, same as §8.9.2 — ChatSearch, SidebarAllGroups, RoomContext, ThemeProvider, authSlice; none in the touched Content/Analytics files) |
+| Build | `pnpm build --force` | exit 0 |
+| Playwright e2e | `playwright test -c playwright.phase5.config.ts e2e-phase5/content-cleanup.spec.ts` (new spec, run separately — it renames the seeded video, and `phase5.spec.ts` asserts the original title; each invocation restarts the servers with a fresh seed) | **6/6** — table matches image 20 (headers, no per-row controls, gradient thumb, no "30-day" text); Change visibility → Private persists and back to Public; View analytics after one real Watch-page view renders 1 view / 0 completions / 0 min / best day today / "All-time: 1 views · 0 likes"; Delete → "Deleted" badge, row stays listed, Restore brings it back; Edit modal save persists to the Watch page; mobile 390px has no document-level horizontal overflow (see defects below) |
+| Playwright e2e (regression) | same config, `e2e-phase5/phase5.spec.ts e2e-phase5/upload-wizard.spec.ts` | **13/13** — Phase 5 suite 10/10, upload wizard 3/3 |
+
+**Fresh screenshots** (`docs/screenshots/`, desktop 1280×800 +
+mobile 390×844, from the new spec): `phase5-content-clean-full/
+mobile.png`, `phase5-content-menu-full/mobile.png`,
+`phase5-content-edit-modal-full/mobile.png`. Visually inspected:
+the table shot matches image-20 (green gradient ▶ thumb + title,
+Public pill, "11 Nov 2026", 0 / 0, ✎ + ⋯ only, "(soft-delete,
+restorable)" note) — the seeded e2e run has 1 video where the
+preview shows 7, and the slim checkbox column is the deliberate
+bulk-select deviation noted above. The menu shot shows all four
+items (Edit details / Change visibility / View analytics / Delete
+in red), fully visible, floating below the row. The modal shot is
+clean (title / description / tags / thumbnail URL, Save red +
+Cancel, dimmed backdrop). Mobile: no page-level overflow, the table
+scrolls inside its wrapper; the modal fits. No broken-image icons
+anywhere — the seeded video has no thumbnail URL, so `VideoThumb`
+renders the deterministic gradient ▶ span, never an `<img>`.
+
+**Defects found in verification — all fixed in place, all re-tested.**
+
+1. *Stale "30-day restore" test.* `studioPreview.test.tsx`
+   asserted `/Row actions:.*soft-delete, 30-day restore/` while the
+   product says "restorable". One-line test fix (regex →
+   `/soft-delete, restorable/` + comment); the product wording was
+   already right. First full `pnpm test` run was 1 failed / 142
+   passed because of this; after the fix 143/143.
+2. *Mobile 390px horizontal overflow — real, pre-existing.*
+   `document.documentElement.scrollWidth` was **714** at a 390px
+   viewport. Root cause, measured: `.studio-main` has
+   `margin: 0 auto`, and in the ≤768px column flex layout an auto
+   cross-axis margin disables stretch, so main sized to its content
+   — the table's 680px `min-width` forced main to 714px
+   (680 + 32 padding + 2 border). The `.studio-table-wrap`
+   `overflow-x: auto` was never the problem; it could not contain a
+   parent that was already 714 wide. Fix: `.studio-main { margin: 0 }`
+   inside the ≤768px media query only (`Studio.css`) — stretch
+   applies again, main is exactly the viewport wide, the table
+   scrolls inside its wrapper. Desktop is a row flex layout and is
+   unaffected. Verified by the e2e mobile test (was failing 714,
+   now passes) and the mobile screenshots.
+3. *Row menu clipped to a sliver — real, in the cleanup itself.*
+   The menu was `position: absolute` inside the row, and the table
+   wrapper's `overflow-x: auto` forces `overflow-y` to compute to
+   `auto`, so the menu was clipped to the wrapper's box — with one
+   seeded video only a sliver showed below the row (Playwright's
+   `toBeVisible` still passed: it does not account for clipping by
+   overflow ancestors, which is why the tests were green while the
+   screenshots showed the defect). Fix: the menu is now
+   `position: fixed`, rendered at the component root next to its
+   backdrop, anchored to the clicked button's viewport rect
+   (`Content.tsx`, `Studio.css`); a layout effect flips it upward
+   when it would run off the viewport bottom (measured height, not
+   guessed). Re-anchoring on scroll/resize (rAF-throttled, closes
+   if the button unmounts) instead of closing: scroll events are
+   delivered asynchronously, so the scroll-into-view that precedes
+   a click can arrive *after* the menu opens — closing on scroll
+   killed the menu on every mobile open (proven with an instrumented
+   probe: click → menu ADDED → wrapper scroll event → menu REMOVED
+   3ms later). Re-anchoring is immune to that race. No unit-test
+   changes needed: all menu assertions query by role globally.
+   Retaken menu screenshots (desktop + mobile) show the full
+   four-item menu.
+
+**Verification environment notes (this pass).** The first e2e runs
+failed 10/10 with "No videos yet" — a harness mistake, not a
+product defect: `pnpm build --force` builds `dist` without
+`VITE_BACKEND_URL`, and `Api/index.ts` has no default for it, so the
+bundle pointed at the preview origin instead of the API. Rebuilt
+with the e2e env (`VITE_BACKEND_URL=http://localhost:5000 ...`,
+as `pnpm test:e2e:phase5` does) and the suite went 10/10. `/tmp`
+is a 512 MB tmpfs and each e2e run leaves a ~200 MB `mongo-mem-*`
+dir behind (Playwright kills the API server before its shutdown
+hook runs); a run failed once with mongod unable to start at 99%
+full — clean stale `mongo-mem-*` dirs before e2e runs. Mid-task
+the VM reset (`pnpm` vanished from PATH, `/tmp` wiped);
+`pnpm@12.18.0` was reinstalled globally per the task instruction
+and the run continued. One full-suite run showed a single flaky
+failure (`studio.test.tsx` Content-edit, `findByText` timeout in
+the parallel run); the file passes alone (13/13) and the full
+suite passed on re-run (143/143) — recorded as a flake, not
+investigated further. No `any`, no ts-ignore, no tests excluded
+from typecheck; no real Cloudinary credentials used (mock only).
+
+**Not verified / open.** The Cloudinary-configured path is still
+verified only with the mocked upload (as before). The e2e seed has
+1 video for the fake user, so the table's 7-row density from
+image-20 is not reproduced end to end — the layout, pills, icons
+and menu are, on the single seeded row. `phase5-home.png`,
+`studio-content.png`, `library.png`, `watch.png` were regenerated
+by the e2e runs (the suite screenshots on every run); the new
+content shots are the 6 files listed above.

@@ -17,6 +17,8 @@ export const queryKeys = {
   // Phase 5 — Creator Studio.
   studioOverview: ["studio", "overview"] as const,
   studioAnalytics: (range: number) => ["studio", "analytics", range] as const,
+  studioVideoAnalytics: (id: string, range: number) =>
+    ["studio", "videos", id, "analytics", range] as const,
   studioVideos: (page: number, q = "", visibility = "") =>
     ["studio", "videos", page, q, visibility] as const,
   studioComments: (page: number, filter = "", sort = "") =>

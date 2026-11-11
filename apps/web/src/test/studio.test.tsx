@@ -9,6 +9,7 @@ import { server } from "../mocks/server";
 import {
   captured,
   fixtureStudioAnalytics,
+  fixtureStudioVideoAnalytics,
   fixtureStudioVideos,
 } from "../mocks/handlers";
 import { renderWithProviders, testSession } from "./testUtils";
@@ -53,13 +54,16 @@ describe("Studio", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("Content edit calls PATCH /video/:id with the new title", async () => {
+  it("Content edit (row menu → modal) calls PATCH /video/:id with the new title", async () => {
     const user = userEvent.setup();
     renderRoutes("/studio/content", testSession);
     expect(
       await screen.findByText("Python Basics Tutorial"),
     ).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: /Edit details/ })[0]);
+    await user.click(
+      screen.getByRole("button", { name: "Row actions for Python Basics Tutorial" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Edit details" }));
     const input = screen.getByLabelText("Video title");
     await user.clear(input);
     await user.type(input, "Python Basics Updated");
@@ -72,16 +76,19 @@ describe("Studio", () => {
     });
   });
 
-  it("Content visibility change calls PATCH /video/:id", async () => {
+  it("Content visibility change (row menu → chooser) calls PATCH /video/:id", async () => {
     const user = userEvent.setup();
     renderRoutes("/studio/content", testSession);
     expect(
       await screen.findByText("Python Basics Tutorial"),
     ).toBeInTheDocument();
-    const select = screen.getByLabelText(
-      "Visibility for Python Basics Tutorial",
+    await user.click(
+      screen.getByRole("button", { name: "Row actions for Python Basics Tutorial" }),
     );
-    await user.selectOptions(select, "private");
+    await user.click(
+      screen.getByRole("menuitem", { name: "Change visibility" }),
+    );
+    await user.click(screen.getByRole("menuitemradio", { name: "Private" }));
     await waitFor(() => {
       expect(captured.videoPatches).toContainEqual({
         id: "vid1",
@@ -90,15 +97,18 @@ describe("Studio", () => {
     });
   });
 
-  it("Content delete (with confirm) calls DELETE /video/:id", async () => {
+  it("Content delete (row menu, with confirm) calls DELETE /video/:id", async () => {
     const user = userEvent.setup();
     renderRoutes("/studio/content", testSession);
     expect(
       await screen.findByText("Python Basics Tutorial"),
     ).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: "Delete" })[0]);
     await user.click(
-      screen.getByRole("button", { name: "Confirm delete" }),
+      screen.getByRole("button", { name: "Row actions for Python Basics Tutorial" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Confirm delete" }),
     );
     await waitFor(() => {
       expect(captured.videoDeletes).toContain("vid1");
@@ -106,6 +116,7 @@ describe("Studio", () => {
   });
 
   it("Content shows a server-side soft-deleted row as Deleted with Restore", async () => {
+    const user = userEvent.setup();
     // Phase 5 fix: the row's deletedAt (from GET /studio/videos) —
     // not only an in-session delete — drives the Deleted badge.
     server.use(
@@ -138,8 +149,11 @@ describe("Studio", () => {
       await screen.findByText("Retired: Old Trailer"),
     ).toBeInTheDocument();
     expect(screen.getByText("Deleted")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Row actions for Retired: Old Trailer" }),
+    );
     expect(
-      screen.getByRole("button", { name: "Restore" }),
+      screen.getByRole("menuitem", { name: "Restore" }),
     ).toBeInTheDocument();
   });
 
@@ -161,6 +175,52 @@ describe("Studio", () => {
     expect(
       fixtureStudioAnalytics.days.length,
     ).toBeGreaterThan(0);
+  });
+
+  it("Analytics with ?video= calls the per-video endpoint and renders its totals/chart", async () => {
+    renderRoutes("/studio/analytics?video=vid1", testSession);
+    expect(await screen.findByText("Best day")).toBeInTheDocument();
+    expect(captured.videoAnalyticsCalls).toContain("vid1");
+    // The endpoint's own totals — views, completions, watch time,
+    // best day — never the channel cards.
+    expect(screen.getByText("Views (28d)")).toBeInTheDocument();
+    expect(screen.getByText("40")).toBeInTheDocument();
+    expect(screen.getByText("Completions")).toBeInTheDocument();
+    expect(screen.getByText("6")).toBeInTheDocument();
+    expect(screen.getByText("Watch time")).toBeInTheDocument();
+    expect(screen.getByText("24 min")).toBeInTheDocument();
+    expect(screen.getByText("20 views")).toBeInTheDocument();
+    expect(screen.getByText("Peak · 20 views")).toBeInTheDocument();
+    expect(screen.queryByText("Avg views / video")).not.toBeInTheDocument();
+    expect(screen.queryByText("Like rate")).not.toBeInTheDocument();
+    expect(screen.queryByText("Top source")).not.toBeInTheDocument();
+    // Text-table fallback carries the same per-video series.
+    const table = screen.getByLabelText(
+      "Views — Python Basics Tutorial · last 28 days data table",
+    );
+    expect(within(table).getByText("2026-11-01")).toBeInTheDocument();
+    expect(within(table).getByText("2026-11-02")).toBeInTheDocument();
+    expect(within(table).getByText("20")).toBeInTheDocument();
+    expect(
+      fixtureStudioVideoAnalytics.days.length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("Analytics without ?video= never calls the per-video endpoint", async () => {
+    renderRoutes("/studio/analytics", testSession);
+    expect(await screen.findByText("50")).toBeInTheDocument();
+    expect(captured.videoAnalyticsCalls).toEqual([]);
+  });
+
+  it("Analytics with ?video= for an unknown video shows the error state, never channel data", async () => {
+    renderRoutes("/studio/analytics?video=vid-missing", testSession);
+    expect(
+      await screen.findByText("Could not load analytics for this video."),
+    ).toBeInTheDocument();
+    expect(captured.videoAnalyticsCalls).toContain("vid-missing");
+    expect(screen.queryByText("Views (28d)")).not.toBeInTheDocument();
+    expect(screen.queryByText("Avg views / video")).not.toBeInTheDocument();
+    expect(screen.queryByText("Top source")).not.toBeInTheDocument();
   });
 
   it("Analytics shows the honest empty state when the series is empty", async () => {

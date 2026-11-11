@@ -201,20 +201,44 @@ describe("Preview — Content (image 10)", () => {
       "Date",
       "Views",
       "Likes",
-      "Actions",
+      "",
     ]);
     expect(screen.getAllByText("Public").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Draft").length).toBeGreaterThan(0);
+    // Cleanup: restore is indefinite — the API enforces no 30-day
+    // expiry, so the note says "restorable", not "30-day restore".
     expect(
-      screen.getByText(/Row actions:.*soft-delete, 30-day restore/),
+      screen.getByText(/Row actions:.*soft-delete, restorable/),
     ).toBeInTheDocument();
-    // View analytics and Delete live in one stacked actions cell.
+    // Content cleanup (preview image 20): no per-row buttons, no
+    // per-row visibility dropdown, no inline edit — only a pencil and
+    // a "⋯" button per row, opening the row menu.
     expect(
-      screen.getAllByRole("link", { name: "View analytics" }).length,
+      screen.queryByRole("button", { name: "Edit details" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "View analytics" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/Visibility for /),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: /Row actions for / }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("button", { name: /More actions for / }).length,
     ).toBeGreaterThan(0);
     // Preview date format ("22 Nov 2024"), not the ISO slice.
     expect(screen.getByText("1 Nov 2026")).toBeInTheDocument();
     expect(screen.queryByText("2026-11-01")).not.toBeInTheDocument();
+    // Draft rows show "—" for date/views/likes, like the preview.
+    const draftRow = screen
+      .getByText("Untitled draft — trim 03")
+      .closest("tr") as HTMLElement;
+    expect(within(draftRow).getAllByText("—").length).toBe(3);
   });
 
   it("a thumbnail URL that does not resolve falls back instead of a broken-image icon", async () => {

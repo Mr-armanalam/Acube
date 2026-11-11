@@ -1,14 +1,18 @@
-// Phase 5 fix — Studio Content (preview screen C): own videos table
-// with search, visibility filter, bulk-select + bulk soft-delete,
-// thumbnails, description/tags/thumbnail edit, per-row View analytics
-// link, WORKING pagination (page state + pager), soft-delete with a
-// restore affordance, and Draft in the visibility select. Deletes are
-// soft server-side (POST /video/:id/restore restores); the row stays
-// visible as "Deleted" with Restore until the list refreshes.
-import React, { useMemo, useState } from "react";
+// Content cleanup — Studio Content (preview image 20): a clean table
+// (Video thumbnail + title / Visibility pill / Date / Views / Likes /
+// pencil + "⋯" icon buttons only). All row actions live in a popup
+// menu — Edit details opens a modal, Change visibility opens a
+// chooser, View analytics navigates to the per-video page
+// (/studio/analytics?video=<id>), Delete soft-deletes; restore is
+// indefinite — the API enforces no 30-day expiry. No per-row buttons,
+// no per-row visibility dropdown, no inline row editing. Draft rows
+// show "—" for date/views/likes.
+// Bulk-select is a slim hover checkbox column with a bulk bar that
+// appears only while a selection exists.
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import StudioShell from "./Studio";
-import VideoThumb from "../../Component/VideoThumb";
+import VideoThumb, { deterministicThumbGradient } from "../../Component/VideoThumb";
 import {
   StudioEmptyState,
   StudioErrorState,
@@ -23,9 +27,16 @@ import {
 } from "../../query/hooks";
 import type { Video, VideoVisibility } from "../../types";
 
+const VISIBILITIES: VideoVisibility[] = [
+  "public",
+  "unlisted",
+  "private",
+  "draft",
+];
+
 const formatDate = (v: Video): string => {
-  // Preview format ("22 Nov 2024"), not the ISO slice — and a real
-  // date never wraps mid-token the way "2026-11-11" did in the column.
+  // Drafts are unpublished: the preview shows "—", not a date.
+  if ((v.visibility ?? "public") === "draft") return "—";
   const raw = v.createdAt ?? v.createdat ?? "";
   const d = new Date(raw);
   if (!raw || Number.isNaN(d.getTime())) return "—";
@@ -35,7 +46,12 @@ const formatDate = (v: Video): string => {
     year: "numeric",
     timeZone: "UTC",
   });
-}
+};
+
+const formatCount = (v: Video, value: number | undefined): string =>
+  (v.visibility ?? "public") === "draft" ? "—" : String(value ?? 0);
+
+type MenuView = "actions" | "visibility" | "delete";
 
 export default function Content() {
   const [page, setPage] = useState(1);
@@ -50,12 +66,15 @@ export default function Content() {
   const updateMutation = useUpdateVideo();
   const deleteMutation = useDeleteVideo();
   const restoreMutation = useRestoreVideo();
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // Row menu: which video's popup is open, and which view it shows.
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [menuView, setMenuView] = useState<MenuView>("actions");
+  // Edit-details modal state (never inline row editing).
+  const [editing, setEditing] = useState<Video | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editTags, setEditTags] = useState("");
   const [editThumbnailUrl, setEditThumbnailUrl] = useState("");
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
@@ -71,17 +90,120 @@ export default function Content() {
     [items, selected],
   );
 
-  const startEdit = (v: Video) => {
-    setEditingId(v._id);
+  const closeMenu = () => {
+    setMenuFor(null);
+    setMenuView("actions");
+    setMenuAnchor(null);
+    setMenuTop(null);
+  };
+  // The menu is fixed-positioned at the component root (see below), NOT
+  // inside the row: the table wrapper's overflow-x: auto clips any
+  // absolutely-positioned descendant, so a menu inside the row was cut
+  // to a sliver whenever the row sat near the wrapper's bottom edge
+  // (always, with a single video). The anchor is the clicked button's
+  // viewport rect; the menu flips upward when it would run off the
+  // bottom of the viewport (measured, not guessed).
+  const [menuAnchor, setMenuAnchor] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
+  const [menuTop, setMenuTop] = useState<number | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuVideo = useMemo(
+    () => items.find((item) => item._id === menuFor) ?? null,
+    [items, menuFor],
+  );
+  const openMenu = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    if (menuFor === id) {
+      closeMenu();
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    menuButtonRef.current = e.currentTarget;
+    setMenuAnchor({
+      top: rect.bottom + 4,
+      right: Math.max(0, window.innerWidth - rect.right),
+    });
+    setMenuTop(null);
+    setMenuFor(id);
+    setMenuView("actions");
+  };
+  useLayoutEffect(() => {
+    if (!menuFor || !menuAnchor) return;
+    const el = menuRef.current;
+    if (!el) return;
+    const height = el.getBoundingClientRect().height;
+    const top = Math.min(
+      menuAnchor.top,
+      Math.max(8, window.innerHeight - 8 - height),
+    );
+    setMenuTop((prev) => (prev === top ? prev : top));
+  }, [menuFor, menuView, menuAnchor]);
+  // A fixed menu detaches from its row on scroll/resize — re-anchor
+  // it to the button instead (it follows the row). Scroll events are
+  // delivered asynchronously, so the scroll-into-view that precedes a
+  // click can arrive AFTER the menu opens: closing on scroll would
+  // kill the menu on every mobile open (the button starts off-screen
+  // in the scrollable table). Re-anchoring is immune to that race —
+  // the stale event just recomputes the same position.
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (!menuFor) return;
+    let raf = 0;
+    const reanchor = () => {
+      const btn = menuButtonRef.current;
+      if (!btn || !btn.isConnected) {
+        closeMenu();
+        return;
+      }
+      const rect = btn.getBoundingClientRect();
+      setMenuAnchor({
+        top: rect.bottom + 4,
+        right: Math.max(0, window.innerWidth - rect.right),
+      });
+      setMenuTop(null);
+    };
+    const onMove = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        reanchor();
+      });
+    };
+    window.addEventListener("scroll", onMove, true);
+    window.addEventListener("resize", onMove);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onMove, true);
+      window.removeEventListener("resize", onMove);
+    };
+  }, [menuFor]);
+
+  // Escape closes the menu and the modal; a backdrop click closes them too.
+  useEffect(() => {
+    if (!menuFor && !editing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeMenu();
+        setEditing(null);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuFor, editing]);
+
+  const openEdit = (v: Video) => {
+    closeMenu();
+    setEditing(v);
     setEditTitle(v.videotitle);
     setEditDescription(v.description ?? "");
     setEditTags((v.tags ?? []).join(", "));
     setEditThumbnailUrl(v.thumbnailUrl ?? v.thumbnail ?? "");
   };
-  const saveEdit = (id: string) => {
-    if (!editTitle.trim()) return;
+  const saveEdit = () => {
+    if (!editing || !editTitle.trim()) return;
     updateMutation.mutate({
-      id,
+      id: editing._id,
       title: editTitle.trim(),
       description: editDescription.trim() || undefined,
       tags: editTags
@@ -90,7 +212,7 @@ export default function Content() {
         .filter(Boolean),
       thumbnailUrl: editThumbnailUrl.trim() || undefined,
     });
-    setEditingId(null);
+    setEditing(null);
   };
 
   const softDelete = (id: string) => {
@@ -104,7 +226,7 @@ export default function Content() {
         });
       },
     });
-    setConfirmDeleteId(null);
+    closeMenu();
   };
 
   const bulkDelete = () => {
@@ -123,6 +245,7 @@ export default function Content() {
         void videos.refetch();
       },
     });
+    closeMenu();
   };
 
   return (
@@ -167,16 +290,22 @@ export default function Content() {
           <option value="private">Private</option>
           <option value="draft">Draft</option>
         </select>
-        {selectedCount > 0 ? (
-          bulkConfirm ? (
-            <span>
+      </div>
+      {/* Bulk action bar: only while a selection exists. */}
+      {selectedCount > 0 ? (
+        <div className="studio-bulk-bar" role="status">
+          <span>
+            <strong>{selectedCount}</strong> selected
+          </span>
+          {bulkConfirm ? (
+            <>
               <button
                 type="button"
                 className="acube-btn-danger"
                 onClick={bulkDelete}
               >
                 Confirm delete {selectedCount} selected
-              </button>{" "}
+              </button>
               <button
                 type="button"
                 className="acube-btn-secondary"
@@ -184,7 +313,7 @@ export default function Content() {
               >
                 Cancel
               </button>
-            </span>
+            </>
           ) : (
             <button
               type="button"
@@ -193,9 +322,16 @@ export default function Content() {
             >
               Delete {selectedCount} selected
             </button>
-          )
-        ) : null}
-      </div>
+          )}
+          <button
+            type="button"
+            className="acube-btn-secondary"
+            onClick={() => setSelected(new Set())}
+          >
+            Clear selection
+          </button>
+        </div>
+      ) : null}
       {videos.isLoading ? (
         <StudioSkeleton label="Loading your videos" />
       ) : videos.isError || !videos.data ? (
@@ -233,22 +369,21 @@ export default function Content() {
                 <th>Date</th>
                 <th>Views</th>
                 <th>Likes</th>
-                <th>Actions</th>
+                <th aria-label="Row actions" />
               </tr>
             </thead>
             <tbody>
               {items.map((v) => {
-                // Phase 5 fix: a row is deleted when the SERVER says so
-                // (deletedAt set) — not only when this session deleted
-                // it. Before this, a video soft-deleted earlier (e.g.
-                // the seeded "Retired: Channel Trailer 2024") rendered
-                // as a live row with no Deleted badge and no Restore.
+                // A row is deleted when the SERVER says so (deletedAt
+                // set) — not only when this session deleted it.
                 const isDeleted =
                   v.deletedAt != null || deletedIds.has(v._id);
+                const menuOpen = menuFor === v._id;
                 return (
                   <tr key={v._id}>
                     <td>
                       <input
+                        className="studio-row-select"
                         type="checkbox"
                         aria-label={`Select ${v.videotitle}`}
                         checked={selected.has(v._id)}
@@ -263,154 +398,52 @@ export default function Content() {
                       />
                     </td>
                     <td>
-                      {v.thumbnailUrl || v.thumbnail ? (
+                      <div className="studio-video-cell">
                         <VideoThumb
                           className="studio-row-thumb"
                           src={v.thumbnailUrl ?? v.thumbnail ?? ""}
-                          style={{ marginBottom: 4 }}
+                          fallbackBackground={deterministicThumbGradient(
+                            v._id,
+                          )}
                         />
-                      ) : null}
-                      {editingId === v._id ? (
-                        <span
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 6,
-                            width: "100%",
-                          }}
-                        >
-                          <input
-                            className="acube-input"
-                            aria-label="Video title"
-                            value={editTitle}
-                            onChange={(e) => setEditTitle(e.target.value)}
-                          />
-                          <textarea
-                            className="acube-input"
-                            aria-label="Video description"
-                            rows={2}
-                            value={editDescription}
-                            onChange={(e) =>
-                              setEditDescription(e.target.value)
-                            }
-                          />
-                          <input
-                            className="acube-input"
-                            aria-label="Video tags"
-                            placeholder="Tags, comma separated"
-                            value={editTags}
-                            onChange={(e) => setEditTags(e.target.value)}
-                          />
-                          <input
-                            className="acube-input"
-                            aria-label="Thumbnail URL"
-                            placeholder="Thumbnail URL"
-                            value={editThumbnailUrl}
-                            onChange={(e) =>
-                              setEditThumbnailUrl(e.target.value)
-                            }
-                          />
-                          <span>
-                            <button
-                              type="button"
-                              className="acube-btn"
-                              onClick={() => saveEdit(v._id)}
-                            >
-                              Save
-                            </button>{" "}
-                            <button
-                              type="button"
-                              className="acube-btn-secondary"
-                              onClick={() => setEditingId(null)}
-                            >
-                              Cancel
-                            </button>
-                          </span>
-                        </span>
-                      ) : (
-                        <span>
+                        <span className="studio-video-title">
                           <Link to={`/watch/${v._id}`}>{v.videotitle}</Link>{" "}
                           {isDeleted ? (
                             <span className="acube-badge acube-badge-private">
                               Deleted
                             </span>
                           ) : null}
-                          <br />
-                          <button
-                            type="button"
-                            className="acube-btn-secondary"
-                            aria-label={`Edit details for ${v.videotitle}`}
-                            onClick={() => startEdit(v)}
-                          >
-                            Edit details
-                          </button>
                         </span>
-                      )}
+                      </div>
                     </td>
                     <td>
-                      <VisibilityBadge visibility={v.visibility} />{" "}
-                      <select
-                        className="acube-select"
-                        aria-label={`Visibility for ${v.videotitle}`}
-                        value={v.visibility ?? "public"}
-                        onChange={(e) =>
-                          updateMutation.mutate({
-                            id: v._id,
-                            visibility: e.target.value as VideoVisibility,
-                          })
-                        }
-                      >
-                        <option value="public">Public</option>
-                        <option value="unlisted">Unlisted</option>
-                        <option value="private">Private</option>
-                        <option value="draft">Draft</option>
-                      </select>
+                      <VisibilityBadge visibility={v.visibility} />
                     </td>
                     <td>{formatDate(v)}</td>
-                    <td>{v.views ?? 0}</td>
-                    <td>{v.Like ?? 0}</td>
+                    <td>{formatCount(v, v.views)}</td>
+                    <td>{formatCount(v, v.Like)}</td>
                     <td>
-                      <div className="studio-actions-cell">
-                        <Link
-                          to="/studio/analytics"
-                          className="acube-btn-secondary"
+                      <div className="studio-row-actions">
+                        <button
+                          type="button"
+                          className="studio-icon-btn"
+                          aria-label={`Row actions for ${v.videotitle}`}
+                          aria-haspopup="menu"
+                          aria-expanded={menuOpen}
+                          onClick={(e) => openMenu(v._id, e)}
                         >
-                          View analytics
-                        </Link>
-                        {isDeleted ? (
-                          <button
-                            type="button"
-                            className="acube-btn"
-                            onClick={() => restore(v._id)}
-                          >
-                            Restore
-                          </button>
-                        ) : confirmDeleteId === v._id ? (
-                          <span>
-                            <button
-                              type="button"
-                              className="acube-btn-danger"
-                              onClick={() => softDelete(v._id)}
-                            >
-                              Confirm delete
-                            </button>{" "}
-                            <button
-                              type="button"
-                              className="acube-btn-secondary"
-                              onClick={() => setConfirmDeleteId(null)}
-                            >
-                              Cancel
-                            </button>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            className="acube-btn-danger"
-                            onClick={() => setConfirmDeleteId(v._id)}
-                          >
-                            Delete
-                          </button>
-                        )}
+                          ✎
+                        </button>
+                        <button
+                          type="button"
+                          className="studio-icon-btn"
+                          aria-label={`More actions for ${v.videotitle}`}
+                          aria-haspopup="menu"
+                          aria-expanded={menuOpen}
+                          onClick={(e) => openMenu(v._id, e)}
+                        >
+                          ⋯
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -420,10 +453,11 @@ export default function Content() {
           </table>
           </div>
           <p className="studio-note">
-            Row actions: <strong>Edit details</strong> ·{" "}
+            Row actions: use the ✎ or ⋯ button on a row —{" "}
+            <strong>Edit details</strong> ·{" "}
             <strong>Change visibility</strong> ·{" "}
             <strong>View analytics</strong> · <strong>Delete</strong>{" "}
-            (soft-delete, 30-day restore). Every action is ownership-checked
+            (soft-delete, restorable). Every action is ownership-checked
             server-side.
           </p>
           <nav
@@ -457,6 +491,223 @@ export default function Content() {
           </nav>
         </>
       )}
+      {/* Menu backdrop: a click anywhere outside the open menu closes it. */}
+      {menuFor ? (
+        <div
+          className="studio-menu-backdrop"
+          aria-hidden="true"
+          onClick={closeMenu}
+        />
+      ) : null}
+      {/* Row menu, fixed-positioned at the root (see openMenu): it must
+          never live inside the table, whose scroll wrapper clips it. */}
+      {menuFor && menuVideo && menuAnchor ? (
+        <div
+          ref={menuRef}
+          className="studio-menu"
+          role="menu"
+          aria-label={`Actions for ${menuVideo.videotitle}`}
+          style={{
+            top: menuTop ?? menuAnchor.top,
+            right: menuAnchor.right,
+          }}
+        >
+          {menuView === "actions" ? (
+            <>
+              <button
+                type="button"
+                className="studio-menu-item"
+                role="menuitem"
+                onClick={() => openEdit(menuVideo)}
+              >
+                Edit details
+              </button>
+              <button
+                type="button"
+                className="studio-menu-item"
+                role="menuitem"
+                onClick={() => setMenuView("visibility")}
+              >
+                Change visibility
+              </button>
+              <Link
+                to={`/studio/analytics?video=${menuVideo._id}`}
+                className="studio-menu-item"
+                role="menuitem"
+                onClick={closeMenu}
+              >
+                View analytics
+              </Link>
+              {menuVideo.deletedAt != null ||
+              deletedIds.has(menuVideo._id) ? (
+                <button
+                  type="button"
+                  className="studio-menu-item"
+                  role="menuitem"
+                  onClick={() => restore(menuVideo._id)}
+                >
+                  Restore
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="studio-menu-item studio-menu-item-danger"
+                  role="menuitem"
+                  onClick={() => setMenuView("delete")}
+                >
+                  Delete
+                </button>
+              )}
+            </>
+          ) : menuView === "visibility" ? (
+            <>
+              <p className="studio-menu-title">Change visibility</p>
+              {VISIBILITIES.map((vis) => (
+                <button
+                  key={vis}
+                  type="button"
+                  className="studio-menu-item"
+                  role="menuitemradio"
+                  aria-checked={
+                    (menuVideo.visibility ?? "public") === vis
+                  }
+                  onClick={() => {
+                    updateMutation.mutate({
+                      id: menuVideo._id,
+                      visibility: vis,
+                    });
+                    closeMenu();
+                  }}
+                >
+                  {vis.charAt(0).toUpperCase() + vis.slice(1)}
+                  {(menuVideo.visibility ?? "public") === vis ? (
+                    <span className="studio-menu-check" aria-hidden="true">
+                      ✓
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="studio-menu-item"
+                role="menuitem"
+                onClick={() => setMenuView("actions")}
+              >
+                ← Back
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="studio-menu-title">Delete this video?</p>
+              <p className="studio-menu-note">
+                Soft-delete — restorable any time from this menu.
+              </p>
+              <button
+                type="button"
+                className="studio-menu-item studio-menu-item-danger"
+                role="menuitem"
+                onClick={() => softDelete(menuVideo._id)}
+              >
+                Confirm delete
+              </button>
+              <button
+                type="button"
+                className="studio-menu-item"
+                role="menuitem"
+                onClick={closeMenu}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      ) : null}
+      {/* Edit details modal — never inline row editing. */}
+      {editing ? (
+        <div
+          className="studio-modal-overlay"
+          role="presentation"
+          onClick={() => setEditing(null)}
+        >
+          <div
+            className="studio-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Edit details for ${editing.videotitle}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="studio-modal-header">
+              <h2>Edit details</h2>
+              <button
+                type="button"
+                className="studio-modal-close"
+                aria-label="Close edit details"
+                onClick={() => setEditing(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="studio-modal-form">
+              <label className="studio-field-label">
+                Video title
+                <input
+                  className="acube-input"
+                  aria-label="Video title"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                />
+              </label>
+              <label className="studio-field-label">
+                Video description
+                <textarea
+                  className="acube-input"
+                  aria-label="Video description"
+                  rows={3}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                />
+              </label>
+              <label className="studio-field-label">
+                Video tags
+                <input
+                  className="acube-input"
+                  aria-label="Video tags"
+                  placeholder="Tags, comma separated"
+                  value={editTags}
+                  onChange={(e) => setEditTags(e.target.value)}
+                />
+              </label>
+              <label className="studio-field-label">
+                Thumbnail URL
+                <input
+                  className="acube-input"
+                  aria-label="Thumbnail URL"
+                  placeholder="Thumbnail URL"
+                  value={editThumbnailUrl}
+                  onChange={(e) => setEditThumbnailUrl(e.target.value)}
+                />
+              </label>
+              <div className="studio-modal-actions">
+                <button
+                  type="button"
+                  className="acube-btn"
+                  onClick={saveEdit}
+                  disabled={!editTitle.trim()}
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  className="acube-btn-secondary"
+                  onClick={() => setEditing(null)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </StudioShell>
   );
 }

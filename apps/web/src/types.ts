@@ -192,6 +192,33 @@ export interface StudioAnalytics {
   trafficSources?: { source: string; views: number }[];
 }
 
+/** Per-video analytics (GET /studio/videos/:id/analytics, owner only).
+ * Daily likes are DELIBERATELY ABSENT: likes are channel-level toggle
+ * deltas with no honest per-video split, so `days` carries views +
+ * completions + watchMinutes only; the all-time Like counter lives on
+ * `video.likes` instead. */
+export interface StudioVideoAnalyticsDay {
+  date: string;
+  views: number;
+  completions: number;
+  watchMinutes: number;
+}
+
+export interface StudioVideoAnalytics {
+  video: {
+    _id: string;
+    videotitle: string;
+    visibility: string;
+    views: number;
+    likes: number;
+    createdAt: string;
+  };
+  range: number;
+  days: StudioVideoAnalyticsDay[];
+  totals: { views: number; completions: number; watchMinutes: number };
+  bestDay: { date: string; views: number } | null;
+}
+
 export interface StudioChannelLink {
   label: string;
   url: string;

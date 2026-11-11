@@ -21,6 +21,7 @@ import {
   studioSettingsSchema,
   studioVideosQuerySchema,
   updatePlaylistSchema,
+  videoIdParamSchema,
 } from "@acube/shared";
 import {
   addLibraryEntry,
@@ -33,6 +34,7 @@ import {
   getSettings,
   getStudioComments,
   getStudioVideos,
+  getVideoAnalytics,
   listPlaylists,
   removeLibraryEntry,
   updatePlaylist,
@@ -53,6 +55,14 @@ router.get(
   auth,
   validateQuery(studioVideosQuerySchema),
   getStudioVideos,
+);
+// Content "View analytics" target: per-video daily series (owner only).
+router.get(
+  "/videos/:id/analytics",
+  auth,
+  validateParams(videoIdParamSchema),
+  validateQuery(studioAnalyticsQuerySchema),
+  getVideoAnalytics,
 );
 router.get(
   "/comments",

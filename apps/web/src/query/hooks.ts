@@ -21,6 +21,7 @@ import type {
   Playlist,
   StudioAnalytics,
   StudioOverview,
+  StudioVideoAnalytics,
   StudioSettings,
   StudioSettingsPatch,
   Video,
@@ -588,6 +589,24 @@ export function useStudioAnalytics(range: 7 | 28 | 90) {
       const { data } = await api.getStudioAnalytics(range);
       return data as StudioAnalytics;
     },
+  });
+}
+
+// Content "View analytics" target: per-video daily series (owner only).
+// Same `useVideo` shape — no fetch until an id is present, so the
+// Analytics page can call this unconditionally and stay on the channel
+// endpoint while no ?video= param is set.
+export function useStudioVideoAnalytics(
+  id: string | null,
+  range: 7 | 28 | 90,
+) {
+  return useQuery({
+    queryKey: queryKeys.studioVideoAnalytics(id ?? "", range),
+    queryFn: async (): Promise<StudioVideoAnalytics> => {
+      const { data } = await api.getStudioVideoAnalytics(id as string, range);
+      return data as StudioVideoAnalytics;
+    },
+    enabled: Boolean(id),
   });
 }
 
