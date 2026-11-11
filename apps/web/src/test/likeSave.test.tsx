@@ -50,7 +50,9 @@ describe("Like / save buttons", () => {
     renderWithProviders(<SaveMenu videoid="vid1" />, {
       session: testSession,
     });
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(
+      screen.getByRole("button", { name: "+ Save · Watch Later" }),
+    );
     await user.click(
       await screen.findByRole("button", { name: "Watch later" }),
     );

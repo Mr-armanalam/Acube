@@ -514,7 +514,9 @@ describe("H — Watch", () => {
     );
     renderRoutes("/watch/vid1", testSession);
     expect(await screen.findByText("Up next")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(
+      screen.getByRole("button", { name: "+ Save · Watch Later" }),
+    );
     await user.click(
       screen.getByRole("button", { name: "Save to library" }),
     );

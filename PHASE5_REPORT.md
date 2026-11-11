@@ -2121,3 +2121,166 @@ history-progress resume path, which shared the same listener.
 #2/#4/#8 and `content-cleanup.spec.ts` #1 failed in the full run
 but pass in isolation — earlier specs mutate shared seed state
 (the suite shares one API server); not investigated further.
+
+#### 8.9.18 Watch details + comments redesign (11 Nov 2026, branch `feat/acube-watch-details-comments`, base `affa721a`, PR #10 head — OPEN, not merged)
+
+Rebuild of the Watch details + comments section against the approved
+preview (user media image-37; image-38 is the replaced current
+layout). Player, chapters, and the playlist / Up Next sidebar are
+untouched. Work on `feat/acube-watch-details-comments`
+(`3173694` → `4bf6f9f` + test/spec fixes); no merge, no push, no PR
+created by this worker.
+
+**What was removed vs replaced, per image-37 element.**
+
+| Preview element | Before (image-38) | After |
+|---|---|---|
+| Title row | Title + standalone meta line (views · time · Resumed) | Title alone on top; meta moved into the channel row |
+| Channel row | Avatar + name, Subscribe beside it, no meta | Avatar left, bold name, meta under it — `N views · <relative time> · #Tag1 #Tag2`, Subscribe pill far right + small muted subscriber count; `Resumed from 0:11` appended subtly when a resume position exists |
+| Action row | Scattered mixed text-buttons + pills: Like count, Dislike text, Thanks (dead), Download icon, `···`, Save, Share | ONE uniform row of dark rounded pills: combined Like pill (👍 real count + 👎 icon joined, red when active), `↗ Share`, `+ Save · Watch Later`, `⬇ Download · Premium`, `··· More`. No Thanks button in the row |
+| Description | Boxed card, tags repeated, pill `Show more` button | Plain text, no box: `N views · <full date> — <text>`, 140-char truncation + red `Show more` TEXT link; tags live only in the channel-row meta |
+| Comments header | `Comments N` + boxed `Sort:` select | `Comments · N   Sort: Top · Nested replies — reply to any level`; Sort is a TEXT button opening a small Top/Newest menu |
+| Add-comment | Small input + red `Comment` pill; `alert()` guards | Large dark rounded box, avatar left, `ADD A COMMENT...` label, placeholder `Be specific — what part helped?`, submit as a `Comment` TEXT link; Enter submits (Shift+Enter newline); empty / logged-out guards are inline messages, no `alert()` |
+| Comment rows | Pill buttons (Reply / Hide replies / Delete / Pin), dislike with count, plain name, no time | Compact 14px body / 13px meta (unchanged): `@name · <relative time>` grey meta, body, TEXT-only actions — 👍 count, 👎 icon (toggle, no count), `Reply`, red `N replies ↓`, `Show more replies` / `Hide replies` text links, Delete / Pin as text links. Nested replies indented with a VERTICAL GUIDE LINE, indent capped at level 3 |
+| Pinned comment | Plain row + `· Pinned by creator` text | Red-tinted bordered box, ★ avatar, `Pinned by creator` label (seed text differs from the preview's — layout verified, copy not copied) |
+
+**Decisions where the scout flagged ambiguity.**
+
+- **Timestamps — `commentedon`, verified in the API.** The comment
+  Mongoose schema has no `timestamps`; `GET /comment` returns
+  `commentedon` (and sorts by it), never `createdAt`. The old
+  `createdMs` read only `createdAt`, so every real comment sorted
+  as timestamp-less and showed no time. Now reads
+  `commentedon ?? createdAt`, renders `formatDistanceToNow`
+  (`2h ago`), and renders no time when neither exists. The
+  optimistic insert carries both fields. Same field-name split on
+  videos: the real API returns `createdAt` (Mongoose timestamps),
+  the MSW fixtures carry legacy `createdat` — Watch now reads
+  `createdat ?? createdAt` for the channel meta and the description
+  date, and omits the time when neither exists (the old
+  `?? Date.now()` fallback fabricated `less than a minute ago`).
+- **`@handle` — `@` + display name.** No handle field exists on
+  comments; the meta line renders `@` + `usercommented`
+  (`@riya`), no invented field, no extra fetch.
+- **`··· More` — Copy link / Copy link at current time / Thanks.**
+  There is no thanks endpoint, and the old `Thanks` button was a
+  dead div with no handler, so there was no behaviour to reuse.
+  The menu's three items all do something real: Copy link (copies
+  `window.location.href`), Copy link at current time (stamps
+  `?t=<last playback position, else resume position>` — the same
+  `?t=` the player seeks on load), and ♥ Thanks, which posts a
+  real thank-you comment via the existing post-comment mutation
+  (disabled with `Sign in to say thanks` when logged out). No dead
+  items, no fake Report.
+- **Sort control — text button + menu**, not a bordered select and
+  not a boxed dropdown.
+- **Subscriber count and resume line are kept** (small muted text
+  near the Subscribe pill; subtle suffix in the channel meta),
+  both from real state, never dropped. All counts/dates/tags come
+  from the real video and comments — the preview's numbers (1,159
+  views, 24 comments, 11 likes) are never rendered.
+
+**Defects found while building (all fixed, all tested).**
+
+1. **`useLikeVideo` never moved the Watch Like count.** It patched
+   only the feed-list cache (`["videos"]`); the Watch page reads
+   the single-video query (`["video", id]`), so the pill count was
+   stale after like/unlike (same gap `useViewVideo` fixed for
+   views). It now patches + invalidates the single-video query too,
+   with rollback. Its only caller is the Watch Like pill.
+2. **Pinned ★ avatar stretched to a tall red bar.** `.studio-avatar`
+   lives in `Studio.css`, which is not loaded on `/watch`, so the
+   bare span stretched to the row height (invisible until the
+   pinned red background exposed it). Watch now defines its own
+   36px circle avatars (`.watch-details .studio-avatar`).
+3. **Menu dismiss overlays covered their own toggle buttons**, so
+   clicking `··· More` / Sort again could not close the menu
+   (caught by Playwright test 8: the overlay intercepted pointer
+   events). Toggles now sit above the overlay (z 6 over z 5; menu
+   z 10).
+4. **Dead code removed:** the `Thanks` div and the `···` icon in
+   `Likewatchlatersavebtns` (no handlers), and its orphaned
+   `Likewatchlatersavebtn.css` (the `.ishidden` rule DownloadVideo
+   relies on moved to `Watch.css`). `DownloadVideo` itself is
+   untouched — its pill label comes from Watch-scoped CSS `::after`
+   (`Download · Premium`); when both its controls render
+   (non-premium with a free download left) only the premium-gated
+   Upgrade control shows, keeping ONE pill.
+
+**Verification (fresh, uncached, real exit codes).**
+
+| Check | Command | Result |
+|---|---|---|
+| Typecheck (forced) | `pnpm typecheck --force` | exit 0, 3 tasks |
+| Tests (forced) | `pnpm test --force` | exit 0 — **web 284/284 (30 files) + API 328/328 (23 files) = 612** |
+| Lint (forced) | `pnpm lint --force` | exit 0, **0 errors, 7 warnings** (pre-existing) |
+| Build (forced) | `pnpm build --force` | exit 0 (web ~13 s; API build is the syntax check) |
+| Playwright (new spec) | `pnpm test:e2e:phase5 watch-details-comments.spec.ts` | **11/11 passed** |
+
+New Playwright spec `apps/web/e2e-phase5/watch-details-comments.spec.ts`:
+comment post + reload, video like/dislike with real counts, comment
+like/dislike (no dislike count), reply threading, sort Top/Newest
+(pinned first), subscribe toggle (normalised, toggled back off),
+description Show more/less (long description via a route override —
+the seeded description is short), More menu (real clipboard reads:
+`t=84` stamped; Thanks posts a real comment), no-pill layout
+assertion (zero `.acube-btn*` in `.watch-details`; Reply/Comment
+computed background transparent, border 0), desktop + mobile
+screenshots. Unit tests updated in the same PR:
+`watchComments.test.tsx` (new strings/structure + `commentedon`
+times, pinned box, text-only actions, inline guards),
+`watchDetails.test.tsx` (new: channel meta, uniform row, no-pill
+assertion, description toggle, More menu, `createdAt` fallback),
+`likeSave.test.tsx` + `phase5fix.test.tsx` (Save trigger is now
+`+ Save · Watch Later`).
+
+**Fresh screenshots** (desktop 1280×850 + mobile 390×844, seeded
+demo, no page errors) in `docs/screenshots/`, visually inspected
+against image-37: `phase5-watch-details-comments-desktop.png`
+(title, channel row with `225 views · less than a minute ago ·
+#react #javascript #frontend` + Subscribe + `0 subscribers`,
+uniform pill row with Like 15, plain description `225 views ·
+11 Nov 2026 — …`, `Comments · 8`, add-comment box, red pinned box
+with ★ circle, threaded replies with the vertical guide line),
+`phase5-watch-details-comments-mobile.png` (same stacked, pills
+wrap, no horizontal overflow — `scrollWidth ≤ 390`),
+`phase5-watch-details-comments-full-desktop.png` (viewport context
+shot). Shot-only manipulation (not app code): the spec
+un-constrains the `.watch-page` scroller and hides the sticky
+TopBar for the element captures — without that, the capture clips
+the title (scroller) or the TopBar covers it. Honest deltas, all
+data not layout: views/likes are the real seeded aggregates (225
+views, 15 likes — the run's own visits add to the seed);
+`Comments · 8` is the 4 seeded comments + the spec's own posted
+comment, sort probe, Thanks comment, and reply; `0 subscribers`
+is real (the e2e user unsubscribes); `less than a minute ago` is
+the seeded video's real `createdAt` (the seed runs at server
+start); comment times are the seed's staggered `commentedon`
+values (`about 3 hours ago` pinned, `about 2 hours ago` /
+`about 1 hour ago` in the thread). Screenshots are local only, not
+in the PR.
+
+**Environment incidents.** (1) `/tmp` (512 MB tmpfs) filled three
+times during the e2e runs — each run leaks 1–2 orphaned ~201 MB
+`mongo-mem-*` dirs; mongod died mid-seed once (`connection closed`
+during `seedDemoData`). Cleaned only the orphaned dirs (no mongod
+running) and re-ran green; `/tmp` left at 6% used. (2) The web
+suite flaked 1 test per full run under parallel load on this box
+(`studioCommentsActions` twice, `studioPreview` once — all
+default-1s `findByText` timeouts in files this branch never
+touched). Verified pre-existing: the same test fails on the base
+commit `affa721a` with none of this branch's changes (1 failed /
+266 passed). Fixed with the repo's own precedent (§8.9.4): the
+`openComments` wait is now 5 s; the suite is green after it.
+
+**Open / flagged.** (1) The Download pill's visible label comes
+from CSS `::after` on the shared `DownloadVideo` control (its
+rendering was not edited, per the scout's shared-component rule),
+so the label is not in the DOM text — the unit test asserts it
+against the stylesheet source, and the e2e test asserts the
+control's presence; a future DownloadVideo change could silently
+drop the label. (2) The `?t=`-stamped copy uses the last
+progress-callback second, falling back to the resume position
+when playback has not started. (3) `watch-page.spec.ts` tests 1–4
+still pass unchanged against the rebuilt section (comment post,
+comment like/dislike, reply, subscribe) — no updates needed there.

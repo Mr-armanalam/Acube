@@ -120,9 +120,19 @@ export function useLikeVideo() {
       return input;
     },
     // Optimistic: patch the one video's Like count in the cache.
+    // BOTH caches: the feed list AND the single-video query — the
+    // Watch page reads GET /video/:id now, so patching only the list
+    // left the Like pill count stale (same gap useViewVideo fixed
+    // for views in Phase 5).
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.videos });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.video(input.id),
+      });
       const previous = queryClient.getQueryData<Video[]>(queryKeys.videos);
+      const previousSingle = queryClient.getQueryData<Video>(
+        queryKeys.video(input.id),
+      );
       const delta = input.action === "like" ? 1 : -1;
       queryClient.setQueryData<Video[]>(queryKeys.videos, (old) =>
         (old ?? []).map((v) =>
@@ -131,15 +141,27 @@ export function useLikeVideo() {
             : v,
         ),
       );
-      return { previous };
+      queryClient.setQueryData<Video>(queryKeys.video(input.id), (old) =>
+        old ? { ...old, Like: Math.max(0, (old.Like ?? 0) + delta) } : old,
+      );
+      return { previous, previousSingle };
     },
-    onError: (_error, _input, context) => {
+    onError: (_error, input, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.videos, context.previous);
       }
+      if (context?.previousSingle) {
+        queryClient.setQueryData(
+          queryKeys.video(input.id),
+          context.previousSingle,
+        );
+      }
     },
-    onSettled: () => {
+    onSettled: (_data, _error, input) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.videos });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.video(input.id),
+      });
     },
   });
 }
@@ -332,6 +354,9 @@ export function usePostComment() {
         likes: 0,
         dislikes: 0,
         userReaction: null,
+        // The API returns `commentedon`, not `createdAt` — carry both
+        // so relative times + newest sort work before the refetch.
+        commentedon: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       };
       queryClient.setQueryData<CommentItem[]>(videoKey, (old) => [

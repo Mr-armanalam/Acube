@@ -72,11 +72,11 @@ export default function SaveMenu({ videoid }: { videoid: string }) {
     <div style={{ position: "relative", display: "inline-block" }}>
       <button
         type="button"
-        className="acube-btn-secondary"
+        className="watch-action-pill"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        Save
+        + Save · Watch Later
       </button>
       {open ? (
         <div

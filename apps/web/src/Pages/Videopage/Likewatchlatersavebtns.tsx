@@ -1,13 +1,21 @@
+// Watch action row — Like pill (preview screen, image-37).
+//
+// ONE combined pill: 👍 real like count + 👎 icon joined, red accent
+// when active. The dead "Thanks" div (no handler, no endpoint) and
+// the dead "···" icon are gone; Download moved to the Watch action
+// row (DownloadVideo, premium-gated). Mutation behaviour is
+// UNCHANGED: Like is a local toggle that also writes the liked-videos
+// list; Dislike is local-only, no server call (see togglelikevideo /
+// toggledislikevideo below). The `.ishidden` rule DownloadVideo
+// relies on now lives in Watch.css (this component's old CSS file is
+// deleted — nothing else imported it).
 import React, { useEffect, useState, useCallback } from "react";
-import { BsThreeDots } from "react-icons/bs";
 import {
   AiFillDislike,
   AiFillLike,
   AiOutlineDislike,
   AiOutlineLike,
 } from "react-icons/ai";
-import { RiHeartAddFill } from "react-icons/ri";
-import "./Likewatchlatersavebtn.css";
 import { useAppSelector } from "../../store";
 import {
   useAddLikedVideo,
@@ -15,7 +23,6 @@ import {
   useLikeVideo,
   useLikedVideos,
 } from "../../query/hooks";
-import DownloadVideo from "../../Component/DownloadVideo/DownloadVideo";
 import type { Video } from "../../types";
 
 const Likewatchlatersavebtns = ({
@@ -102,33 +109,43 @@ const Likewatchlatersavebtns = ({
   ]);
 
   return (
-    <div className="btns_cont_videoPage">
-      <div className="btn_VideoPage btn_hide">
-        <BsThreeDots />
-      </div>
-      <DownloadVideo video={vv?.filepath} videoId={vv?._id} />
-      <div className="btn_VideoPage">
-        <div className="like_videoPage" onClick={togglelikevideo}>
-          {likebtn ? (
-            <AiFillLike size={22} className="btns_videoPage" />
-          ) : (
-            <AiOutlineLike size={22} className="btns_videoPage" />
-          )}
-          <b>{vv?.Like}</b>
-        </div>
-        <div className="like_videoPage" onClick={toggledislikevideo}>
-          {dislikebtn ? (
-            <AiFillDislike size={22} className="btns_videoPage" />
-          ) : (
-            <AiOutlineDislike size={22} className="btns_videoPage" />
-          )}
-          <b>Dislike</b>
-        </div>
-        <div className="like_videoPage">
-          <RiHeartAddFill size={22} className="btns_videoPage" />
-          <b>Thanks</b>
-        </div>
-      </div>
+    <div
+      className="watch-like-pill"
+      role="group"
+      aria-label="Like or dislike this video"
+    >
+      <button
+        type="button"
+        className={`watch-like-btn${likebtn ? " active" : ""}`}
+        aria-pressed={likebtn}
+        aria-label="Like this video"
+        title={currentuser ? "Like this video" : "Sign in to like this video"}
+        onClick={togglelikevideo}
+      >
+        {likebtn ? (
+          <AiFillLike size={18} />
+        ) : (
+          <AiOutlineLike size={18} />
+        )}
+        <b>{vv?.Like}</b>
+      </button>
+      <span className="watch-like-divider" aria-hidden="true" />
+      <button
+        type="button"
+        className={`watch-like-btn${dislikebtn ? " active" : ""}`}
+        aria-pressed={dislikebtn}
+        aria-label="Dislike this video"
+        title={
+          currentuser ? "Dislike this video" : "Sign in to dislike this video"
+        }
+        onClick={toggledislikevideo}
+      >
+        {dislikebtn ? (
+          <AiFillDislike size={18} />
+        ) : (
+          <AiOutlineDislike size={18} />
+        )}
+      </button>
     </div>
   );
 };

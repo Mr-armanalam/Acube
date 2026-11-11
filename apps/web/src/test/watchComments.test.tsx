@@ -57,6 +57,9 @@ type MockComment = {
   dislikes?: number;
   userReaction?: "like" | "dislike" | null;
   createdAt?: string;
+  /** Real API field (see NestedComments header) — the server returns
+   * commentedon, not createdAt. */
+  commentedon?: string;
 };
 
 function renderComments(
@@ -226,7 +229,7 @@ describe("Watch comments — video-filtered fetch", () => {
       screen.queryByText("Comment on a different video"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Comments 6" }),
+      screen.getByRole("heading", { name: "Comments · 6" }),
     ).toBeInTheDocument();
     expect(urls.length).toBeGreaterThan(0);
     expect(urls.every((u) => u.includes("videoid=vid1"))).toBe(true);
@@ -277,7 +280,8 @@ describe("Watch comments — reactions", () => {
 
     await user.click(dislike);
     await waitFor(() => expect(like).toHaveTextContent("0"));
-    expect(dislike).toHaveTextContent("1");
+    // The dislike control shows no count (preview) — only its toggle
+    // state is asserted.
     expect(dislike).toHaveAttribute("aria-pressed", "true");
     expect(like).toHaveAttribute("aria-pressed", "false");
     await waitFor(() =>
@@ -370,11 +374,11 @@ describe("Watch comments — replies, counts, show-more", () => {
     expect(screen.queryByText("Reply 4")).not.toBeInTheDocument();
     expect(screen.queryByText("Reply 5")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Show 2 more replies" }),
+      screen.getByRole("button", { name: "Show more replies" }),
     ).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: "Show 2 more replies" }),
+      screen.getByRole("button", { name: "Show more replies" }),
     );
     expect(screen.getByText("Reply 4")).toBeInTheDocument();
     expect(screen.getByText("Reply 5")).toBeInTheDocument();
@@ -392,7 +396,7 @@ describe("Watch comments — replies, counts, show-more", () => {
     );
     expect(screen.queryByText("Reply 1")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Show 6 replies" }),
+      screen.getByRole("button", { name: /6 replies/ }),
     ).toBeInTheDocument();
   });
 
@@ -402,7 +406,7 @@ describe("Watch comments — replies, counts, show-more", () => {
     renderComments();
     expect(await screen.findByText("Parent thread")).toBeInTheDocument();
     await user.click(
-      screen.getByRole("button", { name: "Show 2 more replies" }),
+      screen.getByRole("button", { name: "Show more replies" }),
     );
     const parent = screen
       .getByText("Parent thread")
@@ -411,7 +415,7 @@ describe("Watch comments — replies, counts, show-more", () => {
       within(parent).getAllByRole("button", { name: "Hide replies" })[0],
     );
     expect(
-      screen.getByRole("button", { name: "Show 6 replies" }),
+      screen.getByRole("button", { name: /6 replies/ }),
     ).toBeInTheDocument();
 
     await user.click(screen.getAllByRole("button", { name: "Reply" })[0]);
@@ -483,9 +487,12 @@ describe("Watch comments — sort + pinned", () => {
     useMutableComments(sortedFixture);
     renderComments();
     expect(await screen.findByText("Pinned post")).toBeInTheDocument();
+    // Sort is a TEXT button ("Sort: Top"), not a boxed select.
+    const sortButton = screen.getByRole("button", { name: "Sort comments" });
+    expect(sortButton).toHaveTextContent("Sort: Top");
     expect(
-      screen.getByLabelText("Sort comments") as HTMLSelectElement,
-    ).toHaveValue("top");
+      screen.queryByRole("combobox", { name: "Sort comments" }),
+    ).not.toBeInTheDocument();
     const [pinned, popular, mid, unpopular] = orderInDocument(
       "Pinned post",
       "Old popular",
@@ -502,9 +509,12 @@ describe("Watch comments — sort + pinned", () => {
     useMutableComments(sortedFixture);
     renderComments();
     expect(await screen.findByText("Pinned post")).toBeInTheDocument();
-    await user.selectOptions(
-      screen.getByLabelText("Sort comments"),
-      "newest",
+    await user.click(screen.getByRole("button", { name: "Sort comments" }));
+    await user.click(
+      screen.getByRole("menuitemradio", { name: "Newest" }),
+    );
+    expect(screen.getByRole("button", { name: "Sort comments" })).toHaveTextContent(
+      "Sort: Newest",
     );
     const [pinned, newest, mid, oldest] = orderInDocument(
       "Pinned post",
@@ -524,8 +534,9 @@ describe("Watch comments — typography + delete", () => {
     renderComments();
     const body = await screen.findByText("Great tutorial!");
     expect(body).toHaveClass("watch-comment-text");
-    // "carol" authors two fixture comments — the first is c1's.
-    const author = screen.getAllByText("carol")[0];
+    // "carol" authors two fixture comments — the first is c1's. The
+    // meta line shows "@" + the display name (no handle field exists).
+    const author = screen.getAllByText("@carol")[0];
     expect(author.closest(".watch-comment-meta")).not.toBeNull();
     expect(screen.getByText("Thanks, glad it helped!")).toHaveClass(
       "watch-comment-text",
@@ -557,6 +568,106 @@ describe("Watch comments — typography + delete", () => {
       ).not.toBeInTheDocument(),
     );
     expect(screen.getByText("Great tutorial!")).toBeInTheDocument();
+  });
+});
+
+describe("Watch comments — redesign (image-37)", () => {
+  it("renders relative time from commentedon (the real API field)", async () => {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    useMutableComments([
+      {
+        _id: "t1",
+        videoid: "vid1",
+        userid: "user2",
+        commentbody: "Timed comment",
+        usercommented: "carol",
+        parentId: null,
+        commentedon: twoHoursAgo,
+      },
+    ]);
+    renderComments();
+    expect(await screen.findByText("Timed comment")).toBeInTheDocument();
+    // formatDistanceToNow: "about 2 hours ago".
+    expect(screen.getByText(/2 hours ago/)).toBeInTheDocument();
+  });
+
+  it("a comment with no timestamp renders no time (never invented)", async () => {
+    useMutableComments([...fixtureNestedComments]);
+    renderComments();
+    expect(await screen.findByText("Great tutorial!")).toBeInTheDocument();
+    expect(screen.queryByText(/ago/)).not.toBeInTheDocument();
+  });
+
+  it("pinned comment renders the red-tinted box with a ★ avatar", async () => {
+    const pinned = [
+      ...fixtureNestedComments,
+      {
+        _id: "c0",
+        videoid: "vid1",
+        userid: "user1",
+        commentbody: "Pinned post",
+        usercommented: "Test User",
+        parentId: null,
+        pinnedByCreator: "user1",
+      },
+    ];
+    useMutableComments(pinned);
+    renderComments();
+    expect(await screen.findByText("Pinned post")).toBeInTheDocument();
+    const body = screen
+      .getByText("Pinned post")
+      .closest(".watch-comment-body") as HTMLElement;
+    expect(body).toHaveClass("watch-comment-body--pinned");
+    expect(body.querySelector(".watch-comment-avatar--pinned")).not.toBeNull();
+    expect(body.querySelector(".watch-comment-avatar--pinned")).toHaveTextContent(
+      "★",
+    );
+    expect(screen.getByText(/Pinned by creator/)).toBeInTheDocument();
+  });
+
+  it("comment actions are text, not pill buttons", async () => {
+    const user = userEvent.setup();
+    useMutableComments([...fixtureNestedComments]);
+    renderComments();
+    expect(await screen.findByText("Great tutorial!")).toBeInTheDocument();
+    const comments = document.querySelector(".watch-comments") as HTMLElement;
+    // No bulky-button classes anywhere in the comments section.
+    expect(
+      comments.querySelector(".acube-btn, .acube-btn-secondary, .acube-btn-danger"),
+    ).toBeNull();
+    for (const name of ["Reply", "Delete", "Comment"]) {
+      const el = screen.getAllByRole("button", { name })[0];
+      expect(el).toHaveClass("watch-comment-text-action");
+    }
+    // The add-comment box: label + new placeholder, submit as text.
+    expect(
+      screen.getByPlaceholderText("Be specific — what part helped?"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ADD A COMMENT...")).toBeInTheDocument();
+    // Empty submit shows an inline message, not an alert().
+    await user.click(screen.getByRole("button", { name: "Comment" }));
+    expect(
+      await screen.findByText("Please type your comment first."),
+    ).toBeInTheDocument();
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(captured.comments).toHaveLength(0);
+  });
+
+  it("logged-out submit shows an inline sign-in message, not an alert()", async () => {
+    const user = userEvent.setup();
+    useMutableComments([...fixtureNestedComments]);
+    renderComments("vid1", null);
+    expect(await screen.findByText("Great tutorial!")).toBeInTheDocument();
+    await user.type(
+      screen.getByLabelText("Add a comment"),
+      "Hello from a visitor",
+    );
+    await user.click(screen.getByRole("button", { name: "Comment" }));
+    expect(
+      await screen.findByText("Please sign in to comment."),
+    ).toBeInTheDocument();
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(captured.comments).toHaveLength(0);
   });
 });
 
