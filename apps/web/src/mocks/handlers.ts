@@ -276,6 +276,25 @@ export const fixtureNestedComments = [
   },
 ];
 
+/** Watch-page subscribe contract (backend worker): mutable mock
+ * subscription state per channel — the GET reads it, the POST toggle
+ * flips it, so a toggle visibly persists across the refetch the hook
+ * triggers. resetCaptured() restores the defaults between tests. */
+export const mockSubscriptions: Record<
+  string,
+  { subscribed: boolean; subscriberCount: number }
+> = {
+  ch1: { subscribed: false, subscriberCount: 42 },
+  ch2: { subscribed: false, subscriberCount: 7 },
+};
+const defaultSubscriptions: Record<
+  string,
+  { subscribed: boolean; subscriberCount: number }
+> = {
+  ch1: { subscribed: false, subscriberCount: 42 },
+  ch2: { subscribed: false, subscriberCount: 7 },
+};
+
 export const captured = {
   likeVideo: [] as Array<{ id: string; body: unknown }>,
   addLiked: [] as unknown[],
@@ -312,6 +331,7 @@ export const captured = {
   deleteHistoryItem: [] as Array<{ videoid: string; viewer: string }>,
   // Phase 5 fix: new contract calls.
   commentPins: [] as string[],
+  commentReactions: [] as Array<{ id: string; reaction: string }>,
   videoRestores: [] as string[],
   libraryAdds: [] as unknown[],
   libraryRemoves: [] as Array<{ kind: string; videoid: string }>,
@@ -319,6 +339,8 @@ export const captured = {
   historyPausedPatches: [] as boolean[],
   videoSuggestionCalls: [] as string[],
   videoAnalyticsCalls: [] as string[],
+  // Watch page: subscribe toggles (channel ids, in click order).
+  subscribeToggles: [] as string[],
   // Phase 3a: bodies sent to POST /user/login, so tests can assert the
   // Google id_token (not a client-claimed email) is what gets sent.
   loginBodies: [] as unknown[],
@@ -328,8 +350,15 @@ export function resetCaptured() {
   for (const key of Object.keys(captured) as Array<keyof typeof captured>) {
     (captured[key] as unknown[]).length = 0;
   }
+  mockCommentReactionState.clear();
   mockStudioMedia.bannerUrl = "";
   mockStudioMedia.avatarUrl = "";
+  for (const key of Object.keys(mockSubscriptions)) {
+    delete mockSubscriptions[key];
+  }
+  for (const [key, value] of Object.entries(defaultSubscriptions)) {
+    mockSubscriptions[key] = { ...value };
+  }
 }
 
 const json = (body: unknown, status = 200) =>
@@ -344,6 +373,63 @@ const pageOf = <T>(items: T[]) => ({
   total: items.length,
   totalPages: 1,
 });
+
+// Watch comments: per-comment reaction state for the mock
+// like/dislike toggle endpoints (see the handlers below). Starts at
+// 0 likes / 0 dislikes / no reaction per comment id; resetCaptured
+// clears it between tests.
+const mockCommentReactionState = new Map<
+  string,
+  { likes: number; dislikes: number; userReaction: "like" | "dislike" | null }
+>();
+
+function applyMockCommentReaction(
+  id: string,
+  reaction: "like" | "dislike",
+): { likes: number; dislikes: number; userReaction: "like" | "dislike" | null } {
+  captured.commentReactions.push({ id, reaction });
+  const state = mockCommentReactionState.get(id) ?? {
+    likes: 0,
+    dislikes: 0,
+    userReaction: null,
+  };
+  let next: typeof state;
+  if (state.userReaction === reaction) {
+    next = {
+      likes: Math.max(0, state.likes - (reaction === "like" ? 1 : 0)),
+      dislikes: Math.max(0, state.dislikes - (reaction === "dislike" ? 1 : 0)),
+      userReaction: null,
+    };
+  } else if (state.userReaction === null) {
+    next = {
+      likes: state.likes + (reaction === "like" ? 1 : 0),
+      dislikes: state.dislikes + (reaction === "dislike" ? 1 : 0),
+      userReaction: reaction,
+    };
+  } else {
+    next = {
+      likes: Math.max(0, state.likes + (reaction === "like" ? 1 : -1)),
+      dislikes: Math.max(0, state.dislikes + (reaction === "dislike" ? 1 : -1)),
+      userReaction: reaction,
+    };
+  }
+  mockCommentReactionState.set(id, next);
+  return next;
+}
+
+/** Overlay the mock reaction state onto a comment, the way the real
+ * GET /comment/get does (list items carry likes / dislikes /
+ * userReaction). Without this, a refetch after a like would hand back
+ * the fixture's reaction-less item and wipe the toggled count. */
+export function withMockCommentReaction<T extends {
+  _id: string;
+  likes?: number;
+  dislikes?: number;
+  userReaction?: "like" | "dislike" | null;
+}>(comment: T): T {
+  const state = mockCommentReactionState.get(comment._id);
+  return state ? { ...comment, ...state } : comment;
+}
 
 export const handlers = [
   http.get("*/video/getvideos", () => json(pageOf(fixtureVideos))),
@@ -718,6 +804,45 @@ export const handlers = [
     captured.videoSuggestionCalls.push(String(params.id));
     return json(fixtureWatchSuggestions);
   }),
+  // Watch-page subscribe contract (backend worker, commit 0437c5f):
+  // GET /subscriptions/:channelId -> { subscribed, subscriberCount };
+  // POST /subscriptions/:channelId/toggle flips it. Unknown OR
+  // malformed channel id is 404 { error: { code: "NOT_FOUND" } }
+  // (the backend deliberately skips validateParams on these routes);
+  // own channel is 400 VALIDATION_ERROR, unauthenticated POST is 401.
+  // The mock 404s any id outside mockSubscriptions — it does NOT
+  // ObjectId-validate, because the fixture ids ("ch1"/"ch2") are not
+  // ObjectIds; unknown-id 404 covers the malformed + unknown cases.
+  http.get("*/subscriptions/:channelId", ({ params }) => {
+    const state = mockSubscriptions[String(params.channelId)];
+    if (!state) {
+      return json(
+        { error: { code: "NOT_FOUND", message: "Channel not found" } },
+        404,
+      );
+    }
+    return json(state);
+  }),
+  http.post("*/subscriptions/:channelId/toggle", ({ params }) => {
+    const channelId = String(params.channelId);
+    captured.subscribeToggles.push(channelId);
+    const current = mockSubscriptions[channelId];
+    if (!current) {
+      return json(
+        { error: { code: "NOT_FOUND", message: "Channel not found" } },
+        404,
+      );
+    }
+    const next = {
+      subscribed: !current.subscribed,
+      subscriberCount: Math.max(
+        0,
+        current.subscriberCount + (current.subscribed ? -1 : 1),
+      ),
+    };
+    mockSubscriptions[channelId] = next;
+    return json(next);
+  }),
   // Phase 5 fix: public playlists containing a video (Watch showcase).
   // The mock mirrors the real endpoint: only playlists whose videoIds
   // include this video, with their videos in playlist order.
@@ -738,6 +863,18 @@ export const handlers = [
     captured.commentPins.push(String(params.id));
     return json({ _id: String(params.id), pinnedByCreator: "user1" });
   }),
+  // Watch comments contract: POST /comment/:id/like|dislike toggles
+  // the reaction and returns the authoritative { likes, dislikes,
+  // userReaction }. The mock keeps per-comment toggle state (starting
+  // from 0/0/no-reaction — tests that need a nonzero starting count
+  // override this handler with exact values) and mirrors the server
+  // toggle: same side again removes it, the other side switches.
+  http.post("*/comment/:id/like", ({ params }) =>
+    json(applyMockCommentReaction(String(params.id), "like")),
+  ),
+  http.post("*/comment/:id/dislike", ({ params }) =>
+    json(applyMockCommentReaction(String(params.id), "dislike")),
+  ),
   // Phase 5 fix contract: soft-delete restore.
   http.post("*/video/:id/restore", ({ params }) => {
     captured.videoRestores.push(String(params.id));

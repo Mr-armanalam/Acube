@@ -10,8 +10,26 @@
 // 2×. Keyboard: Space play/pause, ←/→ ±5s, J/L ±10s, F fullscreen,
 // M mute. CC/HD/quality controls are omitted — no captions or
 // alternate renditions exist, so rendering them would fake a feature.
+// Watch-page rebuild: the video takes a real poster (the video's
+// thumbnailUrl); a load failure shows that poster large with a clear
+// error + Retry, never a gradient box pretending to be the video.
+// Controls auto-hide ~3s after the last interaction while playing
+// (stay visible while paused or while the pointer is over them).
+// Control buttons are react-icons with the same aria-labels as before.
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  FaCompress,
+  FaExpand,
+  FaPause,
+  FaPlay,
+  FaVolumeMute,
+  FaVolumeUp,
+} from "react-icons/fa";
+import { MdPictureInPicture } from "react-icons/md";
 import type { VideoChapter } from "../../types";
+
+/** Controls hide this long after the last interaction while playing. */
+export const CONTROLS_HIDE_DELAY_MS = 3000;
 
 function formatTime(sec: number): string {
   if (!Number.isFinite(sec) || sec < 0) sec = 0;
@@ -24,13 +42,17 @@ const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
 export default function Player({
   src,
+  poster,
   onEnded,
   initialTime,
   onProgressSec,
   chapters,
   loop,
+  onChapterSeek,
 }: {
   src: string | undefined;
+  /** Real thumbnail URL (resolved) — the <video> poster. */
+  poster?: string | undefined;
   onEnded?: () => void;
   /** Resume position in seconds (from stored history progress). */
   initialTime?: number;
@@ -39,6 +61,9 @@ export default function Player({
   /** Real chapters only; absent/empty = no chapter ticks. */
   chapters?: VideoChapter[];
   loop?: boolean;
+  /** A chapter click seeks AND reports the second so the caller can
+   * put it in the URL (?t=<seconds> — seek-on-load already works). */
+  onChapterSeek?: (sec: number) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,6 +92,63 @@ export default function Player({
   const [indicator, setIndicator] = useState<string | null>(null);
   const [hover, setHover] = useState<{ time: number; pct: number } | null>(null);
   const [dragging, setDragging] = useState(false);
+  // A dead src shows a black box with controls and no explanation —
+  // a load failure shows the poster large + a message + Retry instead.
+  const [loadError, setLoadError] = useState(false);
+  // Auto-hide: visible on interaction, hidden ~3s later while playing.
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const hideTimer = useRef<number | null>(null);
+  const controlsHovered = useRef(false);
+
+  const clearHideTimer = useCallback(() => {
+    if (hideTimer.current !== null) {
+      window.clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+  }, []);
+
+  const scheduleHide = useCallback(() => {
+    clearHideTimer();
+    hideTimer.current = window.setTimeout(() => {
+      if (!controlsHovered.current) setControlsVisible(false);
+    }, CONTROLS_HIDE_DELAY_MS);
+  }, [clearHideTimer]);
+
+  // Any interaction wakes the controls; while playing they hide again
+  // after the delay, while paused they stay visible.
+  const pokeControls = useCallback(() => {
+    setControlsVisible(true);
+    if (isPlaying) scheduleHide();
+  }, [isPlaying, scheduleHide]);
+
+  useEffect(() => {
+    if (isPlaying) {
+      scheduleHide();
+    } else {
+      clearHideTimer();
+      setControlsVisible(true);
+    }
+  }, [isPlaying, scheduleHide, clearHideTimer]);
+
+  // The timer is the only timeout the player owns for hiding — clear
+  // it on unmount so no setState fires after the player is gone.
+  useEffect(() => () => clearHideTimer(), [clearHideTimer]);
+
+  // A new src gets a fresh chance: a failed URL must not stick the
+  // error overlay after the source changes.
+  useEffect(() => {
+    setLoadError(false);
+  }, [src]);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
 
   const showIndicator = useCallback((text: string) => {
     setIndicator(text);
@@ -100,6 +182,24 @@ export default function Player({
     const clamped = Math.max(0, Math.min(1, fraction));
     v.currentTime = clamped * v.duration;
     setCurrentTime(v.currentTime);
+  }, []);
+
+  /** Seek to an absolute second (chapter clicks) and report it so the
+   * caller can put it in the URL (?t=<seconds>). */
+  const seekToSeconds = useCallback(
+    (sec: number) => {
+      const v = videoRef.current;
+      if (!v || !v.duration) return;
+      v.currentTime = Math.max(0, Math.min(v.duration, sec));
+      setCurrentTime(v.currentTime);
+      onChapterSeek?.(sec);
+    },
+    [onChapterSeek],
+  );
+
+  const retryLoad = useCallback(() => {
+    setLoadError(false);
+    videoRef.current?.load();
   }, []);
 
   const changeVolume = useCallback(
@@ -294,6 +394,7 @@ export default function Player({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    pokeControls();
     const tag = (document.activeElement?.tagName ?? "").toLowerCase();
     if (tag === "input" || tag === "textarea") return;
     switch (e.key) {
@@ -365,6 +466,12 @@ export default function Player({
     v.addEventListener("timeupdate", onTime);
     v.addEventListener("loadedmetadata", onMeta);
     v.addEventListener("progress", onTime);
+    // Metadata may already be loaded — a fast or cached source can
+    // fire loadedmetadata before this effect attaches its listener,
+    // and ?t= resume would then silently never happen. Resume now
+    // when the metadata is already in hand (onMeta is idempotent:
+    // resumedRef gates the one-time seek).
+    if (v.readyState >= 1) onMeta();
     return () => {
       v.removeEventListener("timeupdate", onTime);
       v.removeEventListener("loadedmetadata", onMeta);
@@ -377,6 +484,10 @@ export default function Player({
   const realChapters = (chapters ?? []).filter(
     (c) => Number.isFinite(c.startSec) && duration > 0 && c.startSec >= 0 && c.startSec <= duration,
   );
+  // The chapter the playhead is inside (last start at/before now).
+  const currentChapter =
+    [...realChapters].reverse().find((c) => c.startSec <= currentTime) ??
+    realChapters[0];
 
   return (
     <div
@@ -386,10 +497,14 @@ export default function Player({
       role="region"
       aria-label="Video player"
       onKeyDown={handleKeyDown}
+      onMouseMove={pokeControls}
+      onTouchStart={pokeControls}
+      onFocus={pokeControls}
     >
       <video
         ref={videoRef}
         src={src}
+        poster={poster}
         loop={loop}
         style={{ filter: `brightness(${brightness})` }}
         onClick={handleVideoClick}
@@ -397,14 +512,69 @@ export default function Player({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onEnded={onEnded}
+        onError={() => setLoadError(true)}
         aria-label="Video"
       />
+      {loadError ? (
+        <div className="acube-player-error" role="alert">
+          {poster ? (
+            <img
+              src={poster}
+              alt=""
+              className="acube-player-error-poster"
+            />
+          ) : null}
+          <p className="acube-player-error-text">
+            This video couldn&apos;t be played
+          </p>
+          <button type="button" onClick={retryLoad}>
+            Retry
+          </button>
+        </div>
+      ) : null}
       {indicator ? (
         <div className="acube-gesture-indicator" role="status">
           {indicator}
         </div>
       ) : null}
-      <div className="acube-player-controls">
+      <div
+        className={`acube-player-controls${controlsVisible ? "" : " acube-player-controls--hidden"}`}
+        onMouseEnter={() => {
+          controlsHovered.current = true;
+          clearHideTimer();
+          setControlsVisible(true);
+        }}
+        onMouseLeave={() => {
+          controlsHovered.current = false;
+          if (isPlaying) scheduleHide();
+        }}
+      >
+        {realChapters.length > 0 && currentChapter ? (
+          <div className="acube-chapter-bar" role="group" aria-label="Chapters">
+            <span className="acube-chapter-label">
+              Chapter: {currentChapter.title}
+            </span>
+            <div className="acube-chapter-segments">
+              {realChapters.map((c, i) => {
+                const end = realChapters[i + 1]?.startSec ?? duration;
+                const widthPct = Math.max(0, ((end - c.startSec) / duration) * 100);
+                const isCurrent = c === currentChapter;
+                return (
+                  <button
+                    key={c.startSec}
+                    type="button"
+                    className={`acube-chapter-segment${isCurrent ? " acube-chapter-segment--current" : ""}`}
+                    style={{ width: `${widthPct}%` }}
+                    title={c.title}
+                    aria-label={`Chapter: ${c.title}`}
+                    aria-current={isCurrent || undefined}
+                    onClick={() => seekToSeconds(c.startSec)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
         <div
           ref={trackRef}
           className="acube-seek-track"
@@ -446,11 +616,15 @@ export default function Player({
           ) : null}
         </div>
         <div className="acube-player-row">
-          <button type="button" aria-label={isPlaying ? "Pause" : "Play"} onClick={togglePlay}>
-            {isPlaying ? "Pause" : "Play"}
+          <button type="button" aria-label={isPlaying ? "Pause" : "Play"} title={isPlaying ? "Pause" : "Play"} onClick={togglePlay}>
+            {isPlaying ? <FaPause aria-hidden="true" /> : <FaPlay aria-hidden="true" />}
           </button>
-          <button type="button" aria-label="Mute" onClick={toggleMute}>
-            {muted || volume === 0 ? "Unmute" : "Mute"}
+          <button type="button" aria-label="Mute" title={muted || volume === 0 ? "Unmute" : "Mute"} onClick={toggleMute}>
+            {muted || volume === 0 ? (
+              <FaVolumeMute aria-hidden="true" />
+            ) : (
+              <FaVolumeUp aria-hidden="true" />
+            )}
           </button>
           <input
             type="range"
@@ -467,14 +641,14 @@ export default function Player({
           <span>
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
-          <button type="button" aria-label="Playback speed" onClick={cycleSpeed}>
+          <button type="button" aria-label="Playback speed" title="Playback speed" onClick={cycleSpeed}>
             {speed}x
           </button>
-          <button type="button" aria-label="Picture in picture" onClick={togglePiP}>
-            PiP
+          <button type="button" aria-label="Picture in picture" title="Picture in picture" onClick={togglePiP}>
+            <MdPictureInPicture aria-hidden="true" />
           </button>
-          <button type="button" aria-label="Fullscreen" onClick={toggleFullscreen}>
-            Fullscreen
+          <button type="button" aria-label="Fullscreen" title={isFullscreen ? "Exit fullscreen" : "Fullscreen"} onClick={toggleFullscreen}>
+            {isFullscreen ? <FaCompress aria-hidden="true" /> : <FaExpand aria-hidden="true" />}
           </button>
         </div>
       </div>

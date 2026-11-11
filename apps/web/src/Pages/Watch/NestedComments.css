@@ -1,0 +1,84 @@
+/* Watch comments typography + reaction controls (NestedComments only).
+ * The page body sets no font-size, so comment text inherited 16px —
+ * visibly larger than the approved preview's compact look. This scale
+ * is scoped to the comments block; nothing else on the Watch page
+ * changes. The "Pinned by creator" label stays 12px as defined in
+ * Watch.css (.watch-comment-pinned) — it is not redefined here. */
+
+.watch-comments-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.watch-comments-sort {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.watch-comments-sort select {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px 4px;
+}
+
+/* Comment author / meta line: 13px. */
+.watch-comment-meta {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.watch-comment-meta strong {
+  color: var(--text);
+}
+
+/* Comment body: 14px (was the inherited 16px). */
+.watch-comment-text {
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 4px 0;
+}
+
+/* Action row (Reply / reactions / Delete / Pin): 13px. */
+.watch-comment-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.watch-comment-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 2px 4px;
+  border-radius: 8px;
+}
+
+.watch-comment-reaction:hover:not(:disabled) {
+  background: var(--body_second_top_navlight);
+}
+
+.watch-comment-reaction:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.watch-comment-reaction.active {
+  color: var(--accent);
+}

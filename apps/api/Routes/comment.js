@@ -1,6 +1,6 @@
 import express from "express";
 
-import { postcomment, getcomment, deletecomment, editcomment, pincomment } from "../Controllers/Comment.js";
+import { postcomment, getcomment, deletecomment, editcomment, pincomment, likecomment, dislikecomment } from "../Controllers/Comment.js";
 import auth, { optionalAuth } from "../middleware/auth.js";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate.js";
 import { commentIdParamSchema, commentListQuerySchema, editCommentSchema, postCommentSchema } from "@acube/shared";
@@ -30,5 +30,12 @@ router.post(
   validateParams(commentIdParamSchema),
   pincomment,
 );
+// Watch page: per-user like / dislike toggles on a comment. No
+// validateParams here on purpose: the contract is 404 for an unknown
+// OR malformed id, and the controller returns that (validateParams
+// would 400 a malformed id). Response:
+// { likes, dislikes, userReaction: "like" | "dislike" | null }.
+router.post("/:id/like", auth, likecomment);
+router.post("/:id/dislike", auth, dislikecomment);
 
 export default router;

@@ -1,19 +1,29 @@
-// Phase 5 fix — nested comments: threaded replies via parentId, reply
-// box per thread, collapse toggle. The old `depth < 3` render gate HID
-// replies created at depth 3+ (they existed server-side but were
-// invisible); the tree now renders every depth and only CAPS the visual
-// indent at level 3. The creator-pinned comment renders first with a
-// "Pinned by creator" label; the video owner can pin via
-// POST /comment/:id/pin (server-enforced, creator only).
+// Watch comments: threaded replies via parentId, reply box per
+// thread, collapse toggle, creator pin, Sort (Top / Newest), and
+// like/dislike reactions (POST /comment/:id/like|dislike).
+// Typography lives in NestedComments.css (body 14px, meta 13px —
+// down from the inherited 16px); Watch.css is untouched.
+// Top-level posts OMIT parentId entirely: the server Zod schema
+// rejects an explicit `parentId: null` (400 VALIDATION_ERROR), which
+// used to roll the optimistic comment straight back off screen.
 import React, { useMemo, useState } from "react";
+import { AiFillDislike, AiFillLike, AiOutlineDislike, AiOutlineLike } from "react-icons/ai";
 import { useAppSelector } from "../../store";
 import {
   useCommentsForVideo,
   useDeleteComment,
+  useDislikeComment,
+  useLikeComment,
   usePinComment,
   usePostComment,
 } from "../../query/hooks";
 import type { CommentItem } from "../../types";
+import "./NestedComments.css";
+
+type CommentSort = "top" | "newest";
+
+/** Direct replies shown before "Show more replies" appears. */
+const INITIAL_REPLIES_SHOWN = 3;
 
 interface TreeNode {
   comment: CommentItem;
@@ -23,6 +33,9 @@ interface TreeNode {
 function buildTree(comments: CommentItem[]): TreeNode[] {
   const byId = new Map<string, TreeNode>();
   const roots: TreeNode[] = [];
+  // List position in the fetched (newest-first) list, for tie-breaks.
+  const position = new Map<string, number>();
+  comments.forEach((c, i) => position.set(c._id, i));
   for (const c of comments) byId.set(c._id, { comment: c, children: [] });
   for (const c of comments) {
     const node = byId.get(c._id);
@@ -33,8 +46,75 @@ function buildTree(comments: CommentItem[]): TreeNode[] {
       roots.push(node);
     }
   }
+  // Replies read oldest-first (chronological) no matter which order
+  // the server sent the flat list in — the fetch is newest-first
+  // (see useComments), so list position alone no longer means
+  // oldest-first. Ties (missing/equal timestamps) break by list
+  // position: later in a newest-first list is older, so it comes
+  // first.
+  const sortChildren = (node: TreeNode): void => {
+    node.children.sort((a, b) => {
+      // NaN guard: two timestamp-less comments both read Infinity,
+      // and Infinity - Infinity is NaN, which sort would treat as
+      // "equal" without ever reaching the tie-break below.
+      const byDate = createdMs(a.comment) - createdMs(b.comment);
+      if (!Number.isNaN(byDate) && byDate !== 0) return byDate;
+      return (
+        (position.get(b.comment._id) ?? 0) -
+        (position.get(a.comment._id) ?? 0)
+      );
+    });
+    node.children.forEach(sortChildren);
+  };
+  roots.forEach(sortChildren);
   return roots;
 }
+
+/** Total replies in a thread (direct + nested) — the "N replies" count. */
+function countDescendants(node: TreeNode): number {
+  return node.children.reduce(
+    (total, child) => total + 1 + countDescendants(child),
+    0,
+  );
+}
+
+/** Sort key for "newest": a real timestamp when present. Comments
+ * without one (the optimistic insert carries one; old fixtures carry
+ * none) sort as newest, with the original server position breaking
+ * ties — the server lists newest-first, so an earlier position is
+ * newer. */
+function createdMs(comment: CommentItem): number {
+  if (!comment.createdAt) return Number.POSITIVE_INFINITY;
+  const ms = Date.parse(comment.createdAt);
+  return Number.isNaN(ms) ? Number.POSITIVE_INFINITY : ms;
+}
+
+function sortRoots(
+  roots: TreeNode[],
+  sort: CommentSort,
+): TreeNode[] {
+  const position = new Map<TreeNode, number>();
+  roots.forEach((node, index) => position.set(node, index));
+  const likesOf = (node: TreeNode): number => node.comment.likes ?? 0;
+  return [...roots].sort((a, b) => {
+    // The creator-pinned comment always sorts first, either way.
+    if (a.comment.pinnedByCreator && !b.comment.pinnedByCreator) return -1;
+    if (!a.comment.pinnedByCreator && b.comment.pinnedByCreator) return 1;
+    if (sort === "top") {
+      const byLikes = likesOf(b) - likesOf(a);
+      if (byLikes !== 0) return byLikes;
+    }
+    // NaN guard: two timestamp-less comments both read Infinity,
+    // and Infinity - Infinity is NaN, which sort would treat as
+    // "equal" without ever reaching the position tie-break below.
+    const byDate = createdMs(b.comment) - createdMs(a.comment);
+    if (!Number.isNaN(byDate) && byDate !== 0) return byDate;
+    // Tie-break: earlier in the newest-first list is newer.
+    return (position.get(a) ?? 0) - (position.get(b) ?? 0);
+  });
+}
+
+type RepliesVisibility = "collapsed" | "partial" | "expanded";
 
 function CommentNode({
   node,
@@ -51,13 +131,40 @@ function CommentNode({
   const postMutation = usePostComment();
   const deleteMutation = useDeleteComment();
   const pinMutation = usePinComment();
+  const likeMutation = useLikeComment();
+  const dislikeMutation = useDislikeComment();
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
-  const [collapsed, setCollapsed] = useState(false);
+  const [visibility, setVisibility] = useState<RepliesVisibility>(() =>
+    node.children.length > INITIAL_REPLIES_SHOWN ? "partial" : "expanded",
+  );
   const c = node.comment;
   const isOwn = currentuser?.result._id === c.userid;
   // Visual indent caps at level 3; deeper replies still render.
   const indent = Math.min(depth, 3) * 16;
+  const totalReplies = countDescendants(node);
+  const visibleChildren =
+    visibility === "collapsed"
+      ? []
+      : visibility === "partial"
+        ? node.children.slice(0, INITIAL_REPLIES_SHOWN)
+        : node.children;
+  const hiddenDirect =
+    visibility === "partial"
+      ? node.children.length - INITIAL_REPLIES_SHOWN
+      : 0;
+
+  const toggleReplies = () => {
+    setVisibility((current) =>
+      current === "collapsed"
+        ? node.children.length > INITIAL_REPLIES_SHOWN
+          ? "partial"
+          : "expanded"
+        : current === "partial"
+          ? "expanded"
+          : "collapsed",
+    );
+  };
 
   const submitReply = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +178,9 @@ function CommentNode({
     });
     setReplyText("");
     setReplyOpen(false);
+    // The reply threads under this comment — show the thread so it is
+    // visible without a reload.
+    setVisibility("expanded");
   };
 
   return (
@@ -80,12 +190,54 @@ function CommentNode({
           {(c.usercommented ?? "?").charAt(0).toUpperCase()}
         </div>
         <div style={{ flex: 1 }}>
-          <strong>{c.usercommented}</strong>
-          {c.pinnedByCreator ? (
-            <span className="watch-comment-pinned"> · Pinned by creator</span>
-          ) : null}
-          <p style={{ margin: "4px 0" }}>{c.commentbody}</p>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="watch-comment-meta">
+            <strong>{c.usercommented}</strong>
+            {c.pinnedByCreator ? (
+              <span className="watch-comment-pinned"> · Pinned by creator</span>
+            ) : null}
+          </div>
+          <p className="watch-comment-text">{c.commentbody}</p>
+          <div className="watch-comment-actions">
+            <button
+              type="button"
+              className={`watch-comment-reaction${c.userReaction === "like" ? " active" : ""}`}
+              aria-label={`Like comment by ${c.usercommented ?? "unknown"}`}
+              aria-pressed={c.userReaction === "like"}
+              title={
+                currentuser
+                  ? "Like this comment"
+                  : "Sign in to like this comment"
+              }
+              disabled={!currentuser || likeMutation.isPending}
+              onClick={() => likeMutation.mutate(c._id)}
+            >
+              {c.userReaction === "like" ? (
+                <AiFillLike size={16} />
+              ) : (
+                <AiOutlineLike size={16} />
+              )}
+              <span>{c.likes ?? 0}</span>
+            </button>
+            <button
+              type="button"
+              className={`watch-comment-reaction${c.userReaction === "dislike" ? " active" : ""}`}
+              aria-label={`Dislike comment by ${c.usercommented ?? "unknown"}`}
+              aria-pressed={c.userReaction === "dislike"}
+              title={
+                currentuser
+                  ? "Dislike this comment"
+                  : "Sign in to dislike this comment"
+              }
+              disabled={!currentuser || dislikeMutation.isPending}
+              onClick={() => dislikeMutation.mutate(c._id)}
+            >
+              {c.userReaction === "dislike" ? (
+                <AiFillDislike size={16} />
+              ) : (
+                <AiOutlineDislike size={16} />
+              )}
+              <span>{c.dislikes ?? 0}</span>
+            </button>
             {currentuser ? (
               <button
                 type="button"
@@ -95,15 +247,17 @@ function CommentNode({
                 Reply
               </button>
             ) : null}
-            {node.children.length > 0 ? (
+            {totalReplies > 0 ? (
               <button
                 type="button"
                 className="acube-btn-secondary"
-                onClick={() => setCollapsed((v) => !v)}
+                onClick={toggleReplies}
               >
-                {collapsed
-                  ? `Show ${node.children.length} ${node.children.length === 1 ? "reply" : "replies"}`
-                  : "Hide replies"}
+                {visibility === "collapsed"
+                  ? `Show ${totalReplies} ${totalReplies === 1 ? "reply" : "replies"}`
+                  : visibility === "partial"
+                    ? `Show ${hiddenDirect} more ${hiddenDirect === 1 ? "reply" : "replies"}`
+                    : "Hide replies"}
               </button>
             ) : null}
             {isOwn ? (
@@ -135,15 +289,15 @@ function CommentNode({
                 onChange={(e) => setReplyText(e.target.value)}
               />{" "}
               <button type="submit" className="acube-btn">
-                Reply
+                Post reply
               </button>
             </form>
           ) : null}
         </div>
       </div>
-      {!collapsed && node.children.length > 0 ? (
+      {visibleChildren.length > 0 ? (
         <div className="watch-replies">
-          {node.children.map((child) => (
+          {visibleChildren.map((child) => (
             <CommentNode
               key={child.comment._id}
               node={child}
@@ -170,21 +324,16 @@ export default function NestedComments({
   const commentlist = useCommentsForVideo(videoid);
   const postMutation = usePostComment();
   const [text, setText] = useState("");
+  // Sort: Top (most-liked first) is the preview default; Newest is
+  // newest-first. Both sort from the real filtered list.
+  const [sort, setSort] = useState<CommentSort>("top");
   const isVideoOwner =
     Boolean(currentuser?.result._id) &&
     currentuser?.result._id === videoOwnerId;
-  const tree = useMemo(() => {
-    const built = buildTree(commentlist ?? []);
-    // Pinned creator comment first, then the rest in server order.
-    built.sort((a, b) =>
-      a.comment.pinnedByCreator && !b.comment.pinnedByCreator
-        ? -1
-        : !a.comment.pinnedByCreator && b.comment.pinnedByCreator
-          ? 1
-          : 0,
-    );
-    return built;
-  }, [commentlist]);
+  const tree = useMemo(
+    () => sortRoots(buildTree(commentlist ?? []), sort),
+    [commentlist, sort],
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,33 +345,46 @@ export default function NestedComments({
       alert("Please login to comment");
       return;
     }
+    // Top-level post: parentId is OMITTED (never null) — see header.
     postMutation.mutate({
       videoid,
       userid: currentuser.result._id,
       commentbody: text.trim(),
       usercommented: currentuser.result.name,
-      parentId: null,
     });
     setText("");
   };
 
   return (
     <div>
-      <h2>Comments</h2>
+      <div className="watch-comments-header">
+        <h2>Comments {commentlist ? commentlist.length : ""}</h2>
+        <label className="watch-comments-sort">
+          Sort:{" "}
+          <select
+            aria-label="Sort comments"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as CommentSort)}
+          >
+            <option value="top">Top</option>
+            <option value="newest">Newest</option>
+          </select>
+        </label>
+      </div>
       <form onSubmit={handleSubmit} style={{ marginBottom: 16 }}>
         <input
           className="acube-input"
           aria-label="Add a comment"
-          placeholder="add comment..."
+          placeholder="Add a comment..."
           value={text}
           onChange={(e) => setText(e.target.value)}
         />{" "}
         <button type="submit" className="acube-btn">
-          add
+          Comment
         </button>
       </form>
       {tree.length === 0 ? (
-        <p style={{ color: "var(--text-2)" }}>
+        <p className="watch-comment-text" style={{ color: "var(--text-2)" }}>
           No comments yet. Be the first to comment.
         </p>
       ) : (

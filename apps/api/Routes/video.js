@@ -39,7 +39,23 @@ const routes = express.Router();
 // upload.fields(), not upload.single("file"), because .single() rejects
 // a second file part with LIMIT_UNEXPECTED_FILE. Existing single-file
 // clients are unaffected (the thumbnail part is optional).
-routes.post("/uploadvideo", auth, uploadVideoWithThumbnail, validateBody(uploadVideoBodySchema), uploadvideo);
+// Watch page: chapters travel as a JSON string in FormData (the
+// upload wizard / Edit-details modal send JSON.stringify(chapters)),
+// so parse them back to an array before Zod validation. JSON callers
+// are untouched — this runs only for multipart requests, and a value
+// that is not a JSON array is left alone so Zod still 400s it.
+function parseMultipartChapters(req, _res, next) {
+  if (req.is("multipart/form-data") && typeof req.body?.chapters === "string") {
+    try {
+      const parsed = JSON.parse(req.body.chapters);
+      if (Array.isArray(parsed)) req.body.chapters = parsed;
+    } catch {
+      // Leave the raw string: Zod rejects it with 400.
+    }
+  }
+  return next();
+}
+routes.post("/uploadvideo", auth, uploadVideoWithThumbnail, parseMultipartChapters, validateBody(uploadVideoBodySchema), uploadvideo);
 
 routes.get("/getvideos", validateQuery(paginationQuerySchema), getallvideos);
 routes.patch(
@@ -131,6 +147,7 @@ routes.patch(
   validateParams(videoIdParamSchema),
   imageUpload.single("thumbnail"),
   parseMultipartTags,
+  parseMultipartChapters,
   validateBody(updateVideoSchema),
   updateVideo,
 );

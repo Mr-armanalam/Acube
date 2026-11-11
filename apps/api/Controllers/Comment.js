@@ -114,8 +114,18 @@ export const getcomment = async (req, res) => {
                 }
             }
         }
+        // Watch page: ?sort=newest flips the order (newest first) so
+        // the newest comments are on page 1; the default stays
+        // oldest-first (Studio never sends sort).
+        const newestFirst = req.pagination?.sort === "newest";
         const page = await paginate(
-            comment.find(filter).sort({ commentedon: 1, _id: 1 }),
+            comment
+                .find(filter)
+                .sort(
+                    newestFirst
+                        ? { commentedon: -1, _id: -1 }
+                        : { commentedon: 1, _id: 1 },
+                ),
             paginationOf(req),
         );
         // Phase 5 fix: hasReply — true when at least one reply names
@@ -134,6 +144,9 @@ export const getcomment = async (req, res) => {
             items: page.items.map((c) => ({
                 ...c,
                 hasReply: replied.has(String(c._id)),
+                // Watch page: server-owned reaction counts + the
+                // requesting user's reaction (null when anonymous).
+                ...reactionFields(c, req.userid),
             })),
         })
     } catch (error) {
@@ -141,6 +154,79 @@ export const getcomment = async (req, res) => {
         return
     }
 }
+
+// Watch page: server-owned per-user like/dislike reactions on a
+// comment (POST /comment/:id/like, POST /comment/:id/dislike).
+// `reactionFields` derives the public shape from a comment doc (lean
+// or Mongoose): counts are the array lengths, never stored counters,
+// and userReaction is the requesting user's reaction — "like" /
+// "dislike" / null (null when anonymous, or when they reacted
+// neither way). Old rows without the arrays read as zero reactions.
+// Shared with Controllers/studio.js (Studio Comments list) so both
+// comment lists report the same shape.
+export function reactionFields(doc, userId) {
+    const likedBy = Array.isArray(doc.likedBy)
+        ? doc.likedBy.map(String)
+        : [];
+    const dislikedBy = Array.isArray(doc.dislikedBy)
+        ? doc.dislikedBy.map(String)
+        : [];
+    const uid = userId != null ? String(userId) : null;
+    const userReaction =
+        uid == null
+            ? null
+            : likedBy.includes(uid)
+              ? "like"
+              : dislikedBy.includes(uid)
+                ? "dislike"
+                : null;
+    return { likes: likedBy.length, dislikes: dislikedBy.length, userReaction };
+}
+
+// Toggle one reaction. Liking removes a dislike and vice versa;
+// toggling the same reaction again removes it. A user id is in at
+// most one array at any time (the update $pulls the other side in
+// the same write). Auth required (route); unknown or malformed id
+// is 404 NOT_FOUND (not 400 — the contract for these two endpoints).
+async function toggleCommentReaction(req, res, reaction) {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(404).json({
+            error: { code: "NOT_FOUND", message: "Comment not found" },
+        });
+    }
+    try {
+        const found = await comment.findById(id);
+        if (!found) {
+            return res.status(404).json({
+                error: { code: "NOT_FOUND", message: "Comment not found" },
+            });
+        }
+        const uid = String(req.userid);
+        const ownField = reaction === "like" ? "likedBy" : "dislikedBy";
+        const otherField = reaction === "like" ? "dislikedBy" : "likedBy";
+        const already = (found[ownField] ?? []).map(String).includes(uid);
+        const update = already
+            ? { $pull: { [ownField]: uid } }
+            : {
+                  $addToSet: { [ownField]: uid },
+                  $pull: { [otherField]: uid },
+              };
+        const updated = await comment
+            .findByIdAndUpdate(id, update, { returnDocument: "after" })
+            .lean();
+        return res.status(200).json(reactionFields(updated, uid));
+    } catch (error) {
+        res.status(400).json(error.message);
+        return;
+    }
+}
+
+export const likecomment = (req, res) =>
+    toggleCommentReaction(req, res, "like");
+
+export const dislikecomment = (req, res) =>
+    toggleCommentReaction(req, res, "dislike");
 
 async function ownedCommentOrError(req, res, _id) {
     const found = await comment.findById(_id);

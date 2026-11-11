@@ -1,7 +1,7 @@
 import express from "express";
 import { getMe, getHistoryPaused, login, setHistoryPaused, watchComplete } from "../Controllers/Auth.js";
 import { updatechaneldata, getallchanels } from "../Controllers/channel.js";
-import auth from "../middleware/auth.js";
+import auth, { optionalAuth } from "../middleware/auth.js";
 import { authLimiter } from "../middleware/rateLimit.js";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate.js";
 import {
@@ -36,7 +36,10 @@ routes.patch(
   validateBody(updateChannelSchema),
   updatechaneldata,
 );
-routes.get("/getallchannel", validateQuery(paginationQuerySchema), getallchanels);
+// Watch page: optionalAuth so each channel item can carry
+// `subscribed` for the requesting user (false when anonymous);
+// the list itself stays public.
+routes.get("/getallchannel", optionalAuth, validateQuery(paginationQuerySchema), getallchanels);
 // Phase 3b: POST /user/update-points is GONE (it trusted a
 // client-supplied points number). POST /user/watch-complete awards
 // points server-side only — see Controllers/Auth.js watchComplete.

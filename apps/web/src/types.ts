@@ -97,6 +97,11 @@ export interface Video {
   deletedAt?: string | null;
   /** Real chapters only — absent means "no chapters", never fake ticks. */
   chapters?: VideoChapter[];
+  /** Watch-page subscribe contract (backend worker): the channel's
+   * real subscriber count and whether the viewer is subscribed
+   * (false when anonymous). Absent = unknown, never invented. */
+  subscriberCount?: number;
+  subscribed?: boolean;
 }
 
 export interface Channel {
@@ -106,9 +111,13 @@ export interface Channel {
   // Settings polish: a handle exists on the user record (sparse,
   // unique) and Studio Settings edits it, but GET /user/getallchannel
   // does not project it yet — the header renders @handle only when
-  // present and falls back to @username. No subscriber field exists
-  // anywhere: there is no follow system, so none is rendered.
+  // present and falls back to @username.
   handle?: string;
+  /** Watch-page subscribe contract (backend worker): the channel's
+   * real subscriber count and whether the viewer is subscribed
+   * (false when anonymous). Absent = unknown, never invented. */
+  subscriberCount?: number;
+  subscribed?: boolean;
   email?: string;
   picture?: string;
   // Settings polish fix: the uploaded avatar/banner, rendered by the
@@ -144,6 +153,24 @@ export interface CommentItem {
   hasReply?: boolean;
   /** Server-owned like count on the comment, when the API returns one. */
   likes?: number;
+  /** Server-owned dislike count on the comment, when the API returns one. */
+  dislikes?: number;
+  /** The signed-in viewer's reaction to this comment, when the API
+   * returns one. null = no reaction. Absent = unknown (e.g. older
+   * response shape) — the UI treats it as no reaction, never invents
+   * one. */
+  userReaction?: "like" | "dislike" | null;
+}
+
+/** A comment reaction: POST /comment/:id/like or /dislike toggles it. */
+export type CommentReaction = "like" | "dislike";
+
+/** What POST /comment/:id/like and /dislike return: the authoritative
+ * counts + the viewer's reaction after the toggle. */
+export interface CommentReactionResult {
+  likes: number;
+  dislikes: number;
+  userReaction: CommentReaction | null;
 }
 
 /** History / liked / watch-later rows all share this shape. */

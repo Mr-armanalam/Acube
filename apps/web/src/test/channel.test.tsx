@@ -1,14 +1,15 @@
 // Channel page tests (MSW): rebuilt header (image-26) — banner/avatar,
 // name, "@handle · N videos", description "…more" expansion, owner
-// "Customize channel" / "Manage videos" links, disabled Subscribe with
-// a "Coming soon" affordance for non-owners, and the Home / Videos /
-// Playlists / Posts tabs + channel search. No subscriber number is
-// ever rendered: no subscribe system exists.
+// "Customize channel" / "Manage videos" links, real Subscribe toggle
+// with the subscriber count for non-owners (Watch-page rebuild — the
+// old disabled "Coming soon" button is gone), and the Home / Videos /
+// Playlists / Posts tabs + channel search.
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
+import { captured } from "../mocks/handlers";
 import { renderWithProviders, testSession } from "./testUtils";
 import { InternetStatusProvider } from "../utils/internetStatusContext";
 import Allroutes from "../Allroutes";
@@ -129,16 +130,26 @@ describe("Channel header (image-26)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("non-owner sees a disabled Subscribe button with a Coming soon affordance, and no owner actions", async () => {
+  it("non-owner sees a real Subscribe toggle with the subscriber count, and no owner actions", async () => {
+    const user = userEvent.setup();
     renderRoutes("/channel/ch1", testSession);
     expect(await screen.findByText("Alice")).toBeInTheDocument();
-    const subscribe = screen.getByRole("button", { name: "Subscribe" });
-    expect(subscribe).toBeDisabled();
-    expect(subscribe).toHaveAttribute(
-      "title",
-      "Subscriptions aren't available yet",
-    );
-    expect(screen.getByText("Coming soon")).toBeInTheDocument();
+    // Watch-page rebuild: the disabled "Coming soon" button is gone —
+    // Subscribe is a real toggle with the real count.
+    const subscribe = screen.getByRole("button", {
+      name: "Subscribe to Alice",
+    });
+    expect(subscribe).toBeEnabled();
+    expect(await screen.findByText("42 subscribers")).toBeInTheDocument();
+    expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
+    await user.click(subscribe);
+    expect(
+      await screen.findByRole("button", { name: "Subscribed to Alice" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("43 subscribers")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(captured.subscribeToggles).toContain("ch1");
+    });
     expect(
       screen.queryByRole("link", { name: "Customize channel" }),
     ).not.toBeInTheDocument();

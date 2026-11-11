@@ -99,8 +99,23 @@ export const deletecomment = (id: string) =>
   API.delete(`/comment/delete/${id}`);
 export const editcomment = (id: string, commentbody: unknown) =>
   API.patch(`/comment/edit/${id}`, { commentbody });
-export const getallcomment = (page = 1, limit = 50) =>
-  API.get("/comment/get", { params: { page, limit } });
+export const getallcomment = (
+  page = 1,
+  limit = 50,
+  videoid?: string,
+  // Watch page: "newest" returns newest-first so a new comment past
+  // #50 is on page 1 after refetch (limit caps at 50). Omit it for
+  // the server default (oldest-first).
+  sort?: "oldest" | "newest",
+) =>
+  API.get("/comment/get", {
+    params: {
+      page,
+      limit,
+      ...(videoid ? { videoid } : {}),
+      ...(sort ? { sort } : {}),
+    },
+  });
 
 export const addtohistory = (historydata: unknown) =>
   API.post("/video/history", historydata);
@@ -335,6 +350,18 @@ export const restoreVideo = (id: string) =>
 // Phase 5 fix contract: ranked suggestions with a reason per item.
 export const getWatchSuggestions = (id: string) =>
   API.get(`/watch/${id}/suggestions`);
+// Watch-page subscribe contract (backend worker, parallel — the MSW handlers answer
+// the same shapes meanwhile):
+//   GET  /subscriptions/:channelId        -> { subscribed, subscriberCount }
+//   POST /subscriptions/:channelId/toggle -> { subscribed, subscriberCount }
+// 400 = own channel, 404 = unknown channel, unauthenticated POST = 401.
+// (Landed backend, commit 0437c5f: a MALFORMED channel id is also 404
+// { error: { code: "NOT_FOUND" } } — the backend deliberately skips
+// validateParams on these routes, so a malformed id never 400s.)
+export const getSubscription = (channelId: string) =>
+  API.get(`/subscriptions/${channelId}`);
+export const toggleSubscription = (channelId: string) =>
+  API.post(`/subscriptions/${channelId}/toggle`);
 // Phase 5 fix: public playlists containing a video — the Watch page's
 // playlist showcase. The page used to read the owner-only
 // /studio/playlists list, so the showcase only rendered for the owner.
@@ -347,6 +374,14 @@ export const getChannelPlaylists = (id: string) =>
   API.get(`/channel/${id}/playlists`);
 // Phase 5 fix contract: creator pins a comment (creator only, server).
 export const pinComment = (id: string) => API.post(`/comment/${id}/pin`);
+// Watch comments contract (backend worker, parallel): toggling a
+// comment reaction. POST /comment/:id/like toggles the like,
+// POST /comment/:id/dislike toggles the dislike; both return
+// { likes, dislikes, userReaction: "like" | "dislike" | null }.
+export const likeComment = (id: string) =>
+  API.post(`/comment/${id}/like`);
+export const dislikeComment = (id: string) =>
+  API.post(`/comment/${id}/dislike`);
 // Phase 5 fix contract: library entries (kind "saved" | "watchlater" |
 // "liked"). POST/DELETE already exist server-side for /studio/library.
 export const addLibraryEntry = (videoid: string, kind: string) =>

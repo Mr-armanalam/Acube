@@ -252,9 +252,19 @@ test.describe("Acube Phase 5 click-through", () => {
     await expect(
       page.getByRole("button", { name: "Playback speed" }),
     ).toBeVisible();
-    // Play toggle flips even though the seeded file does not exist.
-    await page.getByRole("button", { name: "Play", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
+    // The seeded file is intentionally NOT playable (see
+    // e2e-server.mjs), so the player shows the Watch error state —
+    // message + Retry — instead of a black box with dead controls.
+    // The Play toggle on a dead source used to flip; the error
+    // overlay now covers the controls by design, so the toggle is
+    // asserted on working media in watch-page.spec.ts (tests 5–7,
+    // real fixture) instead.
+    await expect(page.getByRole("alert")).toContainText(
+      "This video couldn't be played",
+    );
+    await expect(
+      page.getByRole("button", { name: "Retry", exact: true }),
+    ).toBeVisible();
     // Nested comment + playlist showcase (seeded playlist owns the video).
     await expect(page.getByText("Great tutorial!")).toBeVisible();
     // Preview screen H renders the showcase as "Playlist · <title>"

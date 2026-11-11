@@ -52,7 +52,7 @@ vi.mock("stripe", () => ({
   },
 }));
 
-// Smoke test: every route in the API (57) plus GET / and GET /health (59
+// Smoke test: every route in the API (61) plus GET / and GET /health (63
 // endpoints total) is hit once with a valid-shaped request and must answer
 // with its expected status — never a 404 "route not found" and never a 500
 // crash. Auth-required routes are also hit without a token and must 401.
@@ -69,7 +69,7 @@ vi.mock("stripe", () => ({
 // seeded video's channel is "test-channel", so a second video owned by
 // userA is used), and the 14 /studio/* routes are covered —
 // GET /studio/playlists/:id is the one public studio route.
-describe("route smoke test — all 59 endpoints", () => {
+describe("route smoke test — all 63 endpoints", () => {
   it("every route responds with its expected status", async () => {
     const userA = await createUser();
     const userB = await createUser();
@@ -106,6 +106,7 @@ describe("route smoke test — all 59 endpoints", () => {
     });
 
     const uid = String(userA._id);
+    const uidB = String(userB._id);
     const vid = String(video._id);
     // Phase 5: a video owned by userA (videochanel = their id) for the
     // PATCH/DELETE /video/:id rows — the seeded video belongs to the
@@ -142,6 +143,11 @@ describe("route smoke test — all 59 endpoints", () => {
       ["POST", "/chat/group/messages", headersA, { content: "smoke", groupId }, 201],
       ["POST", "/comment/post", headersA, { commentbody: "smoke", videoid: vid }, 200],
       ["GET", "/comment/get", null, null, 200],
+      ["POST", `/comment/${commentToEdit._id}/like`, headersA, null, 200],
+      ["POST", `/comment/${commentToEdit._id}/dislike`, headersA, null, 200],
+      // Watch page: userA subscribes to userB, then reads the state back.
+      ["POST", `/subscriptions/${uidB}/toggle`, headersA, null, 200],
+      ["GET", `/subscriptions/${uidB}`, headersA, null, 200],
       ["DELETE", `/comment/delete/${commentToDelete._id}`, headersA, null, 200],
       ["PATCH", `/comment/edit/${commentToEdit._id}`, headersA, { commentbody: "edited" }, 200],
       ["POST", "/download/download-video", headersA, {}, 200],
@@ -186,8 +192,8 @@ describe("route smoke test — all 59 endpoints", () => {
       ["DELETE", `/video/${ownedVid}`, headersA, null, 200],
     ];
 
-    // 57 API routes + GET / + GET /health = 59 endpoints.
-    expect(table).toHaveLength(59);
+    // 61 API routes + GET / + GET /health = 63 endpoints.
+    expect(table).toHaveLength(63);
 
     for (const [method, path, headers, body, expected] of table) {
       let req = api[method.toLowerCase()](path);
@@ -228,6 +234,9 @@ describe("route smoke test — all 59 endpoints", () => {
       ["GET", `/chat/group/${validId}/messages`, null],
       ["POST", "/chat/group/messages", { content: "x", groupId: validId }],
       ["POST", "/comment/post", { commentbody: "x" }],
+      ["POST", `/comment/${validId}/like`, null],
+      ["POST", `/comment/${validId}/dislike`, null],
+      ["POST", `/subscriptions/${validId}/toggle`, null],
       ["DELETE", `/comment/delete/${validId}`, null],
       ["PATCH", `/comment/edit/${validId}`, { commentbody: "x" }],
       ["POST", "/download/download-video", {}],
@@ -265,7 +274,7 @@ describe("route smoke test — all 59 endpoints", () => {
       ["DELETE", `/studio/library/saved/${vid}`, null],
     ];
 
-    expect(unauthenticated).toHaveLength(47);
+    expect(unauthenticated).toHaveLength(50);
 
     for (const [method, path, body] of unauthenticated) {
       let req = api[method.toLowerCase()](path);

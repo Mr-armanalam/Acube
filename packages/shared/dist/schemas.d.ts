@@ -36,6 +36,10 @@ export declare const commentListQuerySchema: z.ZodObject<{
     limit: z.ZodPipe<z.ZodOptional<z.ZodCoercedNumber<unknown>>, z.ZodTransform<number, number | undefined>>;
     videoid: z.ZodOptional<z.ZodString>;
     parentId: z.ZodOptional<z.ZodString>;
+    sort: z.ZodDefault<z.ZodEnum<{
+        oldest: "oldest";
+        newest: "newest";
+    }>>;
 }, z.core.$strip>;
 export declare const chatUserSchema: z.ZodObject<{
     searchquery: z.ZodOptional<z.ZodString>;
@@ -66,7 +70,7 @@ export declare const postCommentSchema: z.ZodObject<{
     userid: z.ZodOptional<z.ZodString>;
     commentbody: z.ZodString;
     usercommented: z.ZodOptional<z.ZodString>;
-    parentId: z.ZodOptional<z.ZodString>;
+    parentId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, z.core.$strip>;
 export declare const commentIdParamSchema: z.ZodObject<{
     id: z.ZodString;
@@ -94,6 +98,14 @@ export declare const visibilitySchema: z.ZodEnum<{
     private: "private";
     draft: "draft";
 }>;
+export declare const chapterSchema: z.ZodObject<{
+    title: z.ZodString;
+    startSec: z.ZodNumber;
+}, z.core.$strip>;
+export declare const chaptersSchema: z.ZodArray<z.ZodObject<{
+    title: z.ZodString;
+    startSec: z.ZodNumber;
+}, z.core.$strip>>;
 export declare const uploadVideoBodySchema: z.ZodObject<{
     title: z.ZodString;
     chanel: z.ZodString;
@@ -107,6 +119,10 @@ export declare const uploadVideoBodySchema: z.ZodObject<{
         draft: "draft";
     }>>;
     thumbnailUrl: z.ZodOptional<z.ZodString>;
+    chapters: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        title: z.ZodString;
+        startSec: z.ZodNumber;
+    }, z.core.$strip>>>;
 }, z.core.$strip>;
 export declare const updateVideoSchema: z.ZodObject<{
     title: z.ZodOptional<z.ZodString>;
@@ -120,6 +136,10 @@ export declare const updateVideoSchema: z.ZodObject<{
     tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
     thumbnailUrl: z.ZodOptional<z.ZodString>;
     durationSec: z.ZodOptional<z.ZodNumber>;
+    chapters: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        title: z.ZodString;
+        startSec: z.ZodNumber;
+    }, z.core.$strip>>>;
 }, z.core.$strict>;
 export declare const studioAnalyticsQuerySchema: z.ZodObject<{
     range: z.ZodDefault<z.ZodEnum<{
@@ -175,8 +195,8 @@ export declare const studioCommentsQuerySchema: z.ZodObject<{
         unreplied: "unreplied";
     }>>;
     sort: z.ZodDefault<z.ZodEnum<{
-        newest: "newest";
         oldest: "oldest";
+        newest: "newest";
     }>>;
 }, z.core.$strip>;
 export declare const videoProgressSchema: z.ZodObject<{
@@ -259,6 +279,7 @@ export type CreatePaymentRequestInput = z.infer<typeof createPaymentRequestSchem
 export type HandlePaymentStatusInput = z.infer<typeof handlePaymentStatusSchema>;
 export type UploadVideoBodyInput = z.infer<typeof uploadVideoBodySchema>;
 export type PostCommentInput = z.infer<typeof postCommentSchema>;
+export type ChapterInput = z.infer<typeof chapterSchema>;
 export type UpdateVideoInput = z.infer<typeof updateVideoSchema>;
 export type StudioAnalyticsQueryInput = z.infer<typeof studioAnalyticsQuerySchema>;
 export type StudioSettingsInput = z.infer<typeof studioSettingsSchema>;

@@ -34,6 +34,9 @@ export const queryKeys = {
   watchSuggestions: (id: string) => ["watch", id, "suggestions"] as const,
   // Phase 5 fix: public playlists containing a video (Watch showcase).
   watchPlaylists: (id: string) => ["watch", id, "playlists"] as const,
+  // Watch page: subscribe state for one channel.
+  subscription: (channelId: string) =>
+    ["subscriptions", channelId] as const,
   // Channel page Playlists tab (public endpoint, proposed).
   channelPlaylists: (id: string) => ["channel", id, "playlists"] as const,
   historyPaused: ["history", "paused"] as const,
