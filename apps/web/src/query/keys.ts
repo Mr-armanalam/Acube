@@ -24,6 +24,9 @@ export const queryKeys = {
   studioComments: (page: number, filter = "", sort = "") =>
     ["studio", "comments", page, filter, sort] as const,
   studioSettings: ["studio", "settings"] as const,
+  // Settings polish: live handle-availability check.
+  handleAvailable: (handle: string) =>
+    ["studio", "handle", "available", handle] as const,
   studioPlaylists: ["studio", "playlists"] as const,
   studioPlaylist: (id: string) => ["studio", "playlists", id] as const,
   studioLibrary: ["studio", "library"] as const,

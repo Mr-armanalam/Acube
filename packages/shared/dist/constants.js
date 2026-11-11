@@ -25,6 +25,12 @@ export const MAX_POINTS_PER_VIDEO_PER_DAY = 10;
 // Phase 3b: video uploads are capped server-side (multer limit +
 // controller check) at this many bytes. The client already shows "10 MB".
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+// Settings polish: channel banner / avatar image uploads (POST
+// /studio/banner, POST /studio/avatar — see Helper/imageFilehelper.js).
+// JPG and PNG only (no webp: nothing in the codebase accepts it today),
+// capped server-side (multer limit + controller check) at 5 MB.
+export const SUPPORTED_IMAGE_MIMETYPES = ["image/jpeg", "image/png"];
+export const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
 // Phase 3b: list endpoints accept ?page&limit; limit is capped here so a
 // client can never ask for the whole collection in one request.
 export const DEFAULT_PAGE_LIMIT = 20;

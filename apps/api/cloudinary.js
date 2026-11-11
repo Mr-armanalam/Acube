@@ -50,16 +50,18 @@ function removeLocalFile(localFilePath) {
   }
 }
 
-const uploadOnCloudinary = async (localFilePath) => {
+const uploadOnCloudinary = async (localFilePath, resourceType = "video") => {
   try {
     if (!localFilePath) return null;
     // Lazy config (see above): the SDK must be configured with the
     // env values as they are NOW, not as they were at import time.
     configureCloudinary();
-    // Phase 3b: resource_type "video" (was "auto") — this endpoint only
-    // ever uploads videos, so the upload must be treated as one.
+    // resource_type defaults to "video" (the original behaviour —
+    // this endpoint only ever uploaded videos). Image uploads
+    // (banner/avatar) pass "image": uploading a PNG as "video"
+    // fails on Cloudinary, and "auto" would mis-detect.
     const response = await cloudinary.uploader.upload(localFilePath, {
-      resource_type: "video",
+      resource_type: resourceType,
     });
     // console.log("file is uploaded on cloudinary");
     // console.log(response.url);

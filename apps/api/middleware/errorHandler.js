@@ -15,12 +15,19 @@ export const errorHandler = (err, req, res, next) => {
   // Phase 3b: multer upload errors (e.g. LIMIT_FILE_SIZE from the 10 MB
   // cap) are client errors, not 500s.
   if (err && err.name === "MulterError") {
+    // Settings polish: banner/avatar image uploads cap at 5 MB, not
+    // the video 10 MB — the message must name the limit that
+    // actually applied to this route.
+    const isImageUpload =
+      req.path === "/studio/banner" || req.path === "/studio/avatar";
     return res.status(400).json({
       error: {
         code: "VALIDATION_ERROR",
         message:
           err.code === "LIMIT_FILE_SIZE"
-            ? "File must be less than 10 MB"
+            ? isImageUpload
+              ? "File must be less than 5 MB"
+              : "File must be less than 10 MB"
             : err.message || "Upload failed",
       },
     });

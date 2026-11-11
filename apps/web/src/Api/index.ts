@@ -24,6 +24,20 @@ const API: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_BACKEND_URL,
 });
 
+/** Resolve a media URL the API returned for rendering in the browser.
+ * Cloudinary URLs are absolute and pass through untouched; the local
+ * /uploads/ fallback is API-relative, so a bare "/uploads/…" would
+ * resolve against the WEB origin (:3000/:4173) and 404 — prefix it
+ * with the API base URL. Without a configured base (unit tests) a
+ * relative URL is returned as-is. */
+export function resolveApiMediaUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  if (/^(https?:|data:|blob:)/i.test(url)) return url;
+  const base = (API.defaults.baseURL ?? "").replace(/\/+$/, "");
+  if (!base) return url;
+  return url.startsWith("/") ? `${base}${url}` : `${base}/${url}`;
+}
+
 API.interceptors.request.use((req: InternalAxiosRequestConfig) => {
   const profile = readStoredSession();
   if (profile) {
@@ -207,6 +221,40 @@ export const patchStudioSettings = (data: {
   uploadDefaultComments?: boolean;
   watermarkEnabled?: boolean;
 }) => API.patch("/studio/settings", data);
+// Settings polish contract (backend worker, parallel — these routes
+// did not exist yet when the web work started; the client is built
+// against the fixed contract and the MSW handlers answer the same
+// shapes meanwhile):
+//   GET  /studio/handle/available?handle=… -> { available, reason? }
+//   POST /studio/banner  (multipart field "file", jpg/png ≤ 5 MB)
+//   POST /studio/avatar  (multipart field "file", jpg/png ≤ 5 MB)
+//   POST /studio/banner/remove, POST /studio/avatar/remove
+// The multipart field name is "file" — same convention as the video
+// upload (UploadWizard appends "file"); if the backend ever changes
+// it, change it in uploadStudioImage below only.
+// Upload responses carry the new URL top-level ({ bannerUrl } /
+// { avatarUrl }); remove responses carry the field as null. The hooks
+// read the upload shape either top-level or nested under `channel`,
+// so the Settings preview can update from the response without
+// waiting on the refetch.
+// NOTE: the Studio identity header prefers overview.channel.avatarUrl
+// (the uploaded avatar) over picture (the Google login photo) — an
+// avatar upload DOES change it; see Models/Auth.js.
+export const getHandleAvailable = (handle: string) =>
+  API.get("/studio/handle/available", { params: { handle } });
+function uploadStudioImage(kind: "banner" | "avatar", file: File) {
+  const filedata = new FormData();
+  filedata.append("file", file);
+  // Axios sets the multipart Content-Type (with boundary) itself for
+  // FormData — setting it manually would break the boundary.
+  return API.post(`/studio/${kind}`, filedata);
+}
+export const uploadStudioBanner = (file: File) =>
+  uploadStudioImage("banner", file);
+export const uploadStudioAvatar = (file: File) =>
+  uploadStudioImage("avatar", file);
+export const removeStudioBanner = () => API.post("/studio/banner/remove");
+export const removeStudioAvatar = () => API.post("/studio/avatar/remove");
 export const getStudioPlaylists = () => API.get("/studio/playlists");
 // Public read (visibility rules server-side) — the /playlist/:id page
 // uses this, not the owner-only list.

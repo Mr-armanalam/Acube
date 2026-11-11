@@ -354,7 +354,7 @@ describe("Preview — Comments (image 13)", () => {
 });
 
 describe("Preview — Settings (images 14–15)", () => {
-  it("banner + avatar controls, 2-column grid, red toggle switches, no fake handle check", async () => {
+  it("banner + avatar controls, 2-column grid, red toggle switches, live handle check", async () => {
     const user = userEvent.setup();
     renderRoutes("/studio/settings", testSession);
     expect(await screen.findByLabelText("Channel name")).toHaveValue(
@@ -374,9 +374,11 @@ describe("Preview — Settings (images 14–15)", () => {
     expect(pub).toBeChecked();
     await user.click(pub);
     expect(pub).not.toBeChecked();
-    // No fake availability state: the handle field never claims
-    // "available" (no availability endpoint exists).
-    expect(screen.queryByText(/available/i)).not.toBeInTheDocument();
+    // Live handle check (GET /studio/handle/available): the caller's
+    // own handle shows available — debounced, so allow for the wait.
+    expect(
+      await screen.findByText("✓ available", {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
     // Editing marks the form dirty and shows the unsaved indicator.
     const name = screen.getByLabelText("Channel name");
     await user.clear(name);

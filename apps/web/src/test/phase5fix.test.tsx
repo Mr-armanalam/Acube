@@ -399,6 +399,12 @@ describe("G — Settings", () => {
     expect(screen.getByLabelText("Contact email · for viewers")).toHaveValue(
       "hello@test.example",
     );
+    // Links render as chips (preview image 22); the label/URL inputs
+    // appear when a chip is edited.
+    expect(
+      screen.getByRole("button", { name: "GitHub" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "GitHub" }));
     expect(screen.getByLabelText("Link 1 label")).toHaveValue("GitHub");
     expect(screen.getByLabelText("Channel is public — anyone can find this channel")).toBeChecked();
     await user.click(screen.getByRole("button", { name: "+ Add link" }));

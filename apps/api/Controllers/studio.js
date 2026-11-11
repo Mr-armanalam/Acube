@@ -16,6 +16,11 @@ import ViewEvent from "../Models/ViewEvent.js";
 import { paginate, paginationOf } from "../utils/pagination.js";
 import { getCached, setCached, invalidateChannelCache } from "../utils/studioCache.js";
 import { getChannelTotals } from "../utils/analytics.js";
+import { uploadOnCloudinary, isCloudinaryConfigured } from "../cloudinary.js";
+import {
+  MAX_IMAGE_UPLOAD_BYTES,
+  SUPPORTED_IMAGE_MIMETYPES,
+} from "@acube/shared";
 
 const NOT_FOUND = (message) => ({ error: { code: "NOT_FOUND", message } });
 const FORBIDDEN = (message) => ({ error: { code: "FORBIDDEN", message } });
@@ -130,6 +135,11 @@ export const getOverview = async (req, res, next) => {
         email: user.email,
         desc: user.desc,
         picture: user.picture,
+        // Settings polish fix: the Studio identity header prefers
+        // avatarUrl (the uploaded avatar) over the Google login
+        // photo, so the overview must carry it — it used to return
+        // picture only, and an upload never reached the header.
+        avatarUrl: user.avatarUrl ?? user.picture ?? null,
         username: user.username,
       },
       // Totals from the event log only — no invented history. A channel
@@ -576,6 +586,163 @@ export const updateSettings = async (req, res, next) => {
     return next(error);
   }
 };
+
+// ------------------------------------------------------- handle availability
+
+// Settings polish: live handle check (GET /studio/handle/available).
+// Format is already validated by handleAvailabilityQuerySchema (the
+// SAME regex as PATCH /studio/settings, so the two can never drift).
+// Owner-exempt: the caller's own current handle — in any case — is
+// available to them. Otherwise the check is case-insensitive, exactly
+// like the save handler's 409 rule (see updateSettings above).
+// Response: { available: boolean, reason?: "taken" }.
+export const checkHandleAvailable = async (req, res, next) => {
+  try {
+    const handle = req.pagination.handle;
+    const channelId = String(req.userid);
+    const caller = await User.findById(channelId).select("handle").lean();
+    if (!caller) {
+      return res.status(404).json(NOT_FOUND("Channel not found"));
+    }
+    if (
+      caller.handle != null &&
+      String(caller.handle).toLowerCase() === handle.toLowerCase()
+    ) {
+      return res.status(200).json({ available: true });
+    }
+    const taken = await User.findOne({
+      _id: { $ne: channelId },
+      handle: { $regex: `^${escapeRegExp(handle)}$`, $options: "i" },
+    })
+      .select("_id")
+      .lean();
+    if (taken) {
+      return res.status(200).json({ available: false, reason: "taken" });
+    }
+    return res.status(200).json({ available: true });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// ------------------------------------------------- banner / avatar uploads
+
+// Settings polish: banner + avatar image uploads (POST /studio/banner,
+// POST /studio/avatar) and removal (POST /studio/banner/remove,
+// POST /studio/avatar/remove).
+//
+// Owner-only by construction: the caller uploads for their own
+// channel only (req.userid IS the channel id) — there is no
+// channel id in the request to forge, so no non-owner case exists.
+// The stored URL lands on the user record's bannerUrl / avatarUrl
+// (GET /studio/settings reads it back); removal resets the field to
+// null, and the client renders its default (gradient banner /
+// initials avatar) when the URL is null.
+//
+// Storage mirrors the video upload (Controllers/video.js): Cloudinary
+// when configured (lazy configure + resource_type "image" —
+// uploadOnCloudinary defaults to "video", which would reject a PNG),
+// otherwise the multer file is kept under uploads/ and served at
+// /uploads/<filename>, with an explicit console.warn naming the three
+// env vars. MIME + size are re-checked here (multer's filter/limit
+// are the first line, this is defence in depth).
+const IMAGE_FIELD_BY_KIND = {
+  banner: "bannerUrl",
+  avatar: "avatarUrl",
+};
+
+async function uploadChannelImage(req, res, next, kind) {
+  const field = IMAGE_FIELD_BY_KIND[kind];
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "An image file is required (JPG or PNG, max 5 MB)",
+        },
+      });
+    }
+    if (!SUPPORTED_IMAGE_MIMETYPES.includes(req.file.mimetype)) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Only JPG and PNG images are supported",
+        },
+      });
+    }
+    if (req.file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "File must be less than 5 MB",
+        },
+      });
+    }
+    const channelId = String(req.userid);
+    const user = await User.findById(channelId);
+    if (!user) {
+      return res.status(404).json(NOT_FOUND("Channel not found"));
+    }
+    let url;
+    if (isCloudinaryConfigured()) {
+      const uploaded = await uploadOnCloudinary(req.file.path, "image");
+      if (!uploaded) {
+        return res.status(400).json({
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Failed to upload image to cloudinary",
+          },
+        });
+      }
+      url = uploaded.secure_url ?? uploaded.url;
+    } else {
+      console.warn(
+        "[upload] Cloudinary is not configured — storing channel image locally " +
+          "under uploads/ (set CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET " +
+          "to use Cloudinary instead).",
+      );
+      url = `/uploads/${req.file.filename}`;
+    }
+    user[field] = url;
+    await user.save();
+    invalidateChannelCache(channelId);
+    return res.status(200).json({ [field]: url });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export const uploadBanner = (req, res, next) =>
+  uploadChannelImage(req, res, next, "banner");
+
+export const uploadAvatar = (req, res, next) =>
+  uploadChannelImage(req, res, next, "avatar");
+
+async function removeChannelImage(req, res, next, kind) {
+  const field = IMAGE_FIELD_BY_KIND[kind];
+  try {
+    const channelId = String(req.userid);
+    const updated = await User.findByIdAndUpdate(
+      channelId,
+      { $set: { [field]: null } },
+      { returnDocument: "after" },
+    );
+    if (!updated) {
+      return res.status(404).json(NOT_FOUND("Channel not found"));
+    }
+    invalidateChannelCache(channelId);
+    // Idempotent: removing an already-unset image is still 200 null.
+    return res.status(200).json({ [field]: null });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export const removeBanner = (req, res, next) =>
+  removeChannelImage(req, res, next, "banner");
+
+export const removeAvatar = (req, res, next) =>
+  removeChannelImage(req, res, next, "avatar");
 
 // --------------------------------------------------------------- playlists
 

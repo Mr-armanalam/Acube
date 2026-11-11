@@ -12,6 +12,7 @@ import React, { useState } from "react";
 import { NavLink, Link } from "react-router";
 import { useAppSelector } from "../../store";
 import { useStudioOverview } from "../../query/hooks";
+import { resolveApiMediaUrl } from "../../Api";
 import "./Studio.css";
 
 const NAV = [
@@ -42,10 +43,15 @@ export default function StudioShell({
       .join("")
       .slice(0, 2)
       .toUpperCase() || "?";
-  // The seeded banner/avatar URLs are example.com placeholders that do
-  // not resolve to real images; a broken <img> icon must never show,
-  // so a failed avatar falls back to the initials circle.
-  const avatarUrl = channel?.picture ?? undefined;
+  // The uploaded avatar wins over the Google login photo: the
+  // overview carries avatarUrl (falling back to picture server-side),
+  // and the identity header prefers it. A failed avatar falls back
+  // to the initials circle — the seeded banner/avatar URLs are
+  // example.com placeholders that do not resolve to real images, so
+  // a broken <img> icon must never show.
+  const avatarUrl = resolveApiMediaUrl(
+    channel?.avatarUrl ?? channel?.picture ?? undefined,
+  );
   const [avatarBroken, setAvatarBroken] = useState(false);
 
   return (
