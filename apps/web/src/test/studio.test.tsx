@@ -38,7 +38,10 @@ describe("Studio", () => {
 
   it("Dashboard renders mocked overview totals, top videos and comments", async () => {
     renderRoutes("/studio", testSession);
-    expect(await screen.findByText("160")).toBeInTheDocument();
+    // 5s: the Dashboard render is slow under full-suite parallel load
+    // on a 1.5-CPU VM (flaked at the 1s default in the final turbo run;
+    // passes standalone in ~2s).
+    expect(await screen.findByText("160", {}, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByText("Total views")).toBeInTheDocument();
     // Preview (image 9): exactly 4 KPI cards, real watch-time hours.
     expect(screen.getByText("Likes")).toBeInTheDocument();

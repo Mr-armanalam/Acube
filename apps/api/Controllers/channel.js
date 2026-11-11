@@ -1,7 +1,10 @@
 import mongoose from "mongoose";
 import users from "../Models/Auth.js"
 import videofile from "../Models/videofile.js";
+import Playlist from "../Models/Playlist.js";
 import { paginate, paginationOf } from "../utils/pagination.js";
+
+const NOT_FOUND = (message) => ({ error: { code: "NOT_FOUND", message } });
 
 
 export const updatechaneldata=async(req,res)=>{
@@ -57,6 +60,15 @@ export const getallchanels=async(req,res)=>{
             name:channel.name,
             email:channel.email,
             desc:channel.desc,
+            // Channel header renders "@handle" (Describechannel.tsx
+            // reads channel.handle ?? channel.username) — the
+            // projection used to drop it, so every header fell back
+            // to the username even when a handle was set. The username
+            // itself must be projected too: a channel with no handle
+            // set (handle null) falls back to @username, and without
+            // this field the header shows no @ at all.
+            handle: channel.handle ?? null,
+            username: channel.username ?? null,
             // Settings polish fix: the channel header renders the
             // uploaded avatar/banner — the projection used to drop
             // them, so an upload never reached the channel page.
@@ -68,5 +80,43 @@ export const getallchanels=async(req,res)=>{
     } catch (error) {
         res.status(405).json({message:error.message})
         return
+    }
+}
+
+// Public channel playlists, for the Channel page's Playlists tab
+// (GET /channel/:id/playlists — see Routes/channel.js). A channel page
+// is public, so there is no auth here. Only the owner's `public`
+// playlists are returned — private and unlisted lists never leak to
+// another viewer, exactly like the public playlist read
+// (GET /studio/playlists/:id) and the Watch showcase
+// (GET /watch/:id/playlists). Shape reuses GET /studio/playlists:
+// the paginated { items, page, limit, total, totalPages } envelope,
+// each item the playlist doc plus videoCount. A missing channel is a
+// 404, matching getPlaylistsForVideo's missing-video 404; :id validity
+// is enforced by validateParams(channelIdParamSchema) on the route
+// (400 VALIDATION_ERROR, "must be a valid ObjectId").
+export const getChannelPlaylists=async(req,res,next)=>{
+    try {
+        const {id:_id}=req.params;
+        const channel=await users.findById(_id).lean();
+        if (!channel) {
+            return res.status(404).json(NOT_FOUND("Channel not found"));
+        }
+        const page = await paginate(
+            Playlist.find({ owner: String(_id), visibility: "public" }).sort({
+                createdAt: -1,
+                _id: -1,
+            }),
+            paginationOf(req),
+        );
+        return res.status(200).json({
+            ...page,
+            items: page.items.map((p) => ({
+                ...p,
+                videoCount: p.videoIds.length,
+            })),
+        });
+    } catch (error) {
+        return next(error);
     }
 }

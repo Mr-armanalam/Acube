@@ -98,6 +98,12 @@ export interface Channel {
   _id: string;
   name?: string;
   username?: string;
+  // Settings polish: a handle exists on the user record (sparse,
+  // unique) and Studio Settings edits it, but GET /user/getallchannel
+  // does not project it yet — the header renders @handle only when
+  // present and falls back to @username. No subscriber field exists
+  // anywhere: there is no follow system, so none is rendered.
+  handle?: string;
   email?: string;
   picture?: string;
   // Settings polish fix: the uploaded avatar/banner, rendered by the

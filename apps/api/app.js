@@ -23,6 +23,7 @@ import videoroutes from "./Routes/video.js";
 import watchroutes from "./Routes/watch.js";
 import studioroutes from "./Routes/studio.js";
 import userroutes from "./Routes/User.js";
+import channelroutes from "./Routes/channel.js";
 import commentroutes from "./Routes/comment.js";
 import chatroutes from "./Routes/chat.js";
 import downloadVid from "./Routes/downloadVid.js";
@@ -118,6 +119,8 @@ app.get("/health", (req, res) => {
 // Stricter rate limit on the OTP/auth surface (see middleware/rateLimit.js).
 app.use("/auth", authLimiter, Otpauth);
 app.use("/user", userroutes);
+// Public channel-page routes (GET /channel/:id/playlists).
+app.use("/channel", channelroutes);
 app.use("/video", videoroutes);
 // Phase 5 fix: watch-page routes (GET /watch/:id/suggestions).
 app.use("/watch", watchroutes);

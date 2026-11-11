@@ -2,10 +2,14 @@
 // groups, progress bars from stored progressSec, Resume resumes from
 // the stored position (?t= on the Watch link), Pause wired to the
 // real backend flag (GET/PATCH /user/history-paused — persisted and
-// enforced server-side; the toggle is NOT local-only), per-item remove.
-// Rows whose video is not in the page-1 feed load via GET /video/:id
-// (HistoryVideoRow) instead of being silently dropped.
-import React, { useMemo } from "react";
+// enforced server-side; the toggle is NOT local-only), per-item remove
+// (DELETE /video/deletehistory/:videoid/:viewer) and Clear all
+// (DELETE /video/deletehistory/:userid). Rows whose video is not in
+// the page-1 feed load via GET /video/:id (HistoryVideoRow) instead of
+// being silently dropped. Pause stops new entries; it does not delete
+// old ones. Liked / Watch-Later annotations come from the real liked
+// and watch-later lists — never invented.
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useAppSelector } from "../../store";
 import {
@@ -13,11 +17,16 @@ import {
   useDeleteHistoryItem,
   useHistory,
   useHistoryPaused,
+  useLikedVideos,
   useSetHistoryPaused,
   useVideo,
   useVideosById,
+  useWatchLater,
 } from "../../query/hooks";
 import type { Video, VideoListEntry } from "../../types";
+import AccountNavPills from "../Library/AccountNavPills";
+import { gradientFor } from "../Library/gradient";
+import "./History.css";
 
 function dayKey(iso: string | undefined): string {
   if (!iso) return "Unknown date";
@@ -44,6 +53,28 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function formatClock(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  const time = d.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  if (sameDay(d, today)) return `Watched today, ${time}`;
+  if (sameDay(d, yesterday)) return `Watched yesterday, ${time}`;
+  return `Watched ${d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  })}, ${time}`;
+}
+
 function progressSecOf(entry: VideoListEntry, video?: Video): number {
   if (typeof entry.progressSec === "number") return entry.progressSec;
   const dur = entry.durationSec ?? video?.durationSec ?? video?.duration ?? 0;
@@ -57,13 +88,24 @@ function HistoryRow({
   entry,
   video,
   userId,
+  liked,
+  savedForLater,
   onRemove,
 }: {
   entry: VideoListEntry;
   video: Video | undefined;
   userId: string | undefined;
+  liked: boolean;
+  savedForLater: boolean;
   onRemove: (videoid: string) => void;
 }) {
+  // Hooks first: the early return below must not precede any hook.
+  // A thumbnail URL that does not resolve (the seeded demo thumbs are
+  // example.com placeholders) falls back to the gradient + initial —
+  // the same rule as Studio Content's VideoThumb — instead of the
+  // browser's broken-image icon (preview image-28 shows clean
+  // gradient thumbs).
+  const [thumbBroken, setThumbBroken] = useState(false);
   if (!video) return null;
   const dur = entry.durationSec ?? video.durationSec ?? video.duration ?? 0;
   const pos = progressSecOf(entry, video);
@@ -72,52 +114,82 @@ function HistoryRow({
   // title/Resume links carry no ?t= and the button says "Watch again",
   // not "Resume from 7:00" on a 7:00 video.
   const startAt = finished ? 0 : pos;
+  const watchUrl = `/watch/${video._id}${startAt > 0 ? `?t=${startAt}` : ""}`;
+  const thumbSrc = video.thumbnailUrl ?? video.thumbnail ?? undefined;
+  const watchedAt = formatClock(entry.likedon ?? entry.createdAt);
+  const status = finished
+    ? "Finished"
+    : pos > 0
+      ? `Watched ${formatTime(pos)} of ${formatTime(dur)}`
+      : "Stopped early";
   return (
-    <div className="studio-list-row">
-      <div style={{ flex: 1 }}>
-        <Link to={`/watch/${video._id}${startAt > 0 ? `?t=${startAt}` : ""}`} style={{ color: "var(--text)", fontWeight: 600 }}>
-          {video.videotitle}
-        </Link>
-        <div style={{ color: "var(--text-2)", fontSize: 13 }}>
-          {video.uploader} · {video.views ?? 0} views
-          {dur > 0
-            ? finished
-              ? " · Finished"
-              : pos > 0
-                ? ` · Watched ${formatTime(pos)} of ${formatTime(dur)}`
-                : " · Stopped early"
-            : ""}
-        </div>
+    <div className="history-row">
+      <Link
+        to={watchUrl}
+        className="history-thumb"
+        style={
+          thumbSrc && !thumbBroken
+            ? undefined
+            : { background: gradientFor(video._id) }
+        }
+        aria-label={`Watch ${video.videotitle}`}
+      >
+        {thumbSrc && !thumbBroken ? (
+          <img
+            src={thumbSrc}
+            alt=""
+            className="history-thumb-img"
+            onError={() => setThumbBroken(true)}
+          />
+        ) : (
+          <span className="history-thumb-initial" aria-hidden="true">
+            {(video.videotitle ?? "?").charAt(0).toUpperCase()}
+          </span>
+        )}
         {dur > 0 ? (
-          <div
+          <span className="history-duration">{formatTime(dur)}</span>
+        ) : null}
+        {dur > 0 ? (
+          <span
+            className="history-progress"
             role="progressbar"
             aria-valuenow={Math.round((pos / dur) * 100)}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-label={`Watch progress for ${video.videotitle}`}
-            style={{ height: 6, borderRadius: 3, background: "var(--surface-2)", marginTop: 6, maxWidth: 320 }}
           >
-            <div style={{ width: `${Math.min(100, (pos / dur) * 100)}%`, height: "100%", borderRadius: 3, background: "var(--accent)" }} />
-          </div>
+            <span
+              style={{ width: `${Math.min(100, (pos / dur) * 100)}%` }}
+            />
+          </span>
         ) : null}
-      </div>
-      <Link
-        to={`/watch/${video._id}${startAt > 0 ? `?t=${startAt}` : ""}`}
-        className="acube-btn-secondary"
-      >
-        {finished
-          ? "Watch again"
-          : startAt > 0
-            ? `Resume from ${formatTime(startAt)}`
-            : "Resume"}
       </Link>
+      <div className="history-row-main">
+        <Link to={watchUrl} className="history-title">
+          {video.videotitle}
+        </Link>
+        <div className="history-sub">
+          {video.uploader ?? "Unknown channel"} · {status}
+          {watchedAt ? ` · ${watchedAt}` : ""}
+          {liked ? " · You liked this 👍" : ""}
+          {savedForLater ? " · Saved to Watch Later" : ""}
+          {" · "}
+          <Link to={watchUrl} className="history-resume">
+            {finished
+              ? "Watch again"
+              : startAt > 0
+                ? `Resume from ${formatTime(startAt)} ▶`
+                : "Resume"}
+          </Link>
+        </div>
+      </div>
       <button
         type="button"
-        className="acube-btn-danger"
+        className="history-remove"
         aria-label={`Remove ${video.videotitle} from history`}
         onClick={() => userId && onRemove(video._id)}
       >
-        Remove
+        ✕ Remove
       </button>
     </div>
   );
@@ -128,20 +200,35 @@ function HistoryRow({
 function HistoryVideoRow({
   entry,
   userId,
+  liked,
+  savedForLater,
   onRemove,
 }: {
   entry: VideoListEntry;
   userId: string | undefined;
+  liked: boolean;
+  savedForLater: boolean;
   onRemove: (videoid: string) => void;
 }) {
   const { data } = useVideo(entry.videoid);
   if (!data) return null;
-  return <HistoryRow entry={entry} video={data} userId={userId} onRemove={onRemove} />;
+  return (
+    <HistoryRow
+      entry={entry}
+      video={data}
+      userId={userId}
+      liked={liked}
+      savedForLater={savedForLater}
+      onRemove={onRemove}
+    />
+  );
 }
 
 export default function History() {
   const currentuser = useAppSelector((s) => s.auth.session);
   const { data, isLoading, isError, refetch } = useHistory();
+  const likedList = useLikedVideos();
+  const watchLaterList = useWatchLater();
   const byId = useVideosById();
   const clearMutation = useClearHistory();
   const removeMutation = useDeleteHistoryItem();
@@ -149,6 +236,15 @@ export default function History() {
   const setPaused = useSetHistoryPaused();
   const userId = currentuser?.result._id;
   const paused = pausedQuery.data ?? false;
+
+  const likedIds = useMemo(
+    () => new Set((likedList.data ?? []).map((e) => e.videoid)),
+    [likedList.data],
+  );
+  const watchLaterIds = useMemo(
+    () => new Set((watchLaterList.data ?? []).map((e) => e.videoid)),
+    [watchLaterList.data],
+  );
 
   const groups = useMemo(() => {
     const map = new Map<string, VideoListEntry[]>();
@@ -167,31 +263,36 @@ export default function History() {
 
   return (
     <div className="container_Pages_App">
-      <div className="container2_Pages_App" style={{ padding: 24 }}>
-        <h1>Watch history</h1>
-        <p style={{ color: "var(--text-2)" }}>
-          Only you can see this · Pausing stops new entries, doesn&apos;t
-          delete old ones
-        </p>
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-          <button
-            type="button"
-            className="acube-btn-secondary"
-            aria-pressed={paused}
-            onClick={() => setPaused.mutate(!paused)}
-          >
-            {paused ? "Resume history" : "Pause history"}
-          </button>
-          <button
-            type="button"
-            className="acube-btn-danger"
-            onClick={() => userId && clearMutation.mutate(userId)}
-          >
-            Clear all watch history
-          </button>
+      <div className="container2_Pages_App history-page">
+        <AccountNavPills />
+        <div className="history-head">
+          <div>
+            <h1>Watch history</h1>
+            <p className="history-subtitle">
+              Only you can see this · Pausing stops new entries, doesn&apos;t
+              delete old ones
+            </p>
+          </div>
+          <div className="history-actions">
+            <button
+              type="button"
+              className="acube-btn-secondary"
+              aria-pressed={paused}
+              onClick={() => setPaused.mutate(!paused)}
+            >
+              {paused ? "▶ Resume history" : "⏸ Pause history"}
+            </button>
+            <button
+              type="button"
+              className="acube-btn-danger"
+              onClick={() => userId && clearMutation.mutate(userId)}
+            >
+              Clear all watch history
+            </button>
+          </div>
         </div>
         {paused ? (
-          <p style={{ color: "var(--text-2)" }}>
+          <p className="history-paused-note">
             History is paused. New watches will not be recorded until you
             resume it.
           </p>
@@ -212,10 +313,12 @@ export default function History() {
           </div>
         ) : (
           groups.map(([day, entries]) => (
-            <section key={day} style={{ marginBottom: 24 }}>
-              <h2 style={{ fontSize: 16 }}>{day}</h2>
+            <section key={day} className="history-group">
+              <h2 className="history-day">{day}</h2>
               {entries.map((entry) => {
                 const video = byId[entry.videoid];
+                const liked = likedIds.has(entry.videoid);
+                const savedForLater = watchLaterIds.has(entry.videoid);
                 if (video) {
                   return (
                     <HistoryRow
@@ -223,6 +326,8 @@ export default function History() {
                       entry={entry}
                       video={video}
                       userId={userId}
+                      liked={liked}
+                      savedForLater={savedForLater}
                       onRemove={onRemove}
                     />
                   );
@@ -232,6 +337,8 @@ export default function History() {
                     key={entry._id}
                     entry={entry}
                     userId={userId}
+                    liked={liked}
+                    savedForLater={savedForLater}
                     onRemove={onRemove}
                   />
                 );
@@ -239,6 +346,11 @@ export default function History() {
             </section>
           ))
         )}
+        <p className="history-footnote">
+          History is per-account, newest first, grouped by day. Progress bars
+          come from the same view events as Studio analytics — resume picks
+          up where you left off on any device.
+        </p>
       </div>
     </div>
   );

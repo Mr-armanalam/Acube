@@ -52,7 +52,7 @@ vi.mock("stripe", () => ({
   },
 }));
 
-// Smoke test: every route in the API (55) plus GET / and GET /health (57
+// Smoke test: every route in the API (56) plus GET / and GET /health (58
 // endpoints total) is hit once with a valid-shaped request and must answer
 // with its expected status — never a 404 "route not found" and never a 500
 // crash. Auth-required routes are also hit without a token and must 401.
@@ -69,7 +69,7 @@ vi.mock("stripe", () => ({
 // seeded video's channel is "test-channel", so a second video owned by
 // userA is used), and the 14 /studio/* routes are covered —
 // GET /studio/playlists/:id is the one public studio route.
-describe("route smoke test — all 57 endpoints", () => {
+describe("route smoke test — all 58 endpoints", () => {
   it("every route responds with its expected status", async () => {
     const userA = await createUser();
     const userB = await createUser();
@@ -130,6 +130,7 @@ describe("route smoke test — all 57 endpoints", () => {
       ["GET", "/user/me", headersA, null, 200],
       ["PATCH", `/user/update/${uid}`, headersA, { name: "Smoke", desc: "d" }, 200],
       ["GET", "/user/getallchannel", null, null, 200],
+      ["GET", `/channel/${uid}/playlists`, null, null, 200],
       ["POST", "/user/watch-complete", headersA, { videoid: vid }, 200],
       ["POST", "/chat/chat_user", headersA, {}, 200],
       ["GET", `/chat/message/${userB._id}`, headersA, null, 200],
@@ -183,8 +184,8 @@ describe("route smoke test — all 57 endpoints", () => {
       ["DELETE", `/video/${ownedVid}`, headersA, null, 200],
     ];
 
-    // 55 API routes + GET / + GET /health = 57 endpoints.
-    expect(table).toHaveLength(57);
+    // 56 API routes + GET / + GET /health = 58 endpoints.
+    expect(table).toHaveLength(58);
 
     for (const [method, path, headers, body, expected] of table) {
       let req = api[method.toLowerCase()](path);

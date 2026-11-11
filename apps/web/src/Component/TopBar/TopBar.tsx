@@ -4,9 +4,14 @@
 // Your-Tube Navbar + drawer, which are deleted: no burger menu, no
 // "Your-Tube" wordmark, no notifications bell. Acube wordmark, search,
 // Studio + Upload, theme toggle, and the signed-in avatar menu
-// (Your channel / Create channel / Sign out). Google sign-in is the
-// same verified-ID-token flow the old Navbar used (loginThunk with the
-// credential); the session-expiry check on mount is preserved too.
+// (Your account / Your channel / Create channel / Sign out). Google
+// sign-in is the same verified-ID-token flow the old Navbar used
+// (loginThunk with the credential); the session-expiry check on mount is
+// preserved too. "Your account" lands on the Library hub (the account
+// overview); "Create channel" opens the legacy Create/Edit-channel modal
+// (seteditcreatechanelbtn) — channel creation lives there (it PATCHes the
+// user record, which IS the channel; Studio Settings is edit-only), so the
+// menu must not route it to /studio/settings.
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { GoogleLogin, googleLogout, type CredentialResponse } from "@react-oauth/google";
@@ -139,6 +144,12 @@ export default function TopBar({
             </button>
             {menuOpen ? (
               <div className="topbar-menu" role="menu">
+                <Link
+                  to="/library"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Your account
+                </Link>
                 <Link
                   to={`/channel/${currentuser.result._id}`}
                   onClick={() => setMenuOpen(false)}

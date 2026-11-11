@@ -1,0 +1,186 @@
+/* History page (preview screen I). Tokens: Obsidian #0C0B0A / Acube Red
+ * #E8482F / Bone #F2EEE6; Plus Jakarta Sans headings, Manrope UI text.
+ * Day headings render "Today"/"Yesterday" in the DOM and are uppercased
+ * here so screen readers and tests still see the plain words. */
+.history-page {
+  padding: 24px;
+}
+
+.history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.history-head h1 {
+  margin: 0 0 4px;
+}
+
+.history-subtitle {
+  color: var(--text-2);
+  margin: 0;
+}
+
+.history-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.history-paused-note {
+  color: var(--text-2);
+}
+
+.history-group {
+  margin-bottom: 24px;
+}
+
+.history-day {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin: 20px 0 4px;
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-thumb {
+  position: relative;
+  flex: 0 0 132px;
+  width: 132px;
+  height: 76px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: block;
+  background: var(--surface-2);
+}
+
+.history-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.history-thumb-initial {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(242, 238, 230, 0.85);
+  font: 700 28px/1 "Plus Jakarta Sans", sans-serif;
+}
+
+.history-duration {
+  position: absolute;
+  right: 6px;
+  bottom: 8px;
+  background: rgba(12, 11, 10, 0.85);
+  color: #f2eee6;
+  font: 700 11px/1 "Manrope", sans-serif;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+
+.history-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(242, 238, 230, 0.25);
+  display: block;
+}
+
+.history-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.history-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-title {
+  color: var(--text);
+  font: 700 16px/22px "Plus Jakarta Sans", sans-serif;
+  text-decoration: none;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-title:hover {
+  color: var(--accent);
+}
+
+.history-sub {
+  color: var(--text-2);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.history-resume {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.history-resume:hover {
+  color: var(--accent);
+}
+
+.history-remove {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: 600 14px/20px "Manrope", sans-serif;
+  cursor: pointer;
+  padding: 8px 4px;
+  white-space: nowrap;
+}
+
+.history-remove:hover {
+  color: var(--accent);
+}
+
+.history-footnote {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .history-row {
+    align-items: flex-start;
+  }
+
+  .history-thumb {
+    flex-basis: 104px;
+    width: 104px;
+    height: 60px;
+  }
+
+  .history-remove {
+    align-self: center;
+  }
+}

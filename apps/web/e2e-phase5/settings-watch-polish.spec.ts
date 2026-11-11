@@ -272,7 +272,10 @@ test.describe("Settings + Watch polish (real API, local /uploads/ fallback)", ()
     await expect
       .poll(async () => channelBanner.evaluate((el) => el.style.backgroundImage))
       .toContain("/uploads/");
-    const channelAvatar = page.locator(".chanel_logo_chanel img");
+    // Channel rebuild renamed the avatar wrapper (.chanel_logo_chanel
+    // is now .channel_avatar); the img itself still renders the
+    // uploaded avatar.
+    const channelAvatar = page.locator(".channel_avatar img");
     await expect(channelAvatar).toBeVisible();
     await expect
       .poll(async () =>

@@ -1410,3 +1410,147 @@ toggle" — https://github.com/Mr-armanalam/Acube/pull/5, head
 `03f090709a1aa0dd51277a4f14f90b6ecb6be59b` (snapshot commit; local
 head `24da88c`). Screenshots are not in the PR (binaries are
 excluded from snapshot pushes).
+
+#### 8.9.13 Home + Channel + Account (PR #6)
+
+Branch `feat/acube-home-channel-account` (base `8683c23`, PR #5 head), PR #6 vs `main`.
+Reference images: Home preview image-24, current image-25; Channel preview
+image-26, current image-27; History preview image-28; Library preview
+image-29.
+
+**Home (image-25 → image-24).** Verified first: the chips row had a second
+`+ Upload` link (`Home.tsx:58-60`) and a background + border
+(`.navigation_Home`); categories were a hardcoded `TOPICS` list
+(All/Motivation/Nature/Learning/Music/Coding) matched by keyword over
+title/desc/tags/uploader, so chips could match zero videos; cards used the
+shared `Showvideo` raw `<video>` element with no gradient/▶ fallback and a
+`views • less than a minute ago` line. Fixed: Upload link removed (TopBar
+keeps its own); chips-row background/border removed; chips are now derived
+from distinct tags in the loaded videos ("All" first, deduped
+case-insensitively, never a chip matching zero videos), clicking a chip
+filters client-side to that tag; new Home-local card `HomeVideoCard.tsx`
+(`VideoThumb` real thumbnail or deterministic-gradient + ▶ fallback,
+duration badge bottom-right from `durationSec ?? duration`, channel avatar
+left, title, `Channel name · N views` with views pushed right, no upload
+time). `Showvideogrid`/`Showvideo` untouched — Channel/Search still use the
+old card. Search untouched (lives in TopBar → `/search/:query`).
+
+**Home pagination (added at Arman's word, same branch).** The Home page must
+not fetch a bulk 100–1000+ videos in one query. Verified: the API already
+paginates — `GET /video/getvideos?page&limit`, `{items,page,limit,total,
+totalPages}`, limit clamped to 50, default 20. Page size chosen: **20** (the
+server default, inside the 12–24 range). New `usePagedVideos.ts`
+(`useInfiniteQuery`, own key `["videos","paged",20]`): exactly **1** video-list
+request on initial load (`page=1&limit=20`, proven in unit test and Playwright
+network assertion); IntersectionObserver sentinel (rootMargin 200px) + "Load
+more" fallback append pages; dedupe by `_id`; tag change resets to page 1
+with zero new requests (cached page 1 truncated, no refetch); "Loading more
+videos…" indicator; "You've reached the end." state. E2E stubs the feed with
+a 45-video paginated feed (seed has 1 video); scroll container is
+`.container2_Pages_App`, not `window`. Invalidation note (verified
+empirically): `invalidateQueries({queryKey:["videos"]})` DOES invalidate the
+paged key via TanStack v5 prefix matching, so upload/like/delete refresh Home;
+only `useViewVideo` never invalidates (view counts lag while Home stays
+mounted; staleTime 0 refetches on remount) — no change made.
+
+**Channel (image-27 → image-26).** Verified first: old centred layout with
+baked-in banner text, `⬇ {downloadsToday}` counter, `Points:`/`Premium:`
+pills, blue `Edit Channel` (modal) / `Upload Video` buttons; no tabs, no
+subscribe UI, no `@handle` (the `Channel` type had no `handle` field and
+`GET /user/getallchannel` did not project it). Rebuilt: banner (real
+bannerUrl / gradient fallback), avatar overlapping the banner edge, name,
+`@handle · N videos` (real filtered count), description with `…more`
+expansion at 140 chars, tabs Home / Videos / Playlists / Posts + search icon
+(title filter). Owner gets `Customize channel` → `/studio/settings` and
+`Manage videos` → `/studio/analytics`; counter/pills/blue buttons removed.
+Playlists tab shows real playlists from new public `GET
+/channel/:id/playlists` (see API below), honest empty state; Posts tab honest
+empty state (no posts system). Home and Videos both show the video grid (no
+curation system invented).
+
+**Subscribe — decision (ii), disabled "coming soon", no fake count.** Verified
+no follow system exists anywhere (no endpoint, no subscriber field;
+`Watch.tsx` and `phase5fix.test.tsx` carry the same explicit cut). The header
+renders a white `Subscribe` pill, `disabled`, `title="Subscriptions aren't
+available yet"`, plus a visible `Coming soon` caption, only to non-owners. No
+subscriber number is rendered anywhere — stats line is `@handle · N videos`
+only.
+
+**Create channel — target is the modal, NOT /studio/settings.** Verified:
+creation lives in the global `Createeditchannel` modal (`App.tsx:23-30`,
+opened by TopBar `seteditcreatechanelbtn(true)`), which PATCHes
+`/user/update/:id` — the "channel" IS the user record, created at signup;
+there is no separate creation endpoint or route, and Studio Settings is
+edit-only. The Account worker initially routed the menu entry to
+`/studio/settings` (fallback); the coordinator restored the modal opening and
+fixed its test to assert `seteditcreatechanelbtn(true)` is called.
+
+**Account menu + History + Library (images 28–29).** Verified first: menu
+had only Your channel / Create channel / Sign out; no pill nav existed;
+History was wired but plain rows, grey progress strip, separate Resume
+button, no footer note; Library was a plain stacked list with no header
+avatar, card grid, Play-all/Sort, or create-playlist card. Now: "Your
+account" above "Your channel" in the avatar menu → `/library`; shared
+`AccountNavPills` (Home, Subscriptions, History, Library, Watch Later,
+Liked — active pill white; Watch Later / Liked are anchors into the hub, no
+separate routes exist); Subscriptions is an honest empty state (no follow
+system). History: day groups (TODAY/YESTERDAY), gradient/real thumb with
+duration + red progress bar, `Channel · Watched 1:24 of 2:14 · Watched today,
+11:20 AM · Resume from 1:24 ▶`, `✕ Remove`, Pause/Clear all wired to the real
+endpoints, footer note verbatim. Library: avatar + "Your library" header,
+Watch Later · Saved (Play all + Sort), Liked videos (privacy note card), Your
+playlists & Saved playlists (+ New playlist / + Create playlist), create /
+add-to-playlist (Save menu, already worked) / remove / Play all — all wired to
+the real endpoints; Saved cards show `uploader · N views` (the library
+endpoint returns no saved-at field — never invented). Watch Later and Saved
+stay separate sections (not the preview's combined heading) to preserve the
+existing contract test. Verification found and fixed three genuine defects:
+broken-image glyphs on History/Library thumbs (seed `example.com` URLs) —
+now `thumbBroken` state falls back to gradient + initial; Library "Play all"
+overlapped the first card (`display:inline` anchor — now `inline-block` +
+margin); ▶ overlay sat on top of the fallback initial (now rendered only
+when the photo displays).
+
+**API (new).** `GET /channel/:id/playlists` (public, no auth; new
+`Routes/channel.js` mounted at `/channel` in `app.js`; handler
+`getChannelPlaylists` in `Controllers/channel.js`): returns only that owner's
+`visibility: "public"` lists, newest first, in the `listPlaylists` shape
+(`{items,page,limit,total,totalPages}` + `videoCount`); invalid ObjectId →
+400 `VALIDATION_ERROR` (standard shape); non-existent owner → 404
+`NOT_FOUND` (matches the playlist-endpoint convention); owner with no public
+lists → 200 empty. `GET /user/getallchannel` now projects `handle` (string
+or `null`; model field verified in `Models/Auth.js:34`).
+
+**Verification (uncached, real exit codes).** `pnpm typecheck --force` exit 0
+(3/3); `pnpm lint --force` exit 0, 0 errors, 7 warnings (1 new benign
+`LibraryHub.tsx:209` useMemo dep false positive; 6 pre-existing); `pnpm test
+--force` exit 0 — web **192/192** (23 files), API **230/230** (17 files);
+`pnpm build --force` exit 0. Playwright Phase 5 suite: **21 passed / 3
+failed** — the 3 failures are pre-existing cross-spec interference proven by
+clean-tree stash comparison (content-cleanup spec adds a real view, so
+Dashboard/Analytics totals are off by one; it renames the seeded video, so
+the History spec's row is not found); new `home-pagination.spec.ts` passed.
+Two `studio.test.tsx`/`studioPreview.test.tsx` 1s-timeout flakes under
+full-suite load were hardened to 5s (precedent in `settingsWatchPolish`).
+Screenshots (desktop 1280×850 + mobile 390×844, seeded demo, no page
+errors): `phase5-home-clean-*`, `phase5-channel-clean-*`,
+`phase5-account-menu-clean-*`, `phase5-history-clean-*`,
+`phase5-library-clean-*` in `docs/screenshots/` — visually inspected; Home
+matches image-24 (chips are real tags, not the preview's topic words —
+deliberate); Channel matches image-26 (no subscriber count — deliberate cut);
+menu order correct; History matches image-28 ("Clear all watch history" vs
+preview "Clear all" — trivial wording delta, left alone); Library matches
+image-29 (Watch Later 0 videos — seed has none for viewer01, data not a
+defect). Channel video grid still uses legacy `Showvideogrid`/`Showvideo`
+(dark empty box for the dead-mp4 seed video) — preview image-26 shows no
+grid, left as-is. Screenshots are not in the PR (binaries excluded from
+snapshot pushes).
+
+**PR #6 state.** Branch `feat/acube-home-channel-account` pushed via the
+GitHub connector snapshot push from main @ `804c0571` (PR #5 merge); PR #6
+created with base `main`, title "Home: real tag categories + preview cards;
+Channel: preview page; Account: Library/History tabs" —
+https://github.com/Mr-armanalam/Acube/pull/6, head
+`602d1e229cf7c3a0d254cc623d592e96db1f6369` (snapshot commit; local head
+`30c7bde`). Screenshots are not in the PR (binaries are excluded from
+snapshot pushes).

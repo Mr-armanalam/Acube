@@ -61,7 +61,12 @@ const NotFound = () => (
 );
 
 const Allroutes = ({
-  seteditcreatechanelbtn,
+  // The Channel page no longer opens the create/edit modal —
+  // "Customize channel" routes to Studio Settings instead — so this
+  // prop is intentionally unused here. It stays in the signature
+  // because App still passes it: TopBar / Auth still open the modal
+  // for channel creation.
+  seteditcreatechanelbtn: _seteditcreatechanelbtn,
 }: {
   seteditcreatechanelbtn: (v: boolean) => void;
 }) => {
@@ -157,12 +162,7 @@ const Allroutes = ({
               / watch-later live in /library + /history, your videos in
               /studio/content. Old bookmarks to those URLs now 404. */}
             <Route path="/paymentstatus" element={<PaymentStatus />} />
-            <Route
-              path="/channel/:cid"
-              element={
-                <Channel seteditcreatechanelbtn={seteditcreatechanelbtn} />
-              }
-            />
+            <Route path="/channel/:cid" element={<Channel />} />
             <Route
               path="/chat"
               element={

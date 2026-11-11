@@ -42,22 +42,28 @@ const pageOf = <T,>(items: T[]) => ({
 });
 
 describe("A — Home chips filter the feed", () => {
-  it("Coding chip shows only coding videos; All restores the feed", async () => {
+  it("python chip shows only python videos; All restores the feed", async () => {
     const user = userEvent.setup();
     renderWithProviders(<Home />);
     expect(await screen.findByText("Python Basics Tutorial")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Music" }));
-    expect(screen.queryByText("Python Basics Tutorial")).not.toBeInTheDocument();
-    expect(await screen.findByText(/No videos about Music/i)).toBeInTheDocument();
+    // Chips are REAL tags from the loaded videos (no hardcoded topic
+    // list): "python" is vid1's tag, so only vid1 survives the filter.
+    // A chip can never match zero videos, so the tag empty state is
+    // unreachable from the chips row by design.
+    await user.click(screen.getByRole("button", { name: "python" }));
+    expect(screen.queryByText("Java for Beginners")).not.toBeInTheDocument();
+    expect(screen.getByText("Python Basics Tutorial")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "All" }));
-    expect(await screen.findByText("Python Basics Tutorial")).toBeInTheDocument();
+    expect(await screen.findByText("Java for Beginners")).toBeInTheDocument();
+    expect(screen.getByText("Python Basics Tutorial")).toBeInTheDocument();
   });
 
-  it("shows an Upload pill routing into Studio", async () => {
+  it("has no Upload pill — Upload lives in the TopBar", async () => {
     renderWithProviders(<Home />);
     expect(await screen.findByText("Python Basics Tutorial")).toBeInTheDocument();
-    const pill = screen.getByRole("link", { name: "+ Upload" });
-    expect(pill.getAttribute("href")).toBe("/studio/upload");
+    expect(
+      screen.queryByRole("link", { name: "+ Upload" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows duration badges on video cards", async () => {
@@ -537,13 +543,13 @@ describe("I — History", () => {
     );
     renderRoutes("/history", testSession);
     expect(await screen.findByText("Python Basics Tutorial")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Pause history" }));
+    await user.click(screen.getByRole("button", { name: "⏸ Pause history" }));
     await waitFor(() => {
       expect(captured.historyPausedPatches).toContain(true);
     });
-    expect(await screen.findByText("Resume history")).toBeInTheDocument();
+    expect(await screen.findByText("▶ Resume history")).toBeInTheDocument();
     // Restore the shared MSW fixture so later tests start unpaused.
-    await user.click(screen.getByRole("button", { name: "Resume history" }));
+    await user.click(screen.getByRole("button", { name: "▶ Resume history" }));
     await waitFor(() => {
       expect(captured.historyPausedPatches).toContain(false);
     });
@@ -597,7 +603,7 @@ describe("J — Library + Playlist", () => {
     renderRoutes("/library", testSession);
     expect(await screen.findByText("Saved playlist example")).toBeInTheDocument();
     expect(screen.getByText(/Saved playlists/)).toBeInTheDocument();
-    expect(screen.getByText("Your playlists & Saved playlists")).toBeInTheDocument();
+    expect(screen.getByText(/Your playlists & Saved playlists/)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Remove Java for Beginners from Saved" }),
     ).toBeInTheDocument();

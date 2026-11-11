@@ -1,15 +1,17 @@
+/* Home chips row (approved preview, screen A): NO background behind
+ * the row and NO Upload button in it — the chips sit directly on the
+ * page background and the TopBar keeps its own + Upload. */
 .navigation_Home {
   color: var(--forground_text);
-  background-color: var(--left_Sidebar_background);
+  background: transparent;
   position: sticky;
   display: flex;
   overflow-x: auto;
   top: 0;
-  border-bottom: 2px solid var(--body_second_top_navlight);
   height: 58px;
 }
 .btn_nav_home {
-  background-color: var(--body_second_top_navbtn);
+  background-color: transparent;
   margin: 0.5rem;
   padding: 0.5rem 1rem;
   border-radius: 999px;
@@ -17,26 +19,16 @@
   border: 1px solid var(--border);
   color: var(--forground_text);
   font: 600 13px/20px "Manrope", sans-serif;
+  flex: none;
 }
 .btn_nav_home:hover {
   background-color: var(--body_second_topbtn_navHover);
 }
+/* Preview: the active chip is a WHITE pill ("All"), dark text. */
 .btn_nav_home.active {
-  background-color: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-.home-upload-pill {
-  margin: 0.5rem 0.5rem 0.5rem auto;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font: 700 13px/20px "Manrope", sans-serif;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  flex: none;
+  background-color: #f2eee6;
+  border-color: #f2eee6;
+  color: #0c0b0a;
 }
 /* @media (max-width:768px) {
     .navigation_Home::-webkit-scrollbar {
@@ -70,4 +62,103 @@
   justify-content: center;
   font-size: x-large;
   font-weight: bolder;
+}
+
+/* Home video grid (preview screen A): 3 columns, like the shared grid
+ * it replaces for this page. */
+.home-video-grid {
+  padding: 0.5rem 0.5rem 50px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 768px) and (max-width: 1080px) {
+  .home-video-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 425px) {
+  .home-video-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1450px) {
+  .home-video-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* Home video card (preview screen A). */
+.home-video-thumb-link {
+  position: relative;
+  display: block;
+}
+.home-video-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.home-video-duration-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font: 600 12px/16px "Manrope", sans-serif;
+  padding: 2px 6px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+.home-video-description {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 0.25rem 0;
+}
+.home-channel-avatar {
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: none;
+  border-radius: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font: 700 15px/1 "Plus Jakarta Sans", "Manrope", sans-serif;
+}
+.home-video-details {
+  min-width: 0;
+  flex: 1;
+}
+.home-video-title {
+  margin: 0;
+  font: 600 15px/20px "Plus Jakarta Sans", "Manrope", sans-serif;
+  color: var(--forground_text);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.home-video-meta {
+  margin: 0.25rem 0 0;
+  display: flex;
+  font: 400 13px/18px "Manrope", sans-serif;
+  color: var(--forground_text_700);
+}
+.home-video-channel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Views sit on the right side of the meta line. */
+.home-video-views {
+  margin-left: auto;
+  padding-left: 0.5rem;
+  flex: none;
+  white-space: nowrap;
 }

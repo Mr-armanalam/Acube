@@ -12,7 +12,7 @@
 // player; playback position is persisted via the progress endpoint.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./Watch.css";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useAppSelector } from "../../store";
 import {

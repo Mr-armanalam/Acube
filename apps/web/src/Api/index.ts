@@ -307,6 +307,11 @@ export const getWatchSuggestions = (id: string) =>
 // /studio/playlists list, so the showcase only rendered for the owner.
 export const getWatchPlaylists = (id: string) =>
   API.get(`/watch/${id}/playlists`);
+// Channel page Playlists tab — PROPOSED (no backend route yet; the
+// backend worker owns GET /channel/:id/playlists). Public read with
+// visibility rules server-side, mirroring GET /studio/playlists/:id.
+export const getChannelPlaylists = (id: string) =>
+  API.get(`/channel/${id}/playlists`);
 // Phase 5 fix contract: creator pins a comment (creator only, server).
 export const pinComment = (id: string) => API.post(`/comment/${id}/pin`);
 // Phase 5 fix contract: library entries (kind "saved" | "watchlater" |
