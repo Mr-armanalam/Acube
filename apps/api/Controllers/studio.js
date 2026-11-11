@@ -58,7 +58,7 @@ export const getOverview = async (req, res, next) => {
     const cached = getCached(cacheKey);
     if (cached) return res.status(200).json(cached);
 
-    const [user, totals, sums, topVideos, videoIds, earliestStat] =
+    const [user, totals, sums, topVideos, videoIds, earliestStat, liveVideoCount] =
       await Promise.all([
         User.findById(channelId).lean(),
         getChannelTotals(channelId),
@@ -74,7 +74,14 @@ export const getOverview = async (req, res, next) => {
             },
           },
         ]),
-        Videofile.find({ videochanel: channelId, deletedAt: null })
+        // Top videos are LIVE videos only (public, or legacy rows with
+        // no visibility field): a draft must never appear in the
+        // dashboard's Top videos — the preview shows live videos there.
+        Videofile.find({
+          videochanel: channelId,
+          deletedAt: null,
+          $or: [{ visibility: "public" }, { visibility: { $exists: false } }],
+        })
           .sort({ views: -1, createdAt: -1 })
           .limit(5)
           .lean(),
@@ -83,6 +90,14 @@ export const getOverview = async (req, res, next) => {
           .sort({ day: 1 })
           .select("day")
           .lean(),
+        // Same live-video rule for the "videos" card: the preview
+        // dashboard shows 7 live videos for Code Streamer, not 10
+        // (7 public + draft + unlisted + private).
+        Videofile.countDocuments({
+          videochanel: channelId,
+          deletedAt: null,
+          $or: [{ visibility: "public" }, { visibility: { $exists: false } }],
+        }),
       ]);
     if (!user) {
       return res.status(404).json(NOT_FOUND("Channel not found"));
@@ -122,9 +137,15 @@ export const getOverview = async (req, res, next) => {
       totals: {
         totalViews: totals.views,
         totalLikes: totals.likes,
-        totalVideos: sums[0]?.count ?? 0,
+        // Live (public) videos only — see liveVideoCount above. The
+        // all-non-deleted count stays available via sums[0].count for
+        // any caller that needs it; the dashboard card is live videos.
+        totalVideos: liveVideoCount,
         totalComments,
         watchMinutes: round2(totals.watchMinutes),
+        // Real hours, aggregated from the ViewEvent log (watchMinutes
+        // / 60) — never "— hrs": a channel with no events shows 0.
+        watchHours: round2(totals.watchMinutes / 60),
         completions: totals.completions,
       },
       // Fallback label: sums of the per-video counters on Videofiles
@@ -207,6 +228,21 @@ export const getAnalytics = async (req, res, next) => {
       { views: 0, watchMinutes: 0, likes: 0 },
     );
     totals.completions = rows.reduce((n, r) => n + (r.completions ?? 0), 0);
+    // Phase 5 match-preview: the Analytics cards' derived numbers,
+    // computed from the real aggregates above — never invented.
+    // avgViewsPerVideo is range views per (non-deleted) video;
+    // likeRate is a 0–1 fraction (likes / views in range), 0 when
+    // there are no views. watchHours is the range watch time in hours.
+    const videoCount = await Videofile.countDocuments({
+      videochanel: channelId,
+      deletedAt: null,
+      $or: [{ visibility: "public" }, { visibility: { $exists: false } }],
+    });
+    totals.avgViewsPerVideo =
+      videoCount > 0 ? round2(totals.views / videoCount) : 0;
+    totals.likeRate =
+      totals.views > 0 ? round2(totals.likes / totals.views) : 0;
+    totals.watchHours = round2(totals.watchMinutes / 60);
     const best = series.reduce(
       (bestSoFar, d) => (d.views > bestSoFar.views ? d : bestSoFar),
       { date: null, views: 0 },

@@ -259,6 +259,25 @@ describe("soft-delete restore (owner-only)", () => {
     expect(overview.body.totals.totalVideos).toBe(1);
     expect(overview.body.topVideos).toHaveLength(1);
   });
+
+  it("overview counts live (public) videos only — draft/unlisted/private are not 'videos' on the dashboard", async () => {
+    const owner = await createUser();
+    await ownVideo(owner, { videotitle: "live one", visibility: "public" });
+    await ownVideo(owner, { videotitle: "draft one", visibility: "draft" });
+    await ownVideo(owner, { videotitle: "unlisted one", visibility: "unlisted" });
+    await ownVideo(owner, { videotitle: "private one", visibility: "private" });
+    const overview = await api.get("/studio/overview").set(authHeader(owner));
+    expect(overview.status).toBe(200);
+    // The preview dashboard shows the live-video count (7 for Code
+    // Streamer), not 7 public + draft + unlisted + private.
+    expect(overview.body.totals.totalVideos).toBe(1);
+    expect(overview.body.topVideos).toHaveLength(1);
+    expect(overview.body.topVideos[0].videotitle).toBe("live one");
+    const analytics = await api
+      .get("/studio/analytics?range=7")
+      .set(authHeader(owner));
+    expect(analytics.body.totals.avgViewsPerVideo).toBe(0);
+  });
 });
 
 describe("POST /comment/:id/pin", () => {
@@ -1007,5 +1026,99 @@ describe("demo seed (scripts/seedDemo.js)", () => {
     // No non-demo rows were created by the seed.
     expect(await User.countDocuments({ demo: { $ne: true } })).toBe(0);
     expect(await Videofile.countDocuments({ demo: { $ne: true } })).toBe(0);
+  });
+
+  it("seeds ONE channel, Code Streamer (@codestreamer), owning all 7 public videos", async () => {
+    const summary = await seedDemoData();
+    expect(summary.channels).toBe(1);
+    expect(summary.channel).toMatchObject({
+      name: "Code Streamer",
+      handle: "codestreamer",
+      email: "demo-channel-codestreamer@demo.acube.test",
+    });
+    const channel = await User.findOne({ email: summary.channel.email });
+    expect(channel).not.toBeNull();
+    expect(channel.name).toBe("Code Streamer");
+    expect(channel.handle).toBe("codestreamer");
+    // Exactly one demo user carries a channel profile (banner set);
+    // the 24 viewers are plain accounts.
+    expect(
+      await User.countDocuments({ demo: true, bannerUrl: { $ne: null } }),
+    ).toBe(1);
+    // The channel owns every public catalogue video — no split across
+    // channels, so its per-channel dashboard shows the full totals.
+    expect(
+      await Videofile.countDocuments({
+        demo: true,
+        videochanel: String(channel._id),
+        visibility: "public",
+        deletedAt: null,
+      }),
+    ).toBe(7);
+    // ... and the full 1,503 / 113 aggregated from its own events.
+    expect(
+      await ViewEvent.countDocuments({
+        demo: true,
+        videochanel: String(channel._id),
+      }),
+    ).toBe(1503);
+    expect(
+      await ChannelDailyStat.aggregate([
+        { $match: { demo: true, videochanel: String(channel._id) } },
+        { $group: { _id: null, views: { $sum: "$views" }, likes: { $sum: "$likes" } } },
+      ]),
+    ).toMatchObject([{ views: 1503, likes: 113 }]);
+
+    // The Studio dashboard for that channel shows the preview totals,
+    // with real watch hours (not "— hrs").
+    const overview = await api
+      .get("/studio/overview")
+      .set(authHeader(channel));
+    expect(overview.status).toBe(200);
+    expect(overview.body.totals).toMatchObject({
+      totalViews: 1503,
+      totalLikes: 113,
+      totalVideos: 7,
+    });
+    expect(overview.body.totals.watchHours).toBeGreaterThan(0);
+    expect(overview.body.totals.watchMinutes).toBeGreaterThan(0);
+
+    // Analytics cards are computable from the real aggregates.
+    const analytics = await api
+      .get("/studio/analytics?range=28")
+      .set(authHeader(channel));
+    expect(analytics.status).toBe(200);
+    expect(analytics.body.totals.views).toBe(1503);
+    expect(analytics.body.totals.likes).toBe(113);
+    expect(analytics.body.totals.avgViewsPerVideo).toBe(214.71);
+    expect(analytics.body.totals.likeRate).toBe(0.08);
+    expect(analytics.body.totals.watchHours).toBeGreaterThan(0);
+    // No referrer is stored: no traffic source is ever invented.
+    expect("trafficSources" in analytics.body).toBe(false);
+
+    // Settings serves everything the preview Settings screen needs,
+    // with real avatar/banner URLs (seeded thumbnail URLs, not a
+    // blank/broken image) and the toggles as stored preferences.
+    const settings = await api
+      .get("/studio/settings")
+      .set(authHeader(channel));
+    expect(settings.status).toBe(200);
+    expect(settings.body.channel).toMatchObject({
+      name: "Code Streamer",
+      handle: "codestreamer",
+      contactEmail: "hello@demo.acube.test",
+      country: "India",
+      language: "English",
+      channelPublic: true,
+      keepSubscriptionsPrivate: false,
+      uploadDefaultVisibility: "public",
+      uploadDefaultComments: true,
+      watermarkEnabled: false,
+    });
+    expect(settings.body.channel.links).toHaveLength(2);
+    expect(typeof settings.body.channel.bannerUrl).toBe("string");
+    expect(typeof settings.body.channel.avatarUrl).toBe("string");
+    expect(settings.body.channel.bannerUrl.length).toBeGreaterThan(0);
+    expect(settings.body.channel.avatarUrl.length).toBeGreaterThan(0);
   });
 });

@@ -14,6 +14,9 @@ export declare const loginSchema: z.ZodObject<{
     username: z.ZodOptional<z.ZodString>;
     picture: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
+export declare const demoLoginSchema: z.ZodObject<{
+    email: z.ZodString;
+}, z.core.$strip>;
 export declare const updateChannelSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     desc: z.ZodOptional<z.ZodString>;
@@ -245,6 +248,7 @@ export declare const videoViewerParamSchema: z.ZodObject<{
 export type SendOtpInput = z.infer<typeof sendOtpSchema>;
 export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type DemoLoginInput = z.infer<typeof demoLoginSchema>;
 export type WatchCompleteInput = z.infer<typeof watchCompleteSchema>;
 export type LikeVideoInput = z.infer<typeof likeVideoSchema>;
 export type CreatePaymentRequestInput = z.infer<typeof createPaymentRequestSchema>;

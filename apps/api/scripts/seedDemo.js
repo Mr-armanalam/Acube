@@ -5,10 +5,14 @@
 //
 // What it seeds (all rows carry demo:true, so a re-run clears them
 // first and re-inserts — idempotent, and real data is never touched):
-//   * 3 demo channels + 24 demo viewers (fixed ObjectIds, fixed
-//     emails/handles under demo.acube.test)
-//   * 7 public catalogue videos across the 3 channels, PLUS 1 draft,
-//     1 unlisted, 1 private and 1 soft-deleted video (11 total)
+//   * ONE demo channel, "Code Streamer" (@codestreamer), + 24 demo
+//     viewers (fixed ObjectIds, fixed emails/handles under
+//     demo.acube.test). The channel owns ALL 7 public catalogue
+//     videos, so its per-channel Studio dashboard shows the full
+//     1,503 views / 113 likes of the preview (the old 3-channel seed
+//     split them, so each channel showed only a share).
+//   * 7 public catalogue videos, PLUS 1 draft, 1 unlisted, 1 private
+//     and 1 soft-deleted video (11 total)
 //   * 1,503 ViewEvent rows + ChannelDailyStat rows across 28 days and
 //     113 Likedvideo rows. The totals are NOT hardcoded on the videos:
 //     per-video views/Like counters and the daily stats are AGGREGATED
@@ -17,6 +21,13 @@
 //   * Nested comments incl. one pinned creator comment, playlists incl.
 //     a "Learning Path" playlist, watch-later / saved / liked library
 //     entries, and history rows for Today + Yesterday with progressSec.
+//
+// Media URLs: every seeded media URL is an example.com placeholder
+// (the same placeholder family the video thumbnails/filepaths already
+// used) — the preview's real images are not available as files, so
+// the channel avatar/banner reuse the seeded video thumbnail URLs
+// rather than inventing new broken hosts. Never a real-looking
+// external image that 404s differently per run.
 //
 // Design decisions (see the fix report for the full list):
 //   * progressSec lives on the History row (per viewer+video) — the
@@ -93,61 +104,38 @@ function round2(n) {
 const CHANNELS = [
   {
     n: 1,
-    name: "Acube Studio",
-    username: "acubestudio",
-    handle: "acubestudio",
-    email: "demo-channel-acube@demo.acube.test",
-    desc: "Demo channel — tutorials from the Acube team.",
+    name: "Code Streamer",
+    username: "codestreamer",
+    handle: "codestreamer",
+    email: "demo-channel-codestreamer@demo.acube.test",
+    desc: "Demo channel — full-stack tutorials, design and system design.",
     links: [
-      { label: "Website", url: "https://example.com/acube-studio" },
-      { label: "Docs", url: "https://example.com/acube-studio/docs" },
+      { label: "Website", url: "https://example.com/code-streamer" },
+      { label: "Docs", url: "https://example.com/code-streamer/docs" },
     ],
-    contactEmail: "studio@demo.acube.test",
-    country: "India",
-    language: "English",
-  },
-  {
-    n: 2,
-    name: "Pixel Craft",
-    username: "pixelcraft",
-    handle: "pixelcraft",
-    email: "demo-channel-pixel@demo.acube.test",
-    desc: "Demo channel — design and frontend craft.",
-    links: [{ label: "Portfolio", url: "https://example.com/pixel-craft" }],
     contactEmail: "hello@demo.acube.test",
-    country: "India",
-    language: "English",
-  },
-  {
-    n: 3,
-    name: "Code & Chai",
-    username: "codeandchai",
-    handle: "codeandchai",
-    email: "demo-channel-code@demo.acube.test",
-    desc: "Demo channel — backend and system design.",
-    links: [],
-    contactEmail: "chai@demo.acube.test",
     country: "India",
     language: "English",
   },
 ];
 
 // The 7 public catalogue videos (channel n, title, tags, durationSec).
+// All owned by the single demo channel (n: 1, Code Streamer).
 const CATALOGUE = [
   [1, "Getting Started with React Hooks", ["react", "javascript", "frontend"], 420],
   [1, "TypeScript Generics, Explained", ["typescript", "javascript"], 360],
   [1, "Build a REST API with Express", ["nodejs", "backend", "api"], 540],
-  [2, "CSS Grid in 10 Minutes", ["css", "frontend"], 300],
-  [2, "Figma to Code: A Practical Workflow", ["design", "frontend"], 480],
-  [3, "MongoDB Aggregations Deep Dive", ["mongodb", "database", "backend"], 600],
-  [3, "System Design: Caching Basics", ["system-design", "backend"], 420],
+  [1, "CSS Grid in 10 Minutes", ["css", "frontend"], 300],
+  [1, "Figma to Code: A Practical Workflow", ["design", "frontend"], 480],
+  [1, "MongoDB Aggregations Deep Dive", ["mongodb", "database", "backend"], 600],
+  [1, "System Design: Caching Basics", ["system-design", "backend"], 420],
 ];
 
 // Extra videos beyond the catalogue: one of each non-public state.
 const EXTRA_VIDEOS = [
   [1, "Draft: Advanced React Patterns", ["react"], 480, "draft", null],
-  [2, "Unlisted: Behind the Scenes", ["design"], 240, "unlisted", null],
-  [3, "Private: Team Offsite Cut", [], 180, "private", null],
+  [1, "Unlisted: Behind the Scenes", ["design"], 240, "unlisted", null],
+  [1, "Private: Team Offsite Cut", [], 180, "private", null],
   // Soft-deleted: deletedAt set, zero views — it must stay invisible
   // in feeds/search/suggestions while remaining restorable.
   [1, "Retired: Channel Trailer 2024", [], 120, "public", "deleted"],
@@ -222,13 +210,17 @@ export async function seedDemoData() {
     handle: c.handle,
     email: c.email,
     desc: c.desc,
-    picture: "https://example.com/demo-avatar.png",
+    picture: "https://example.com/demo-thumb-201.jpg",
     links: c.links,
     contactEmail: c.contactEmail,
     country: c.country,
     language: c.language,
-    bannerUrl: "https://example.com/demo-banner.png",
-    avatarUrl: "https://example.com/demo-avatar.png",
+    // Avatar/banner reuse the seeded video thumbnail URLs (same
+    // placeholder family as every other seeded media URL) — no new
+    // host is invented, and the Settings screen never renders a
+    // blank/broken image slot for the demo channel.
+    bannerUrl: "https://example.com/demo-thumb-203.jpg",
+    avatarUrl: "https://example.com/demo-thumb-201.jpg",
     channelPublic: true,
     keepSubscriptionsPrivate: false,
     uploadDefaultVisibility: "public",
@@ -249,7 +241,7 @@ export async function seedDemoData() {
       username: `demoviewer${tag}`,
       handle: `demo-viewer-${tag}`,
       email: `demo-viewer-${tag}@demo.acube.test`,
-      picture: "https://example.com/demo-avatar.png",
+      picture: "https://example.com/demo-thumb-201.jpg",
       historyPaused: false,
       demo: true,
     };
@@ -495,7 +487,7 @@ export async function seedDemoData() {
     videoid: v1,
     userid: channelByN.get(1),
     commentbody: "Pinned by the creator: the companion repo is linked in the description.",
-    usercommented: "acubestudio",
+    usercommented: "codestreamer",
     parentId: null,
     pinnedByCreator: channelByN.get(1),
     demo: true,
@@ -515,7 +507,7 @@ export async function seedDemoData() {
     videoid: v2,
     userid: channelByN.get(1),
     commentbody: "On the list for next week!",
-    usercommented: "acubestudio",
+    usercommented: "codestreamer",
     parentId: String(top2._id),
     demo: true,
   });
@@ -558,16 +550,16 @@ export async function seedDemoData() {
   });
   await Playlist.create({
     _id: oid(402),
-    owner: channelByN.get(2),
+    owner: channelByN.get(1),
     title: "Design Favourites",
-    description: "Demo playlist — Pixel Craft's design picks.",
+    description: "Demo playlist — Code Streamer's design picks.",
     visibility: "public",
     videoIds: [String(publicVideos[3]._id), String(publicVideos[4]._id)],
     demo: true,
   });
   await Playlist.create({
     _id: oid(403),
-    owner: channelByN.get(3),
+    owner: channelByN.get(1),
     title: "Team Picks",
     description: "Demo private playlist.",
     visibility: "private",
@@ -648,6 +640,13 @@ export async function seedDemoData() {
   const summary = {
     demo: true,
     channels: CHANNELS.length,
+    // The single demo channel — the identity POST /auth/demo-login
+    // signs in as (see Controllers/Auth.js demoLogin).
+    channel: {
+      name: CHANNELS[0].name,
+      handle: CHANNELS[0].handle,
+      email: CHANNELS[0].email,
+    },
     viewers: VIEWER_COUNT,
     videos: videoDocs.length,
     publicVideos: publicVideos.length,

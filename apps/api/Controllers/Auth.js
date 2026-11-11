@@ -108,6 +108,50 @@ export const login = async (req, res) => {
   }
 };
 
+// Phase 5 match-preview: demo sign-in (POST /auth/demo-login).
+// TEST-ONLY, for the seeded demo data (scripts/seedDemo.js) — the demo
+// users have no Google account and no OTP, so without this Arman sees
+// nothing after seeding. It is env-gated TWICE, checked on every call:
+//   * DEMO_LOGIN_ENABLED must be exactly "1", AND
+//   * NODE_ENV must not be "production".
+// Either condition failing returns 404 (not 403 — the route should not
+// advertise itself in production). The body carries only an email; the
+// user is looked up by { email, demo: true }, so a real account can
+// never sign in through this route, and no password/token is accepted.
+// An unknown or non-demo email gets the same 404, so the route does
+// not leak which demo emails exist. On success it issues the NORMAL
+// JWT (same shape/expiry as login) — the demo user then uses every
+// authed endpoint as themselves. There is NO .env.example in the repo
+// (removed from main in f37c013 — do not re-add); the flag is
+// documented in PHASE5_REPORT.md §8.8 instead.
+export const demoLogin = async (req, res) => {
+  if (
+    process.env.DEMO_LOGIN_ENABLED !== "1" ||
+    process.env.NODE_ENV === "production"
+  ) {
+    return res.status(404).json({
+      error: { code: "NOT_FOUND", message: "Not found" },
+    });
+  }
+  try {
+    const { email } = req.body;
+    const user = await users.findOne({ email, demo: true });
+    if (!user) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Not found" },
+      });
+    }
+    const token = jwt.sign(
+      { email: user.email, id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "6h" },
+    );
+    return res.status(200).json({ result: user, token });
+  } catch (error) {
+    return res.status(500).json({ mess: "something went wrong..." });
+  }
+};
+
 // Phase 3b: session refresh. GET /user/me returns the current user
 // from the JWT — the channel editor used to re-login with an email-only
 // body to refresh the session, which 401s since Phase 3a. The token

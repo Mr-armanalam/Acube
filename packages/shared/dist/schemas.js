@@ -45,6 +45,16 @@ export const loginSchema = z
     .refine((v) => v.idToken || v.email, {
     message: "either idToken or email is required",
 });
+// Phase 5 match-preview: demo sign-in (POST /auth/demo-login).
+// TEST-ONLY, env-gated (DEMO_LOGIN_ENABLED=1 and NODE_ENV != production
+// — see Controllers/Auth.js demoLogin). The body carries only the seeded
+// demo email; the controller looks the user up by { email, demo: true },
+// so a real account can never sign in through it, and no password or
+// token is accepted. Unknown / non-demo emails get the same 404 as a
+// disabled endpoint, so the route does not leak which demo emails exist.
+export const demoLoginSchema = z.object({
+    email: z.string().email("must be a valid email"),
+});
 export const updateChannelSchema = z.object({
     name: z.string().optional(),
     desc: z.string().optional(),

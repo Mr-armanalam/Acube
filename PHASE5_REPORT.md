@@ -496,3 +496,97 @@ body when updating PR #2.
   and still need Arman's decision. The verdict stands: **not "no
   single difference"** — the remaining diffs are listed in §8.3/§8.6,
   none hidden.
+
+
+### 8.8 Match-the-preview pass, backend (11 Nov 2026)
+
+Backend worker, branch `feat/acube-phase5-studio`. No frontend files
+touched; no merge. API suite **190/190 (12 files)** after this pass
+(was 181/181), ESLint 0 errors, shared typecheck clean.
+
+- **Seed is now ONE channel.** `apps/api/scripts/seedDemo.js` seeds a
+  single demo channel, **Code Streamer (@codestreamer,
+  demo-channel-codestreamer@demo.acube.test)**, owning ALL 7 public
+  catalogue videos plus the draft / unlisted / private / soft-deleted
+  extras (11 videos). View events total exactly **1,503 views** and
+  **113 likes**, aggregated from the seeded events/likes and asserted
+  by the seed before it returns — never hardcoded totals. The old
+  3-channel seed split the totals (a per-channel dashboard showed
+  613/49/4). Idempotent (clear-first, demo-flagged), still refuses
+  remote/prod DBs unless `SEED_DEMO_ALLOW_REMOTE=1`. The seed summary
+  now carries `channel: { name, handle, email }`. The channel's
+  avatar/banner reuse the seeded video thumbnail URLs (same
+  `example.com` placeholder family as every other seeded media URL —
+  the preview's real images are not available as files, so no new
+  host is invented). `e2e-server.mjs` PHASE5_SEED comment updated to
+  match (1 channel).
+- **Demo login (local-only, test-only).** `POST /auth/demo-login`
+  with body `{ "email": "<seeded demo email>" }` issues the NORMAL
+  JWT (same shape/expiry as login, 6h) for that demo user. It is
+  refused with **404** unless **both** `DEMO_LOGIN_ENABLED=1` is set
+  **and** `NODE_ENV` is not `"production"`. Lookup is by
+  `{ email, demo: true }`, so a real account can never sign in through
+  it; unknown / non-demo emails get the same 404 (no existence leak).
+  Local use: `DEMO_LOGIN_ENABLED=1` + seed, then demo-login as
+  `demo-channel-codestreamer@demo.acube.test` (or any
+  `demo-viewer-NN@demo.acube.test`) — no Google sign-in needed to view
+  seeded data locally. If a later verification step genuinely needs
+  Arman's real account, that goes to the coordinator — it is not
+  worked around here, and no credentials are asked for in chat.
+  There is no `.env.example` in the repo (removed from main in
+  f37c013 — not re-added); this section is the documentation.
+  Tests: 7 in `apps/api/tests/demo-login.test.js` (flag off → 404,
+  production + flag → 404, channel + viewer success, real account →
+  404, unknown email → 404, malformed body → 400).
+- **Settings backend — already complete, now seeded + tested.**
+  `GET/PATCH /studio/settings` already supported every preview field
+  (handle unique with 409 HANDLE_TAKEN, links [{label,url}], contactEmail, country, language, bannerUrl, avatarUrl, toggles
+  channelPublic / keepSubscriptionsPrivate /
+  uploadDefaultVisibility / uploadDefaultComments / watermarkEnabled,
+  name, desc). The seed now provides banner/avatar URLs for Code
+  Streamer, and a test asserts the full seeded settings shape.
+  `keepSubscriptionsPrivate` stays a stored preference only — there
+  is NO subscribe/follow system, and no backend behaviour is faked
+  for it.
+- **Dashboard "videos" card is live videos now.** `GET
+  /studio/overview` `totals.totalVideos` used to count every
+  non-deleted owned video (10 for the seeded channel: 7 public +
+  draft + unlisted + private). The preview dashboard shows 7, and the
+  web Dashboard labels the card "live videos", so the count and the
+  `topVideos` list are now live (public, or legacy rows with no
+  visibility field) only. A draft in Top videos is therefore also
+  closed from the backend side (was §8.6(2) UI diff). `allTime`
+  still sums all non-deleted videos' counters, unchanged.
+- **Derived Analytics cards — real aggregates only.** `GET
+  /studio/analytics` `totals` now also returns `avgViewsPerVideo`
+  (range views / live videos; 214.71 for the seed), `likeRate`
+  (likes / views as a 0–1 fraction; 0.08 for the seed) and
+  `watchHours` (watchMinutes / 60). `GET /studio/overview`
+  `totals` now also returns `watchHours` (> 0 for the seed, 0 when
+  there are no events — never "— hrs"). All computed from the
+  ViewEvent / ChannelDailyStat aggregates.
+- **Verified, not built:** suggestions endpoint with reason labels
+  (`Same channel` / `Same topic` / `Viewers also watched` /
+  `Similar length`) already exists and is tested; Content
+  search/filter/pagination (`GET /studio/videos?q=&visibility=`)
+  exists and is tested; Comments `?filter=unreplied` + reply via
+  `POST /comment/post` with `parentId` exist and are tested; upload
+  10 MB limit is enforced server-side twice (multer
+  `limits.fileSize = MAX_UPLOAD_BYTES` in `Helper/filehelper.js`
+  and the controller re-check in `Controllers/video.js`) — the
+  preview's 84 MB example file is a preview error, the limit stays
+  10 MB.
+- **Honest absences (no faking):** traffic source — `GET
+  /studio/analytics` still omits `trafficSources` entirely (no
+  referrer is stored on ViewEvent; the client renders a "not tracked
+  yet" state). Comment heart — there is NO backend heart endpoint;
+  hearts stay session-local per the earlier cut, as before.
+- **Arman's 11 Nov direction (delete legacy UI, Studio shell is the
+  app shell):** mainly frontend — no backend route in this pass's
+  touched surface is legacy-only, so no backend route was deleted.
+  The endpoints the legacy Library/Watch-Later/Liked-Video pages used
+  (`GET /studio/library`, `POST /video/watchlater`, like endpoints)
+  are the same ones the Studio Library and Watch page use, so
+  deleting them here would break the new UI; if the frontend worker
+  finds an endpoint that becomes genuinely dead after the legacy
+  pages are deleted, that deletion belongs in its report.
