@@ -11,7 +11,6 @@ function renderRoutes(route: string, session: typeof testSession | null) {
     <InternetStatusProvider>
       <Allroutes
         seteditcreatechanelbtn={() => {}}
-        setvideouploadpage={() => {}}
       />
     </InternetStatusProvider>,
     { route, session },
@@ -49,14 +48,12 @@ describe("Auth guard", () => {
     expect(await screen.findByText("Your library")).toBeInTheDocument();
   });
 
-  // Phase 3c: /Likedvideo, /Watchhistory and /Watchlater are behind
-  // RequireAuth too (they used to render a "Plz login" message).
-  // Logged-out users are redirected to Home; signed-in users see the
-  // list page header.
+  // Phase 3c (updated — legacy pages deleted): /studio and /history
+  // are behind RequireAuth. Logged-out users are redirected to Home;
+  // signed-in users see the page heading.
   it.each([
-    ["/Likedvideo", "Liked Video"],
-    ["/Watchhistory", "History"],
-    ["/Watchlater", "Watch Later"],
+    ["/studio", "Channel dashboard"],
+    ["/history", "Watch history"],
   ])(
     "redirects a logged-out user from %s to Home",
     async (route, page) => {
@@ -64,20 +61,15 @@ describe("Auth guard", () => {
       expect(
         await screen.findByText("Python Basics Tutorial"),
       ).toBeInTheDocument();
-      expect(
-        screen.queryByText(`Your ${page} Shown Here`),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(page)).not.toBeInTheDocument();
     },
   );
 
   it.each([
-    ["/Likedvideo", "Liked Video"],
-    ["/Watchhistory", "History"],
-    ["/Watchlater", "Watch Later"],
+    ["/studio", "Channel dashboard"],
+    ["/history", "Watch history"],
   ])("renders %s for a signed-in user", async (route, page) => {
     renderRoutes(route, testSession);
-    expect(
-      await screen.findByText(`Your ${page} Shown Here`),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(page)).toBeInTheDocument();
   });
 });

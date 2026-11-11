@@ -16,7 +16,6 @@ function renderRoutes(route: string, session: typeof testSession | null) {
     <InternetStatusProvider>
       <Allroutes
         seteditcreatechanelbtn={() => {}}
-        setvideouploadpage={() => {}}
       />
     </InternetStatusProvider>,
     { route, session },

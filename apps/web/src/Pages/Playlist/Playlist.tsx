@@ -7,7 +7,6 @@
 // against playlist.owner.
 import React, { useMemo } from "react";
 import { Link, useParams } from "react-router";
-import Leftsidebar from "../../Component/Leftsidebar/Leftsidebar";
 import { useAppSelector } from "../../store";
 import {
   useStudioPlaylist,
@@ -37,9 +36,6 @@ export default function PlaylistPage() {
 
   return (
     <div className="container_Pages_App">
-      <div className="at_small_sizel">
-        <Leftsidebar />
-      </div>
       <div className="container2_Pages_App" style={{ padding: 24 }}>
         {playlistQuery.isLoading ? (
           <div className="acube-skeleton" style={{ height: 96 }} role="status" aria-label="Loading playlist" />

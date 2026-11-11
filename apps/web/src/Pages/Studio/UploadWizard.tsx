@@ -1,19 +1,21 @@
-// Phase 5 fix — Upload wizard (preview screen E) at /studio/upload:
-// 3 steps (file → details → publish), reusing the Phase 3 upload
-// hardening (same POST /video/uploadvideo endpoint, same 10 MB / mp4
-// validation via the shared upload flow), with resumable progress
-// display from the upload slice, Title (required) / Description /
-// Tags, thumbnail preview, visibility Public/Private/Draft, Publish +
-// Save as draft. NOTE: description/tags/visibility are sent with the
-// upload form; persisting them is the backend worker's part of the
-// contract (Videofile gains description/tags) — the wizard sends them
-// and never invents a success the server did not return.
+// Phase 5 match-preview — Upload wizard (preview image 12) at
+// /studio/upload: step 1 picks the file, step 2 is Details — file
+// card with progress, Title (required) / Description / Tags,
+// thumbnail preview, Visibility Public/Private/Draft, Publish +
+// Save as draft on the SAME screen, exactly as the preview shows.
+// CORRECTION to the preview: its example file is 84 MB, but the
+// enforced limit is 10 MB — the wizard rejects anything over 10 MB,
+// states the 10 MB limit, and never presents an 84 MB file as
+// acceptable. Same POST /video/uploadvideo endpoint and 10 MB / mp4
+// validation as the Phase 3 upload hardening. Description/tags/
+// visibility are sent with the upload form; the wizard never invents
+// a success the server did not return.
 import React, { useState } from "react";
 import { Link } from "react-router";
 import StudioShell from "./Studio";
 import { useAppSelector } from "../../store";
 import { useUploadVideo } from "../../query/hooks";
-import { MAX_VIDEO_BYTES } from "../Videoupload/Videoupload";
+import { MAX_VIDEO_BYTES } from "../../utils/uploadLimits";
 import type { VideoVisibility } from "../../types";
 
 function formatBytes(bytes: number): string {
@@ -21,7 +23,7 @@ function formatBytes(bytes: number): string {
 }
 
 export default function UploadWizard() {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2>(1);
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -104,14 +106,14 @@ export default function UploadWizard() {
       <h1>Upload video</h1>
       <p style={{ color: "var(--text-2)" }}>
         Step {step} of 3 —{" "}
-        {step === 1 ? "File" : step === 2 ? "Details" : "Publish"} ·
-        resumable upload, server-validated
+        {step === 1 ? "File" : "Details"} · resumable upload,
+        server-validated · max 10 MB
       </p>
 
       {step === 1 ? (
         <div className="studio-form">
           <label>
-            Video file · mp4, less than 10 MB
+            Video file · mp4, max 10 MB
             <input
               type="file"
               accept="video/mp4,video/*"
@@ -119,6 +121,9 @@ export default function UploadWizard() {
               onChange={(e) => pickFile(e.target.files?.[0])}
             />
           </label>
+          <p style={{ color: "var(--text-2)", margin: 0 }}>
+            Files over 10 MB are rejected — the upload limit is 10 MB.
+          </p>
           {file ? (
             <p>
               {file.name} · {formatBytes(file.size)}
@@ -143,55 +148,139 @@ export default function UploadWizard() {
       ) : null}
 
       {step === 2 ? (
-        <div className="studio-form">
-          <label>
-            Title (required)
-            <input
-              className="acube-input"
-              aria-label="Title"
-              value={title}
-              maxLength={100}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
-          <label>
-            Description
-            <textarea
-              className="acube-input"
-              aria-label="Description"
-              rows={4}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </label>
-          <label>
-            Tags · comma separated
-            <input
-              className="acube-input"
-              aria-label="Tags"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="planning, productivity, routine"
-            />
-          </label>
-          <label>
-            Thumbnail URL
-            <input
-              className="acube-input"
-              aria-label="Thumbnail URL"
-              value={thumbnailUrl}
-              onChange={(e) => setThumbnailUrl(e.target.value)}
-              placeholder="https://…"
-            />
-          </label>
-          {thumbnailUrl ? (
-            <img
-              src={thumbnailUrl}
-              alt="Thumbnail preview"
-              style={{ width: 240, aspectRatio: "16 / 9", objectFit: "cover", borderRadius: 12 }}
-            />
+        <div>
+          <div className="studio-file-card" style={{ marginBottom: 16 }}>
+            <strong>{file?.name}</strong>
+            <p>
+              {file ? formatBytes(file.size) : ""} · max 10 MB · upload
+              continues in background
+            </p>
+            {uploadStatus === "uploading" ? (
+              <div>
+                <div
+                  role="progressbar"
+                  aria-valuenow={progress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label="Upload progress"
+                  style={{ height: 8, borderRadius: 4, background: "var(--surface-2)" }}
+                >
+                  <div
+                    style={{
+                      width: `${progress}%`,
+                      height: "100%",
+                      borderRadius: 4,
+                      background: "var(--accent)",
+                    }}
+                  />
+                </div>
+                <p>
+                  {progress}% · {file ? formatBytes(file.size) : ""} · upload
+                  continues in background
+                </p>
+              </div>
+            ) : (
+              <div
+                role="progressbar"
+                aria-valuenow={0}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Upload progress"
+                style={{ height: 8, borderRadius: 4, background: "var(--surface-2)" }}
+              >
+                <div
+                  style={{ width: "0%", height: "100%", borderRadius: 4, background: "var(--accent)" }}
+                />
+              </div>
+            )}
+          </div>
+          <div className="studio-upload-layout">
+            <div className="studio-form" style={{ maxWidth: "none" }}>
+              <label>
+                Title (required)
+                <input
+                  className="acube-input"
+                  aria-label="Title"
+                  value={title}
+                  maxLength={100}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="How I plan my week in 20 minutes"
+                />
+              </label>
+              <label>
+                Description
+                <textarea
+                  className="acube-input"
+                  aria-label="Description"
+                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="My exact Sunday planning routine…"
+                />
+              </label>
+              <label>
+                Tags · comma separated
+                <input
+                  className="acube-input"
+                  aria-label="Tags"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  placeholder="planning, productivity, routine"
+                />
+              </label>
+              <label>
+                Thumbnail URL
+                <input
+                  className="acube-input"
+                  aria-label="Thumbnail URL"
+                  value={thumbnailUrl}
+                  onChange={(e) => setThumbnailUrl(e.target.value)}
+                  placeholder="https://…"
+                />
+              </label>
+            </div>
+            <div>
+              <div className="studio-thumb-preview" aria-label="Thumbnail preview">
+                {thumbnailUrl ? (
+                  <img src={thumbnailUrl} alt="Thumbnail preview" />
+                ) : (
+                  <span className="play" aria-hidden="true">▶</span>
+                )}
+                <span className="preview-badge">PREVIEW</span>
+              </div>
+              <fieldset
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  padding: 12,
+                  marginTop: 12,
+                }}
+              >
+                <legend>Visibility</legend>
+                {(["public", "private", "draft"] as VideoVisibility[]).map((v) => (
+                  <label
+                    key={v}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                  >
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value={v}
+                      checked={visibility === v}
+                      onChange={() => setVisibility(v)}
+                    />
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                  </label>
+                ))}
+              </fieldset>
+            </div>
+          </div>
+          {error || uploadError ? (
+            <p role="alert" style={{ color: "var(--danger)" }}>
+              {error ?? uploadError}
+            </p>
           ) : null}
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
             <button
               type="button"
               className="acube-btn-secondary"
@@ -202,73 +291,10 @@ export default function UploadWizard() {
             <button
               type="button"
               className="acube-btn"
-              disabled={!title.trim()}
-              onClick={() => setStep(3)}
+              disabled={!canPublish || uploadMutation.isPending}
+              onClick={() => submit(false)}
             >
-              Continue to publish
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {step === 3 ? (
-        <div className="studio-form">
-          <p>
-            <strong>{file?.name}</strong> ·{" "}
-            {file ? formatBytes(file.size) : ""} · Title: {title || "—"}
-          </p>
-          {uploadStatus === "uploading" ? (
-            <div>
-              <div
-                role="progressbar"
-                aria-valuenow={progress}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label="Upload progress"
-                style={{ height: 8, borderRadius: 4, background: "var(--surface-2)" }}
-              >
-                <div
-                  style={{
-                    width: `${progress}%`,
-                    height: "100%",
-                    borderRadius: 4,
-                    background: "var(--accent)",
-                  }}
-                />
-              </div>
-              <p>{progress}% uploaded — upload continues in background</p>
-            </div>
-          ) : null}
-          <fieldset style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
-            <legend>Visibility</legend>
-            {(["public", "private", "draft"] as VideoVisibility[]).map((v) => (
-              <label
-                key={v}
-                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-              >
-                <input
-                  type="radio"
-                  name="visibility"
-                  value={v}
-                  checked={visibility === v}
-                  onChange={() => setVisibility(v)}
-                />
-                {v.charAt(0).toUpperCase() + v.slice(1)}
-              </label>
-            ))}
-          </fieldset>
-          {error || uploadError ? (
-            <p role="alert" style={{ color: "var(--danger)" }}>
-              {error ?? uploadError}
-            </p>
-          ) : null}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className="acube-btn-secondary"
-              onClick={() => setStep(2)}
-            >
-              Back
+              Publish
             </button>
             <button
               type="button"
@@ -277,14 +303,6 @@ export default function UploadWizard() {
               onClick={() => submit(true)}
             >
               Save as draft
-            </button>
-            <button
-              type="button"
-              className="acube-btn"
-              disabled={!canPublish || uploadMutation.isPending}
-              onClick={() => submit(false)}
-            >
-              Publish
             </button>
           </div>
         </div>

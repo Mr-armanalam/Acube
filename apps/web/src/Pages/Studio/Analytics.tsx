@@ -1,7 +1,10 @@
-// Phase 5 — Studio Analytics: range selector (7/28/90), views /
-// watch-time / likes chart + totals + best day + per-video bars, with a
-// text table fallback. Renders only what the API returns; an empty series
-// is an honest empty state, never invented history.
+// Phase 5 match-preview — Studio Analytics (preview image 11):
+// chart on top, then exactly 4 cards: Views (28d), Avg views / video,
+// Like rate, Top source. When the backend reports no traffic source,
+// the Top source card renders the honest "not tracked yet" state in
+// the SAME card position/style — never a missing card, never an
+// invented source. No invented table: the chart's data table is a
+// visually-hidden screen-reader fallback only.
 import React, { useState } from "react";
 import StudioShell from "./Studio";
 import {
@@ -17,22 +20,18 @@ type Range = 7 | 28 | 90;
 
 export default function Analytics() {
   const [range, setRange] = useState<Range>(28);
-  const [metric, setMetric] = useState<"views" | "watchMinutes" | "likes">(
-    "views",
-  );
   const analytics = useStudioAnalytics(range);
   const overview = useStudioOverview();
-  const metricLabel =
-    metric === "views"
-      ? "Views"
-      : metric === "watchMinutes"
-        ? "Watch minutes"
-        : "Likes";
+  const totalVideos = overview.data?.totals.totalVideos ?? 0;
 
   return (
     <StudioShell>
       <h1>Analytics</h1>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <p style={{ color: "var(--text-2)", margin: "0 0 16px" }}>
+        Range: Last {range} days · All videos — totals are your real
+        aggregates
+      </p>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         {([7, 28, 90] as Range[]).map((r) => (
           <button
             key={r}
@@ -43,18 +42,6 @@ export default function Analytics() {
             Last {r} days
           </button>
         ))}
-        <select
-          className="acube-select"
-          aria-label="Metric"
-          value={metric}
-          onChange={(e) =>
-            setMetric(e.target.value as "views" | "watchMinutes" | "likes")
-          }
-        >
-          <option value="views">Views</option>
-          <option value="watchMinutes">Watch time</option>
-          <option value="likes">Likes</option>
-        </select>
       </div>
       {analytics.isLoading ? (
         <StudioSkeleton label="Loading analytics" />
@@ -70,33 +57,37 @@ export default function Analytics() {
         />
       ) : (
         <>
-          <div className="studio-stat-grid">
-            <StatCard label="Views" value={String(analytics.data.totals.views)} />
-            <StatCard
-              label="Watch minutes"
-              value={String(analytics.data.totals.watchMinutes)}
+          <div className="studio-section">
+            <StudioChart
+              days={analytics.data.days}
+              metric="views"
+              label={`Views — last ${range} days`}
             />
-            <StatCard label="Likes" value={String(analytics.data.totals.likes)} />
+          </div>
+          <div className="studio-stat-grid">
             <StatCard
-              label="Best day"
-              value={
-                analytics.data.bestDay
-                  ? `${analytics.data.bestDay.date} · ${analytics.data.bestDay.views} views`
-                  : "—"
-              }
+              label={`Views (${range}d)`}
+              value={analytics.data.totals.views.toLocaleString("en-US")}
+              subtext="▲ all-time total today"
+              subtextTone="green"
             />
             <StatCard
               label="Avg views / video"
               value={
-                overview.data && overview.data.totals.totalVideos > 0
+                totalVideos > 0
                   ? String(
                       Math.round(
-                        analytics.data.totals.views /
-                          overview.data.totals.totalVideos,
+                        analytics.data.totals.views / totalVideos,
                       ),
                     )
                   : "—"
               }
+              subtext={
+                totalVideos > 0
+                  ? `${analytics.data.totals.views.toLocaleString("en-US")} ÷ ${totalVideos} videos`
+                  : "No videos yet"
+              }
+              subtextTone="green"
             />
             <StatCard
               label="Like rate"
@@ -109,89 +100,36 @@ export default function Analytics() {
                     ).toFixed(1)}%`
                   : "—"
               }
+              subtext={`${analytics.data.totals.likes.toLocaleString("en-US")} likes ÷ views`}
+              subtextTone="green"
             />
-          </div>
-          <div className="studio-section" style={{ marginTop: 24 }}>
-            <h2>Top source</h2>
             {analytics.data.trafficSources &&
             analytics.data.trafficSources.length > 0 ? (
-              <div>
-                {analytics.data.trafficSources.map((s) => (
-                  <div key={s.source} className="studio-list-row">
-                    <span>{s.source}</span>
-                    <span style={{ color: "var(--text-2)" }}>
-                      {s.views} views
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <StatCard
+                label="Top source"
+                value={analytics.data.trafficSources[0].source}
+                subtext={`${analytics.data.trafficSources[0].views.toLocaleString("en-US")} views · from view events`}
+                subtextTone="amber"
+              />
             ) : (
-              <StudioEmptyState
-                title="Traffic source not tracked yet"
-                body="View events do not record a referrer yet, so there is no real source split to show. This section stays empty rather than showing invented numbers."
+              <StatCard
+                label="Top source"
+                value="Not tracked yet"
+                subtext="Traffic source not tracked yet"
+                subtextTone="amber"
               />
             )}
           </div>
-          <StudioChart
-            days={analytics.data.days}
-            metric={metric}
-            label={`${metricLabel} — last ${range} days`}
-          />
+          {(!analytics.data.trafficSources ||
+            analytics.data.trafficSources.length === 0) && (
+            <p className="studio-note" style={{ marginTop: 0 }}>
+              View events do not record a referrer yet, so there is no real
+              source split to show. This card stays honest rather than
+              showing invented numbers.
+            </p>
+          )}
         </>
       )}
-      <div className="studio-section" style={{ marginTop: 32 }}>
-        <h2>Top videos</h2>
-        {overview.isLoading ? (
-          <StudioSkeleton label="Loading top videos" />
-        ) : overview.data && overview.data.topVideos.length > 0 ? (
-          <div>
-            {overview.data.topVideos.map((v) => {
-              const maxViews = Math.max(
-                ...overview.data.topVideos.map((x) => x.views ?? 0),
-                1,
-              );
-              const pct = Math.round(((v.views ?? 0) / maxViews) * 100);
-              return (
-                <div key={v._id} style={{ marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>{v.videotitle}</span>
-                    <span style={{ color: "var(--text-2)" }}>
-                      {v.views ?? 0} views
-                    </span>
-                  </div>
-                  <div
-                    role="progressbar"
-                    aria-valuenow={pct}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`Views for ${v.videotitle}`}
-                    style={{
-                      height: 8,
-                      borderRadius: 4,
-                      background: "var(--surface-2)",
-                      marginTop: 4,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${pct}%`,
-                        height: "100%",
-                        borderRadius: 4,
-                        background: "var(--accent)",
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <StudioEmptyState
-            title="No videos yet"
-            body="Per-video bars appear once you have videos with views."
-          />
-        )}
-      </div>
     </StudioShell>
   );
 }

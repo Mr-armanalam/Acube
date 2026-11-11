@@ -10,10 +10,6 @@ import LoadingCard from "./Component/LoadingCard";
 // ship in the initial bundle. Home stays eager so first paint is fast.
 const Search = lazy(() => import("./Pages/Search/Search"));
 const Channel = lazy(() => import("./Pages/Channel/Channel"));
-const Likedvideo = lazy(() => import("./Pages/Likedvideo/Likedvideo"));
-const Watchhistory = lazy(() => import("./Pages/Watchhistory/Watchhistory"));
-const Watchlater = lazy(() => import("./Pages/Watchlater/Watchlater"));
-const Yourvideo = lazy(() => import("./Pages/Yourvideo/Yourvideo"));
 const Chat = lazy(() => import("./Pages/chat/Chat"));
 const StreamRoom = lazy(() => import("./Pages/videostream/StreamRoom"));
 const OtpAuth = lazy(() => import("./Pages/Auth/OTP_Auth"));
@@ -66,10 +62,8 @@ const NotFound = () => (
 
 const Allroutes = ({
   seteditcreatechanelbtn,
-  setvideouploadpage,
 }: {
   seteditcreatechanelbtn: (v: boolean) => void;
-  setvideouploadpage: (v: boolean) => void;
 }) => {
   const isOnline = useInternetStatus();
   return (
@@ -89,9 +83,7 @@ const Allroutes = ({
               path="/studio"
               element={
                 <RequireAuth>
-                  <StudioDashboard
-                    onUpload={() => setvideouploadpage(true)}
-                  />
+                  <StudioDashboard />
                 </RequireAuth>
               }
             />
@@ -160,46 +152,15 @@ const Allroutes = ({
               unlisted playlist. Owner mutations are guarded in the
               page itself, not at the route. */}
             <Route path="/playlist/:id" element={<PlaylistPage />} />
-            <Route
-              path="/Likedvideo"
-              element={
-                <RequireAuth>
-                  <Likedvideo />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/Watchhistory"
-              element={
-                <RequireAuth>
-                  <Watchhistory />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/Watchlater"
-              element={
-                <RequireAuth>
-                  <Watchlater />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/Yourvideo"
-              element={
-                <RequireAuth>
-                  <Yourvideo />
-                </RequireAuth>
-              }
-            />
+            {/* Legacy /Likedvideo, /Watchhistory, /Watchlater and
+              /Yourvideo pages are deleted (follow-up): liked / history
+              / watch-later live in /library + /history, your videos in
+              /studio/content. Old bookmarks to those URLs now 404. */}
             <Route path="/paymentstatus" element={<PaymentStatus />} />
             <Route
               path="/channel/:cid"
               element={
-                <Channel
-                  seteditcreatechanelbtn={seteditcreatechanelbtn}
-                  setvideouploadpage={setvideouploadpage}
-                />
+                <Channel seteditcreatechanelbtn={seteditcreatechanelbtn} />
               }
             />
             <Route

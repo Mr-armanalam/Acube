@@ -6,7 +6,6 @@
 // is no server-side topic endpoint.
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
-import Leftsidebar from "../../Component/Leftsidebar/Leftsidebar";
 import "./Home.css";
 import Showvideogrid from "../../Component/Showvideogrid/Showvideogrid";
 import LoadingCard from "../../Component/LoadingCard";
@@ -59,9 +58,6 @@ const Home = () => {
 
   return (
     <div className="container_Pages_App">
-      <div className="at_small_sizel">
-        <Leftsidebar />
-      </div>
       <div className="container2_Pages_App">
         <div className="navigation_Home" role="group" aria-label="Topics">
           {TOPICS.map((t) => (

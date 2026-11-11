@@ -7,7 +7,6 @@
 // (HistoryVideoRow) instead of being silently dropped.
 import React, { useMemo } from "react";
 import { Link } from "react-router";
-import Leftsidebar from "../../Component/Leftsidebar/Leftsidebar";
 import { useAppSelector } from "../../store";
 import {
   useClearHistory,
@@ -168,9 +167,6 @@ export default function History() {
 
   return (
     <div className="container_Pages_App">
-      <div className="at_small_sizel">
-        <Leftsidebar />
-      </div>
       <div className="container2_Pages_App" style={{ padding: 24 }}>
         <h1>Watch history</h1>
         <p style={{ color: "var(--text-2)" }}>

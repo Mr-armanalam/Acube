@@ -14,13 +14,14 @@
 }
 
 .container_Pages_App {
-  height: 100vh;
+  /* Watch-side pages sit under the 60px TopBar (+1px border). */
+  height: calc(100vh - 61px);
   display: flex;
   background-color: var(--body_background);
 }
 .container2_Pages_App {
   width: 100vw;
-  height: 97vh;
+  height: 100%;
   border-top: 2px solid var(--body_forground_800);
   overflow-y: auto;
   padding-bottom: 20px;

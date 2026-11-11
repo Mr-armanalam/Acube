@@ -119,8 +119,7 @@ export default function Content() {
       <h1>Channel content</h1>
       <p style={{ color: "var(--text-2)" }}>
         {videos.data ? `${videos.data.total} videos · ` : ""}
-        Search, filter by visibility, bulk-select. Deletes are soft —
-        deleted videos can be restored.
+        search, filter by visibility, bulk-select
       </p>
       <div
         style={{
@@ -200,6 +199,7 @@ export default function Content() {
         />
       ) : (
         <>
+          <div className="studio-table-wrap">
           <table className="studio-table">
             <thead>
               <tr>
@@ -219,9 +219,9 @@ export default function Content() {
                 </th>
                 <th>Video</th>
                 <th>Visibility</th>
+                <th>Date</th>
                 <th>Views</th>
                 <th>Likes</th>
-                <th>Date</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -266,7 +266,7 @@ export default function Content() {
                             display: "flex",
                             flexDirection: "column",
                             gap: 6,
-                            minWidth: 220,
+                            width: "100%",
                           }}
                         >
                           <input
@@ -356,52 +356,66 @@ export default function Content() {
                         <option value="draft">Draft</option>
                       </select>
                     </td>
+                    <td>{formatDate(v)}</td>
                     <td>{v.views ?? 0}</td>
                     <td>{v.Like ?? 0}</td>
-                    <td>{formatDate(v)}</td>
                     <td>
-                      <Link to="/studio/analytics">View analytics</Link>
-                      <br />
-                      {isDeleted ? (
-                        <button
-                          type="button"
-                          className="acube-btn"
-                          onClick={() => restore(v._id)}
+                      <div className="studio-actions-cell">
+                        <Link
+                          to="/studio/analytics"
+                          className="acube-btn-secondary"
                         >
-                          Restore
-                        </button>
-                      ) : confirmDeleteId === v._id ? (
-                        <span>
+                          View analytics
+                        </Link>
+                        {isDeleted ? (
+                          <button
+                            type="button"
+                            className="acube-btn"
+                            onClick={() => restore(v._id)}
+                          >
+                            Restore
+                          </button>
+                        ) : confirmDeleteId === v._id ? (
+                          <span>
+                            <button
+                              type="button"
+                              className="acube-btn-danger"
+                              onClick={() => softDelete(v._id)}
+                            >
+                              Confirm delete
+                            </button>{" "}
+                            <button
+                              type="button"
+                              className="acube-btn-secondary"
+                              onClick={() => setConfirmDeleteId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </span>
+                        ) : (
                           <button
                             type="button"
                             className="acube-btn-danger"
-                            onClick={() => softDelete(v._id)}
+                            onClick={() => setConfirmDeleteId(v._id)}
                           >
-                            Confirm delete
-                          </button>{" "}
-                          <button
-                            type="button"
-                            className="acube-btn-secondary"
-                            onClick={() => setConfirmDeleteId(null)}
-                          >
-                            Cancel
+                            Delete
                           </button>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="acube-btn-danger"
-                          onClick={() => setConfirmDeleteId(v._id)}
-                        >
-                          Delete
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+          </div>
+          <p className="studio-note">
+            Row actions: <strong>Edit details</strong> ·{" "}
+            <strong>Change visibility</strong> ·{" "}
+            <strong>View analytics</strong> · <strong>Delete</strong>{" "}
+            (soft-delete, 30-day restore). Every action is ownership-checked
+            server-side.
+          </p>
           <nav
             aria-label="Content pages"
             style={{

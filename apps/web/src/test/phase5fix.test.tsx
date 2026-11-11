@@ -27,7 +27,6 @@ function renderRoutes(route: string, session: typeof testSession | null) {
     <InternetStatusProvider>
       <Allroutes
         seteditcreatechanelbtn={() => {}}
-        setvideouploadpage={() => {}}
       />
     </InternetStatusProvider>,
     { route, session },
@@ -68,18 +67,25 @@ describe("A — Home chips filter the feed", () => {
 });
 
 describe("B — Dashboard", () => {
-  it("shows top videos + latest comments + allTime/completions/statsSince", async () => {
+  it("shows top videos + latest comments + 4 preview KPI cards", async () => {
     renderRoutes("/studio", testSession);
     expect(await screen.findByText("Total views")).toBeInTheDocument();
-    expect(screen.getByText("Top videos")).toBeInTheDocument();
+    expect(screen.getByText("Top performing videos")).toBeInTheDocument();
     expect(screen.getByText("Latest comments")).toBeInTheDocument();
     expect(screen.getByText("Python Basics Tutorial")).toBeInTheDocument();
     expect(screen.getByText("Great tutorial!")).toBeInTheDocument();
-    expect(screen.getByText("Completions")).toBeInTheDocument();
-    expect(screen.getByText(/Stats since 2026-11-01/)).toBeInTheDocument();
-    expect(screen.getByText(/All-time totals/)).toBeInTheDocument();
-    expect(screen.getByText("Test User")).toBeInTheDocument(); // channel switcher
-    expect(screen.getByText("Upload a video")).toBeInTheDocument();
+    // Preview (image 9): exactly 4 cards — no Completions, no
+    // all-time/statsSince lines, no 28-day data table, no Upload button.
+    expect(screen.getByText("Watch time")).toBeInTheDocument();
+    expect(screen.getByText("0.7 hrs")).toBeInTheDocument(); // 42 min
+    expect(screen.queryByText("Completions")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Stats since/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/All-time totals/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Upload a video")).not.toBeInTheDocument();
+    expect(screen.getByText("Test User")).toBeInTheDocument(); // channel identity
+    expect(
+      screen.getAllByRole("link", { name: /Reply to comment/ }).length,
+    ).toBeGreaterThan(0);
   });
 });
 
@@ -211,7 +217,7 @@ describe("D — Analytics", () => {
 });
 
 describe("E — Upload wizard", () => {
-  it("walks file → details → publish and publishes via the upload endpoint", async () => {
+  it("walks file → details (publish on the same screen) and publishes via the upload endpoint", async () => {
     const user = userEvent.setup();
     renderRoutes("/studio/upload", testSession);
     expect(await screen.findByText(/Step 1 of 3/)).toBeInTheDocument();
@@ -222,12 +228,14 @@ describe("E — Upload wizard", () => {
     await user.upload(input, file);
     expect(screen.getByText(/morning-routine.mp4/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue to details" }));
+    // Preview (image 12): step 2 IS the details screen — Title /
+    // Description / Tags, thumbnail preview, Visibility, Publish +
+    // Save as draft all on this screen (no separate step 3).
     expect(await screen.findByText(/Step 2 of 3/)).toBeInTheDocument();
+    expect(screen.getByText("PREVIEW")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Title"), "How I plan my week");
     await user.type(screen.getByLabelText("Description"), "Sunday routine");
     await user.type(screen.getByLabelText("Tags"), "planning, routine");
-    await user.click(screen.getByRole("button", { name: "Continue to publish" }));
-    expect(await screen.findByText(/Step 3 of 3/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Publish" }));
     await waitFor(() => {
       // NOTE: jsdom/undici serialises the File part as filename "blob"
@@ -256,10 +264,10 @@ describe("E — Upload wizard", () => {
     const file = new File(["fake video"], "draft.mp4", { type: "video/mp4" });
     await user.upload(screen.getByLabelText("Choose video file"), file);
     await user.click(screen.getByRole("button", { name: "Continue to details" }));
-    expect(screen.getByRole("button", { name: "Continue to publish" })).toBeDisabled();
+    expect(await screen.findByText(/Step 2 of 3/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save as draft" })).toBeDisabled();
     await user.type(screen.getByLabelText("Title"), "Draft title");
-    await user.click(screen.getByRole("button", { name: "Continue to publish" }));
-    expect(await screen.findByText(/Step 3 of 3/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save as draft" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Draft" })).toBeInTheDocument();
     // Phase 5 fix: Save as draft actually submits visibility=draft
@@ -360,7 +368,9 @@ describe("G — Settings", () => {
 
   it("renders no subscribe/follower UI", async () => {
     renderRoutes("/studio/settings", testSession);
-    expect(await screen.findByText("Channel settings")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Channel settings" }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/subscribers/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/followers/i)).not.toBeInTheDocument();
   });

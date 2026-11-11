@@ -460,7 +460,9 @@ export default function Player({
             value={muted ? 0 : volume}
             aria-label="Volume"
             onChange={(e) => changeVolume(Number(e.target.value))}
-            style={{ width: 96 }}
+            // Preview palette: the native range thumb/track renders
+            // blue by default — pin it to Acube Red.
+            style={{ width: 96, accentColor: "#e8482f" }}
           />
           <span>
             {formatTime(currentTime)} / {formatTime(duration)}

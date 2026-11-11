@@ -1,9 +1,11 @@
-// Phase 5 fix — Studio Comments (preview screen F): comments on the
-// creator's own videos with Reply (nested reply box), a heart toggle,
-// Unreplied filter, timestamps, sort control and working pagination.
-// NOTE: there is no backend endpoint for liking a comment, so the
-// heart is a session-local mark (aria-pressed) until the backend adds
-// one — it is never persisted or counted server-side.
+// Phase 5 match-preview — Studio Comments (preview image 13):
+// a TABLE — Comment / Video / When / Actions — with Reply · ♥ ·
+// Delete, Unreplied filter, timestamps, sort + pagination. A pinned
+// comment shows a "Pinned" badge when the backend provides
+// pinnedByCreator. NOTE: there is no backend endpoint for liking a
+// comment, so the heart is a session-local mark (aria-pressed) until
+// the backend adds one — it is labelled honestly below the table and
+// is never persisted or counted server-side.
 import React, { useState } from "react";
 import StudioShell from "./Studio";
 import {
@@ -54,6 +56,10 @@ export default function Comments() {
   return (
     <StudioShell>
       <h1>Comments</h1>
+      <p style={{ color: "var(--text-2)", margin: "0 0 16px" }}>
+        Every comment on your videos, in one inbox · filter:{" "}
+        {filter === "unreplied" ? "Unreplied" : "All comments"}
+      </p>
       <div
         style={{
           display: "flex",
@@ -102,86 +108,124 @@ export default function Comments() {
         />
       ) : (
         <>
-          <div>
-            {comments.data.items.map((c) => (
-              <div key={c._id} className="studio-list-row">
-                <div className="studio-avatar">
-                  {(c.usercommented ?? "?").charAt(0).toUpperCase()}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <strong>{c.usercommented}</strong>
-                  {c.videotitle ? (
-                    <span style={{ color: "var(--text-2)" }}>
-                      {" "}
-                      on {c.videotitle}
-                    </span>
-                  ) : null}
-                  {c.createdAt || c.commentedon ? (
-                    <span style={{ color: "var(--text-2)" }}>
-                      {" "}
-                      ·{" "}
-                      {formatDistanceToNow(
-                        new Date(c.createdAt ?? c.commentedon ?? Date.now()),
-                        { addSuffix: true },
-                      )}
-                    </span>
-                  ) : null}
-                  <p style={{ margin: "4px 0" }}>{c.commentbody}</p>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      className="acube-btn-secondary"
-                      onClick={() =>
-                        setReplyingId(replyingId === c._id ? null : c._id)
-                      }
-                    >
-                      Reply
-                    </button>
-                    <button
-                      type="button"
-                      className="acube-btn-secondary"
-                      aria-pressed={hearted.has(c._id)}
-                      aria-label={`Heart comment by ${c.usercommented ?? "viewer"}`}
-                      onClick={() => {
-                        setHearted((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(c._id)) next.delete(c._id);
-                          else next.add(c._id);
-                          return next;
-                        });
-                      }}
-                    >
-                      {hearted.has(c._id) ? "♥ Hearted" : "♡ Heart"}
-                    </button>
-                    <button
-                      type="button"
-                      className="acube-btn-danger"
-                      onClick={() => deleteMutation.mutate(c._id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                  {replyingId === c._id ? (
-                    <form
-                      onSubmit={(e) => submitReply(e, c)}
-                      style={{ marginTop: 8 }}
-                    >
-                      <input
-                        className="acube-input"
-                        aria-label="Write a reply"
-                        placeholder="Write a reply..."
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                      />{" "}
-                      <button type="submit" className="acube-btn">
-                        Reply
-                      </button>
-                    </form>
-                  ) : null}
-                </div>
-              </div>
-            ))}
+          <div className="studio-table-wrap">
+            <table className="studio-table">
+              <thead>
+                <tr>
+                  <th>Comment</th>
+                  <th>Video</th>
+                  <th>When</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comments.data.items.map((c) => (
+                  <React.Fragment key={c._id}>
+                    <tr>
+                      <td>
+                        <strong>{c.commentbody}</strong>
+                        {c.pinnedByCreator ? (
+                          <>
+                            {" "}
+                            <span className="acube-badge acube-badge-public">
+                              📌 Pinned
+                            </span>
+                          </>
+                        ) : null}
+                        <br />
+                        <span style={{ color: "var(--text-2)" }}>
+                          {c.usercommented ?? "Viewer"}
+                        </span>
+                      </td>
+                      <td>{c.videotitle ?? "—"}</td>
+                      <td>
+                        {c.createdAt || c.commentedon
+                          ? formatDistanceToNow(
+                              new Date(c.createdAt ?? c.commentedon ?? Date.now()),
+                              { addSuffix: true },
+                            )
+                          : "—"}
+                      </td>
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className="acube-btn-secondary"
+                            onClick={() =>
+                              setReplyingId(replyingId === c._id ? null : c._id)
+                            }
+                          >
+                            Reply
+                          </button>
+                          <span aria-hidden="true">·</span>
+                          <button
+                            type="button"
+                            className="acube-btn-secondary"
+                            aria-pressed={hearted.has(c._id)}
+                            aria-label={`Heart comment by ${c.usercommented ?? "viewer"}`}
+                            onClick={() => {
+                              setHearted((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(c._id)) next.delete(c._id);
+                                else next.add(c._id);
+                                return next;
+                              });
+                            }}
+                          >
+                            {hearted.has(c._id) ? "♥ Hearted" : "♡ Heart"}
+                          </button>
+                          <span aria-hidden="true">·</span>
+                          <button
+                            type="button"
+                            className="acube-btn-danger"
+                            onClick={() => deleteMutation.mutate(c._id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {replyingId === c._id ? (
+                      <tr>
+                        <td colSpan={4}>
+                          <form
+                            onSubmit={(e) => submitReply(e, c)}
+                            style={{ display: "flex", gap: 8 }}
+                          >
+                            <input
+                              className="acube-input"
+                              aria-label="Write a reply"
+                              placeholder="Write a reply..."
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              style={{ flex: 1 }}
+                            />
+                            <button type="submit" className="acube-btn">
+                              Reply
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
           </div>
+          <p className="studio-note">
+            Moderation rule: a creator can delete comments{" "}
+            <strong>only on their own videos</strong> — enforced in the API,
+            not just hidden in the UI. Hearts are session-only for now (no
+            comment-like endpoint yet) and are not saved.
+          </p>
           <nav
             aria-label="Comments pages"
             style={{

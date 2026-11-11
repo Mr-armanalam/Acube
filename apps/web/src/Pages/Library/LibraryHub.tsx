@@ -6,7 +6,6 @@
 // duplication is deleted — this hub is the only library page.
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
-import Leftsidebar from "../../Component/Leftsidebar/Leftsidebar";
 import { useAppSelector } from "../../store";
 import {
   useCreatePlaylist,
@@ -116,9 +115,6 @@ export default function LibraryHub() {
 
   return (
     <div className="container_Pages_App">
-      <div className="at_small_sizel">
-        <Leftsidebar />
-      </div>
       <div className="container2_Pages_App" style={{ padding: 24 }}>
         <h1>Your library</h1>
         <p style={{ color: "var(--text-2)" }}>
@@ -324,7 +320,7 @@ export default function LibraryHub() {
             <Link to="/history" className="acube-btn-secondary">
               Watch history
             </Link>
-            <Link to="/Yourvideo" className="acube-btn-secondary">
+            <Link to="/studio/content" className="acube-btn-secondary">
               Your videos
             </Link>
             <Link to="/studio" className="acube-btn-secondary">

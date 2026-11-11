@@ -20,7 +20,6 @@ function renderRoutes(route: string, session: typeof testSession | null) {
     <InternetStatusProvider>
       <Allroutes
         seteditcreatechanelbtn={() => {}}
-        setvideouploadpage={() => {}}
       />
     </InternetStatusProvider>,
     { route, session },
@@ -40,9 +39,18 @@ describe("Studio", () => {
     renderRoutes("/studio", testSession);
     expect(await screen.findByText("160")).toBeInTheDocument();
     expect(screen.getByText("Total views")).toBeInTheDocument();
+    // Preview (image 9): exactly 4 KPI cards, real watch-time hours.
+    expect(screen.getByText("Likes")).toBeInTheDocument();
+    expect(screen.getByText("Videos")).toBeInTheDocument();
+    expect(screen.getByText("Watch time")).toBeInTheDocument();
+    expect(screen.getByText("0.7 hrs")).toBeInTheDocument(); // 42 min
+    expect(screen.queryByText("Total comments")).not.toBeInTheDocument();
+    expect(screen.queryByText("Completions")).not.toBeInTheDocument();
     expect(screen.getByText("Python Basics Tutorial")).toBeInTheDocument();
     expect(screen.getByText("Great tutorial!")).toBeInTheDocument();
-    expect(screen.getByText("Upload a video")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: /Reply to comment/ }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("Content edit calls PATCH /video/:id with the new title", async () => {
@@ -138,11 +146,15 @@ describe("Studio", () => {
   it("Analytics renders the chart from the mocked series", async () => {
     renderRoutes("/studio/analytics", testSession);
     expect(await screen.findByText("50")).toBeInTheDocument();
-    expect(screen.getByText("Best day")).toBeInTheDocument();
-    // Contract fix: bestDay is { date, views }, rendered as one card.
-    expect(screen.getByText("2026-11-02 · 25 views")).toBeInTheDocument();
-    expect(screen.getAllByText("2026-11-02").length).toBeGreaterThanOrEqual(1);
-    // Text-table fallback carries the same series.
+    // Preview (image 11): chart + exactly 4 cards, Top source honest.
+    expect(screen.getByText("Views (28d)")).toBeInTheDocument();
+    expect(screen.getByText("Avg views / video")).toBeInTheDocument();
+    expect(screen.getByText("Like rate")).toBeInTheDocument();
+    expect(screen.getByText("Top source")).toBeInTheDocument();
+    expect(screen.getByText("Not tracked yet")).toBeInTheDocument();
+    expect(screen.getByText("Peak · 25 views")).toBeInTheDocument();
+    expect(screen.queryByText("Best day")).not.toBeInTheDocument();
+    // Text-table fallback carries the same series (screen-reader only).
     const table = screen.getByLabelText("Views — last 28 days data table");
     expect(within(table).getByText("2026-11-01")).toBeInTheDocument();
     expect(within(table).getByText("25")).toBeInTheDocument();

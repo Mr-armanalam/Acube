@@ -1,21 +1,26 @@
-// Phase 5 fix — Creator Studio shell: 240px left nav on desktop, top
-// tab bar on mobile. Channel switcher (preview §4): shows the caller's
-// own channel; when only one channel exists it shows that single
-// channel — multiple channels are never faked. Upload is a nav item
-// routing to the /studio/upload wizard.
-import React from "react";
+// Phase 5 match-preview — Creator Studio shell (preview images 9–15):
+// a standalone shell with NO Your-Tube navbar (App.tsx hides it on
+// /studio/*). Left nav: channel identity at top (avatar + real channel
+// name from the API + "Creator Studio"), then Dashboard / Content /
+// Analytics / Comments / Upload / Channel settings with a red active
+// pill. The identity text is always the real channel — the preview's
+// "Code Streamer" is its example channel, never hardcoded here.
+// Channel switcher (preview §4): shows the caller's own channel; when
+// only one channel exists it shows that single channel — multiple
+// channels are never faked.
+import React, { useState } from "react";
 import { NavLink, Link } from "react-router";
 import { useAppSelector } from "../../store";
 import { useStudioOverview } from "../../query/hooks";
 import "./Studio.css";
 
 const NAV = [
-  { to: "/studio", label: "Dashboard", end: true },
-  { to: "/studio/content", label: "Content", end: false },
-  { to: "/studio/analytics", label: "Analytics", end: false },
-  { to: "/studio/comments", label: "Comments", end: false },
-  { to: "/studio/upload", label: "Upload", end: false },
-  { to: "/studio/settings", label: "Settings", end: false },
+  { to: "/studio", label: "Dashboard", icon: "▦", end: true },
+  { to: "/studio/content", label: "Content", icon: "▤", end: false },
+  { to: "/studio/analytics", label: "Analytics", icon: "↗", end: false },
+  { to: "/studio/comments", label: "Comments", icon: "✦", end: false },
+  { to: "/studio/upload", label: "Upload", icon: "+", end: false },
+  { to: "/studio/settings", label: "Channel settings", icon: "⚙", end: false },
 ];
 
 export default function StudioShell({
@@ -29,35 +34,53 @@ export default function StudioShell({
   const channel = overview.data?.channel;
   const channelName = channel?.name ?? sessionName ?? "Your channel";
   const channelInitial = channelName.charAt(0).toUpperCase();
+  // The seeded banner/avatar URLs are example.com placeholders that do
+  // not resolve to real images; a broken <img> icon must never show,
+  // so a failed avatar falls back to the initials circle.
+  const avatarUrl = channel?.picture ?? undefined;
+  const [avatarBroken, setAvatarBroken] = useState(false);
 
   return (
     <div className="studio-shell">
       <nav className="studio-nav" aria-label="Creator Studio">
-        <div className="studio-channel-switcher" aria-label="Channel">
-          <span className="studio-avatar" aria-hidden="true">
-            {channelInitial}
-          </span>
-          <span className="studio-channel-switcher-text">
+        <div className="studio-identity">
+          {avatarUrl && !avatarBroken ? (
+            <img
+              className="studio-identity-avatar-img"
+              src={avatarUrl}
+              alt=""
+              onError={() => setAvatarBroken(true)}
+            />
+          ) : (
+            <span className="studio-identity-avatar" aria-hidden="true">
+              {channelInitial}
+              {channelName.charAt(1)?.toUpperCase() ?? ""}
+            </span>
+          )}
+          <span className="studio-identity-text">
             <strong>{channelName}</strong>
-            <span>1 channel</span>
+            <span>Creator Studio</span>
           </span>
         </div>
-        <div className="studio-nav-title">Creator Studio</div>
         {NAV.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
-            className={({ isActive }) => (isActive ? "active" : "")}
+            className={({ isActive }) =>
+              `studio-nav-link${isActive ? " active" : ""}`
+            }
           >
+            <span className="studio-nav-icon" aria-hidden="true">
+              {item.icon}
+            </span>
             {item.label}
           </NavLink>
         ))}
-        {userId ? (
-          <Link to={`/channel/${userId}`} style={{ marginTop: 16 }}>
-            View channel
-          </Link>
-        ) : null}
+        <div className="studio-nav-footer">
+          <Link to="/">↩ Back to Acube</Link>
+          {userId ? <Link to={`/channel/${userId}`}>Your channel ↗</Link> : null}
+        </div>
       </nav>
       <div className="studio-mobile-tabs" aria-label="Creator Studio">
         {NAV.map((item) => (

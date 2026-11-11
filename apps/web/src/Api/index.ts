@@ -33,7 +33,7 @@ API.interceptors.request.use((req: InternalAxiosRequestConfig) => {
 });
 
 // 401 = the session is no longer valid (e.g. JWT expired). Clear the stored
-// session and send the user to the home page, where the Navbar offers
+// session and send the user to the home page, where the TopBar offers
 // Google sign-in. Guard: only redirect when a token was actually present,
 // so a 401 on a public request can never loop back onto itself.
 API.interceptors.response.use(
