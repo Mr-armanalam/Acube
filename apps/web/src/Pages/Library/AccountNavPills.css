@@ -1,0 +1,41 @@
+/* Shared account pill nav (preview screens I + J). Tokens: Obsidian
+ * #0C0B0A / Acube Red #E8482F / Bone #F2EEE6; Plus Jakarta Sans
+ * headings, Manrope UI text. The active pill is bone on dark (via
+ * var(--text) / var(--bg) so it stays readable in the light theme). */
+.account-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: 600 14px/20px "Manrope", sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.account-pill:hover {
+  border-color: var(--text-2);
+  text-decoration: none;
+}
+
+.account-pill-active {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+.account-pill-icon {
+  font-size: 13px;
+  line-height: 1;
+}

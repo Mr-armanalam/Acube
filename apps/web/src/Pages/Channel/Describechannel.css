@@ -1,88 +1,19 @@
-.container3_chanel {
-  display: flex;
-  border-bottom: 3px solid #011a60b0;
-  padding: 0.5rem;
-  color: var(--forground_text) smoke;
-  position: relative;
-  color: var(--channel_text);
-  /* overflow-y: auto; */
+/* Channel header + tabs, rebuilt to the approved preview (image-26):
+ * Obsidian #0C0B0A, Acube Red #E8482F, Bone #F2EEE6; Plus Jakarta Sans
+ * headings, Manrope UI text. Banner with the avatar circle overlapping
+ * its bottom edge; left-aligned identity; tabs Home / Videos /
+ * Playlists / Posts + search. */
+.channel_header {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Manrope", sans-serif;
+  padding-bottom: 0.5rem;
 }
-.reputation_cont{
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-.credit{
-  display: flex;
-  gap: 20px;
-  font-weight: 700;
-  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
-}
-.credit>div, .premium{
-  border: 1px solid var(--channel_text);
-  height: 40px;
-  border-radius: 20px;
-  display: block;
-  align-content: center;
-  max-width: 300px;
-  padding-inline: 20px;
-  background: none;
-  color: var(--channel_text);
-}
-
-.credit>div>span, .premium>span, .download>span{
-  color: #e78c0e;
-}
-
-button {
-  cursor: pointer;
-}
-.premium:hover{
-  background-color: var(--channel_text);
-  color: black;
-}
-
-.download{
-  display: flex;
-  max-width: 50px;
-  gap: 5px;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: large;
-}
-
-.channel_details{
-  flex: 1;
-}
-.edit_crete_cont{
-  flex: 1;
-}
-.chanel_logo_chanel {
-  border: 10px solid var(--channel_text);
-  width: 5rem;
-  height: 5rem;
-  border-radius: 100%;
-  display: flex;
-  margin: 0 auto;
-  background-color: var(--channel_avatar_bg);
-  overflow: hidden;
-}
-.chanel_logo_chanel img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 100%;
-}
-/* Settings polish: the uploaded banner sits above the channel
-   header; without one the preview gradient shows instead. */
 .channel_banner {
-  height: 9rem;
+  height: 10rem;
   background-size: cover;
   background-position: center;
-  border-radius: 0.5rem;
-  margin-bottom: 0.5rem;
+  border-radius: 12px;
 }
 .channel_banner--gradient {
   background-image: linear-gradient(
@@ -93,38 +24,210 @@ button {
     #f59e0b 100%
   );
 }
-.chanel_logo_chanel b {
+.channel_identity {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: 0 1.5rem;
+}
+.channel_avatar {
+  flex-shrink: 0;
+  width: 6.5rem;
+  height: 6.5rem;
+  margin-top: -3.25rem;
+  border: 4px solid var(--bg);
+  border-radius: 100%;
+  background-color: var(--surface-2);
+  overflow: hidden;
+  display: flex;
+}
+.channel_avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.channel_avatar b {
   margin: auto;
   font-size: 3rem;
+  font-family: "Plus Jakarta Sans", "Manrope", system-ui, sans-serif;
+  color: var(--text);
 }
-.description_chanel {
-  text-align: center;
+.channel_info {
+  padding-top: 1rem;
+  min-width: 0;
 }
-.description_chanel b {
-  font-size: 4rem;
+.channel_name {
+  font-family: "Plus Jakarta Sans", "Manrope", system-ui, sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text);
 }
-.description_chanel p {
-  font-size: large;
+.channel_meta {
+  margin: 0.25rem 0 0;
+  color: var(--text-2);
+  font-size: 0.95rem;
 }
-.uploadbtn_chanel,
-.editbtn_chanel {
-  position: absolute;
-  right: 1rem;
-  top: 0.5rem;
-  background-color: var(--channel_edit_bg);
-  padding: 0.5rem;
-  border: 2px solid transparent;
-  border-radius: 0.5rem;
-  color: var(--forground_text);
-  transition: all 1s;
+.channel_desc {
+  margin: 0.5rem 0 0;
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.channel_desc_more {
+  background: none;
+  border: 0;
+  padding: 0 0 0 0.25rem;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
   cursor: pointer;
 }
-.uploadbtn_chanel {
-  top: 4rem;
+.channel_actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
 }
-.uploadbtn_chanel:hover,
-.editbtn_chanel:hover {
-  border: 2px solid;
-  color: #e78c0e;
-  color: var(--channel_edit_brdr);
+.channel_owner_btn {
+  display: inline-block;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.channel_owner_btn:hover {
+  border-color: var(--accent);
+}
+/* Disabled on purpose: no subscribe system exists, so the button must
+ * not fake a subscription. */
+.channel_subscribe {
+  background: #f2eee6;
+  color: #0c0b0a;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.6rem 1.25rem;
+  font: 600 0.95rem/1 "Manrope", sans-serif;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+.channel_subscribe_soon {
+  color: var(--text-2);
+  font-size: 0.85rem;
+}
+.channel_empty {
+  color: var(--text-2);
+  text-align: center;
+  padding: 3rem 1rem;
+  font-family: "Manrope", sans-serif;
+}
+.channel_empty_sub {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+/* --- Tabs --- */
+.channel_tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  padding: 0 1rem;
+  margin-top: 0.5rem;
+  font-family: "Manrope", sans-serif;
+}
+.channel_tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-2);
+  font: 600 0.95rem/1 "Manrope", sans-serif;
+  padding: 0.75rem;
+  cursor: pointer;
+}
+.channel_tab:hover {
+  color: var(--text);
+}
+.channel_tab--active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.channel_search_btn {
+  margin-left: auto;
+  background: none;
+  border: 0;
+  color: var(--text-2);
+  padding: 0.75rem;
+  cursor: pointer;
+  display: flex;
+}
+.channel_search_btn:hover {
+  color: var(--text);
+}
+.channel_search_input {
+  display: block;
+  width: calc(100% - 2rem);
+  margin: 1rem auto 0;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font: 400 0.95rem/1.4 "Manrope", sans-serif;
+}
+/* --- Playlists tab --- */
+.channel_playlist_grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem 1rem;
+}
+.channel_playlist_card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1rem;
+  color: var(--text);
+  text-decoration: none;
+  font-family: "Manrope", sans-serif;
+}
+.channel_playlist_card:hover {
+  border-color: var(--accent);
+}
+.channel_playlist_title {
+  font-family: "Plus Jakarta Sans", "Manrope", system-ui, sans-serif;
+  font-weight: 700;
+}
+.channel_playlist_meta {
+  color: var(--text-2);
+  font-size: 0.85rem;
+}
+.channel_playlist_desc {
+  color: var(--text-2);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .channel_identity {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0 1rem;
+  }
+  .channel_info {
+    padding-top: 0;
+  }
+  .channel_name {
+    font-size: 1.6rem;
+  }
+  .channel_banner {
+    height: 7rem;
+  }
 }

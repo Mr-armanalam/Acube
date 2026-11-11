@@ -8,7 +8,7 @@
 // never invented.
 import React from "react";
 import { Link } from "react-router";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import StudioShell from "./Studio";
 import {
   StatCard,

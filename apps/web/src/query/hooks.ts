@@ -811,6 +811,37 @@ export function useStudioPlaylists() {
   });
 }
 
+// Channel page Playlists tab: the channel's public playlists.
+// GET /channel/:id/playlists is PROPOSED — no backend route exists
+// yet (GET /studio/playlists is owner-only; GET /watch/:id/playlists
+// lists the playlists containing one video). Until the backend route
+// lands, the query falls back to the owner-only list when the viewer
+// IS the channel owner, so the owner's own tab still shows real
+// playlists; any other viewer gets an honest load error instead of a
+// faked empty list. The fallback shows public playlists only — a
+// private playlist never appears on the public channel page.
+export function useChannelPlaylists(id: string | undefined) {
+  const session = useAppSelector((s) => s.auth.session);
+  const isOwner = !!id && session?.result._id === id;
+  return useQuery({
+    queryKey: queryKeys.channelPlaylists(id ?? ""),
+    enabled: !!id,
+    queryFn: async (): Promise<Playlist[]> => {
+      try {
+        const { data } = await api.getChannelPlaylists(id as string);
+        return unwrapPage<Playlist>(data);
+      } catch (error) {
+        if (!isOwner) throw error;
+        const { data } = await api.getStudioPlaylists();
+        return unwrapPage<Playlist>(data).filter(
+          (playlist) =>
+            playlist.owner === id && playlist.visibility === "public",
+        );
+      }
+    },
+  });
+}
+
 // Phase 5 contract fix: the /playlist/:id page reads the PUBLIC
 // endpoint (another creator's public/unlisted playlist, or a logged-out
 // visitor, must not 404 just because the owner-only list is empty).

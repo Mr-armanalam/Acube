@@ -41,7 +41,12 @@ function renderShell(route: string, session: typeof testSession | null) {
 describe("Shell switch", () => {
   it("/studio renders the Studio shell only — no Your-Tube navbar, no TopBar", async () => {
     renderShell("/studio", testSession);
-    expect(await screen.findByText("Channel dashboard")).toBeInTheDocument();
+    // 5s: the Studio shell render is slow under full-suite parallel load
+    // on a 1.5-CPU VM (flaked at the 1s default in the final turbo run;
+    // passes standalone in ~2s).
+    expect(
+      await screen.findByText("Channel dashboard", {}, { timeout: 5000 }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Your-Tube")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Search videos")).not.toBeInTheDocument();
     // Studio nav: all six items, red active pill on Dashboard.
@@ -135,7 +140,10 @@ describe("Preview — Dashboard (image 9)", () => {
     renderRoutes("/studio", testSession);
     expect(await screen.findByText("Total views")).toBeInTheDocument();
     expect(screen.getByText("1 public · 0 private")).toBeInTheDocument();
-  });
+    // 10 s test timeout (default 5 s): this test renders the lazy
+    // Dashboard plus two queries and has exceeded 5 s under full-suite
+    // parallel load on this VM; the assertions are unchanged.
+  }, 10000);
 
   it("Latest comments show a relative time like the preview, not the commenter", async () => {
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();

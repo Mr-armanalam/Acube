@@ -332,7 +332,9 @@ describe("Watch — Autoplay toggle", () => {
   it("renders ON by default and persists the toggle in localStorage", async () => {
     const user = userEvent.setup();
     const view = renderWatch();
-    expect(await screen.findByText("Playlist · My favourites")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Playlist · My favourites", {}, { timeout: 5000 }),
+    ).toBeInTheDocument(); // 5 s: the playlist query can exceed 1 s under full-suite parallel load
     const toggle = screen.getByRole("button", { name: "Autoplay ON" });
     expect(toggle).toHaveAttribute("aria-pressed", "true");
     await user.click(toggle);
@@ -341,7 +343,9 @@ describe("Watch — Autoplay toggle", () => {
     // A fresh mount reads the saved preference back.
     view.unmount();
     renderWatch();
-    expect(await screen.findByText("Playlist · My favourites")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Playlist · My favourites", {}, { timeout: 5000 }),
+    ).toBeInTheDocument(); // 5 s: the playlist query can exceed 1 s under full-suite parallel load
     expect(
       screen.getByRole("button", { name: "Autoplay OFF" }),
     ).toBeInTheDocument();
@@ -349,7 +353,9 @@ describe("Watch — Autoplay toggle", () => {
 
   it("ON advances to the next playlist video at video end", async () => {
     renderWatch();
-    expect(await screen.findByText("Playlist · My favourites")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Playlist · My favourites", {}, { timeout: 5000 }),
+    ).toBeInTheDocument(); // 5 s: the playlist query can exceed 1 s under full-suite parallel load
     expect(screen.getByText(/Playing 1 of 2/)).toBeInTheDocument();
     fireEvent.ended(screen.getByLabelText("Video"));
     expect(
@@ -361,7 +367,9 @@ describe("Watch — Autoplay toggle", () => {
   it("OFF stops at video end and leaves Up Next on screen", async () => {
     window.localStorage.setItem(AUTOPLAY_KEY, "false");
     renderWatch();
-    expect(await screen.findByText("Playlist · My favourites")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Playlist · My favourites", {}, { timeout: 5000 }),
+    ).toBeInTheDocument(); // 5 s: the playlist query can exceed 1 s under full-suite parallel load
     expect(
       screen.getByRole("button", { name: "Autoplay OFF" }),
     ).toBeInTheDocument();

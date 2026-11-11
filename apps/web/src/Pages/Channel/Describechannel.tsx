@@ -1,19 +1,33 @@
 import React, { useState } from "react";
 import "./Describechannel.css";
-import { FaEdit, FaUpload } from "react-icons/fa";
-import { MdFileDownload } from "react-icons/md";
 import { Link } from "react-router";
 import { useAppSelector } from "../../store";
-import { useChannelById } from "../../query/hooks";
+import { useChannelById, useChannels } from "../../query/hooks";
 import { resolveApiMediaUrl } from "../../Api";
+
+// Channel header, rebuilt to the approved preview (image-26): wide
+// banner, avatar circle overlapping the banner's bottom edge, channel
+// name, "@handle · N videos", description with "…more" expansion, and
+// — for the owner — "Customize channel" (Studio Settings) + "Manage
+// videos" (Studio Analytics) instead of the old "Edit Channel" /
+// "Upload Video" buttons.
+//
+// NO subscribe system exists (explicit cut): there is no follow
+// endpoint and no subscriber count anywhere in the app, so the
+// Subscribe button is rendered disabled with a "Coming soon"
+// affordance and no subscriber number is ever shown. The old "⬇ 0"
+// download counter and the "Points: 100" / "Premium: active" pills
+// are gone with the old header.
+const DESCRIPTION_PREVIEW_CHARS = 140;
 
 const Describechannel = ({
   cid,
-  seteditcreatechanelbtn,
+  videoCount,
 }: {
   cid: string | undefined;
-  seteditcreatechanelbtn: (v: boolean) => void;
+  videoCount: number | undefined;
 }) => {
+  const { isLoading: channelsLoading } = useChannels();
   const currentchannel = useChannelById(cid);
   const currentuser = useAppSelector((s) => s.auth.session);
   // Settings polish fix: the channel header used to render only the
@@ -26,44 +40,51 @@ const Describechannel = ({
   );
   const bannerUrl = resolveApiMediaUrl(currentchannel?.bannerUrl);
   const [avatarBroken, setAvatarBroken] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
+
+  if (channelsLoading && !currentchannel) {
+    return <p className="channel_empty">Loading channel…</p>;
+  }
+  if (cid && !currentchannel) {
+    return <p className="channel_empty">This channel doesn&apos;t exist.</p>;
+  }
+
+  const isOwner =
+    !!currentchannel && currentuser?.result._id === currentchannel._id;
+  // The handle is set in Studio Settings; GET /user/getallchannel
+  // projects it, falling back to the username for a channel with no
+  // handle set (the projection carries username for exactly this).
+  const handle = currentchannel?.handle ?? currentchannel?.username;
+  const stats = [
+    handle ? `@${handle}` : null,
+    videoCount === undefined
+      ? null
+      : `${videoCount} ${videoCount === 1 ? "video" : "videos"}`,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(" · ");
+  const desc = currentchannel?.desc ?? "";
+  const descTruncated =
+    desc.length > DESCRIPTION_PREVIEW_CHARS && !descExpanded;
 
   return (
-    <>
-    {bannerUrl ? (
-      <div
-        className="channel_banner"
-        style={{ backgroundImage: `url("${bannerUrl}")` }}
-        role="img"
-        aria-label="Channel banner"
-      />
-    ) : (
-      <div
-        className="channel_banner channel_banner--gradient"
-        role="img"
-        aria-label="Channel banner"
-      />
-    )}
-    <div className="container3_chanel">
-      <div className="reputation_cont">
-        <div className="download">
-          <MdFileDownload />{" "}
-          <span>{currentuser?.result?.downloadsToday || "0"}</span>
-        </div>
-        <div className="credit">
-          <div>
-            Points: <span>{currentuser?.result?.reputation}</span>
-          </div>
-          <button className="premium">
-            Premium:{" "}
-            <span>{`${
-              currentuser?.result?.isPremium ? "active" : "Buy $"
-            }`}</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="channel_details">
-        <div className="chanel_logo_chanel">
+    <header className="channel_header">
+      {bannerUrl ? (
+        <div
+          className="channel_banner"
+          style={{ backgroundImage: `url("${bannerUrl}")` }}
+          role="img"
+          aria-label="Channel banner"
+        />
+      ) : (
+        <div
+          className="channel_banner channel_banner--gradient"
+          role="img"
+          aria-label="Channel banner"
+        />
+      )}
+      <div className="channel_identity">
+        <div className="channel_avatar">
           {avatarUrl && !avatarBroken ? (
             <img
               src={avatarUrl}
@@ -74,28 +95,52 @@ const Describechannel = ({
             <b>{currentchannel?.name?.charAt(0).toUpperCase()}</b>
           )}
         </div>
-        <div className="description_chanel">
-          <b>{currentchannel?.name}</b>
-          <p>{currentchannel?.desc}</p>
+        <div className="channel_info">
+          <h1 className="channel_name">{currentchannel?.name}</h1>
+          {stats ? <p className="channel_meta">{stats}</p> : null}
+          {desc ? (
+            <p className="channel_desc">
+              {descTruncated
+                ? desc.slice(0, DESCRIPTION_PREVIEW_CHARS)
+                : desc}
+              {desc.length > DESCRIPTION_PREVIEW_CHARS ? (
+                <button
+                  type="button"
+                  className="channel_desc_more"
+                  onClick={() => setDescExpanded((v) => !v)}
+                >
+                  {descExpanded ? "Show less" : "…more"}
+                </button>
+              ) : null}
+            </p>
+          ) : null}
+          <div className="channel_actions">
+            {isOwner ? (
+              <>
+                <Link to="/studio/settings" className="channel_owner_btn">
+                  Customize channel
+                </Link>
+                <Link to="/studio/analytics" className="channel_owner_btn">
+                  Manage videos
+                </Link>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="channel_subscribe"
+                  disabled
+                  title="Subscriptions aren't available yet"
+                >
+                  Subscribe
+                </button>
+                <span className="channel_subscribe_soon">Coming soon</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
-      {currentuser?.result._id === currentchannel?._id && (
-        <div className="edit_crete_cont">
-          <p
-            className="editbtn_chanel"
-            onClick={() => seteditcreatechanelbtn(true)}
-          >
-            <FaEdit />
-            <b>Edit Channel</b>
-          </p>
-          <Link to="/studio/upload" className="uploadbtn_chanel">
-            <FaUpload />
-            <b>Upload Video</b>
-          </Link>
-        </div>
-      )}
-    </div>
-    </>
+    </header>
   );
 };
 

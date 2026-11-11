@@ -19,7 +19,7 @@ import {
   useStudioComments,
 } from "../../query/hooks";
 import { useAppSelector } from "../../store";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 
 export default function Comments() {
   const [page, setPage] = useState(1);

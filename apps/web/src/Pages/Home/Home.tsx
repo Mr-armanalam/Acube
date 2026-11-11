@@ -1,58 +1,127 @@
-// Phase 5 fix — Home (preview screen A): Obsidian/Red tokens, Plus
-// Jakarta Sans + Manrope, topic chips that ACTUALLY filter the feed,
-// 16:9 thumbnails + duration badges + avatars (Showvideo), Upload pill
-// routing into Studio. Chip topics come from the preview; filtering is
-// client-side keyword matching over title/tags/uploader because there
-// is no server-side topic endpoint.
-import React, { useMemo, useState } from "react";
-import { Link } from "react-router";
+// Home (approved preview, screen A): Obsidian/Red tokens, Plus Jakarta
+// Sans + Manrope, 16:9 thumbnails + duration badges + avatars, and a
+// chips row with NO background and NO Upload button (the TopBar keeps
+// its own + Upload).
+//
+// Categories are REAL: the chip list is built from the distinct tags
+// present in the loaded videos (plus "All"), so a chip can never match
+// zero videos. Clicking a chip filters client-side to videos carrying
+// that tag (case-insensitive); a video with no tags shows only under
+// "All". No hardcoded topic list, no keyword guessing over titles —
+// the API has no topic endpoint and none is needed.
+//
+// Pagination: the feed loads page 1 only (HOME_PAGE_SIZE = 20) and
+// appends further pages via an IntersectionObserver sentinel at the
+// end of the grid, with a "Load more" fallback button. Pages are
+// deduped by video id. Changing the tag filter resets pagination to
+// page 1 (the extra pages are dropped from the cache — page 1 is
+// already loaded, so the reset itself fires no new request).
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import "./Home.css";
-import Showvideogrid from "../../Component/Showvideogrid/Showvideogrid";
+import HomeVideoCard from "./HomeVideoCard";
 import LoadingCard from "../../Component/LoadingCard";
-import { useVideos } from "../../query/hooks";
+import {
+  dedupeVideos,
+  resetPagedVideosToFirstPage,
+  usePagedVideos,
+} from "./usePagedVideos";
 
-const TOPICS: Array<{ label: string; keywords: string[] }> = [
-  { label: "All", keywords: [] },
-  {
-    label: "Motivation",
-    keywords: ["motivat", "success", "routine", "plan", "patience", "gear"],
-  },
-  { label: "Nature", keywords: ["nature", "lake", "ocean", "forest"] },
-  {
-    label: "Learning",
-    keywords: ["learn", "python", "java", "react", "tutorial", "code"],
-  },
-  { label: "Music", keywords: ["music", "sound"] },
-  {
-    label: "Coding",
-    keywords: ["code", "coding", "python", "java", "react", "tutorial"],
-  },
-];
+// Sentinel / Load-more / end-of-list styles live inline here (exact
+// preview tokens) so no shared stylesheet is touched: the active chip
+// is the #f2eee6 pill, body text is var(--forground_text).
+const sentinelStatusStyle: React.CSSProperties = {
+  color: "var(--forground_text)",
+  padding: "1rem",
+  textAlign: "center",
+  font: "600 13px/20px Manrope, sans-serif",
+};
+
+const loadMoreStyle: React.CSSProperties = {
+  display: "block",
+  margin: "0.5rem auto 2rem",
+  padding: "0.5rem 1.25rem",
+  borderRadius: "999px",
+  cursor: "pointer",
+  border: "1px solid #f2eee6",
+  backgroundColor: "#f2eee6",
+  color: "#0c0b0a",
+  font: "600 13px/20px Manrope, sans-serif",
+};
 
 const Home = () => {
-  const { data, isLoading, isError } = useVideos();
+  const queryClient = useQueryClient();
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = usePagedVideos();
   const [topic, setTopic] = useState("All");
-  const vids = useMemo(
-    () => (data ? [...data].filter(Boolean) : undefined),
-    [data],
-  );
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const vids = useMemo(() => dedupeVideos(data?.pages ?? []), [data]);
+
+  // Distinct tags in first-seen order (deduped case-insensitively,
+  // keeping the first-seen casing for the label), "All" first.
+  const categories = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const v of vids ?? []) {
+      for (const tag of v.tags ?? []) {
+        const trimmed = tag.trim();
+        if (!trimmed) continue;
+        const key = trimmed.toLowerCase();
+        if (!seen.has(key)) seen.set(key, trimmed);
+      }
+    }
+    return ["All", ...seen.values()];
+  }, [vids]);
+
+  // If the selected tag is gone from the loaded videos (e.g. after a
+  // refetch), fall back to "All" instead of showing an empty grid.
+  const effectiveTopic = categories.includes(topic) ? topic : "All";
+
   const filtered = useMemo(() => {
     if (!vids) return undefined;
-    if (topic === "All") return vids;
-    const entry = TOPICS.find((t) => t.label === topic);
-    if (!entry) return vids;
-    return vids.filter((v) => {
-      const haystack = [
-        v.videotitle,
-        v.description ?? "",
-        ...(v.tags ?? []),
-        v.uploader ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      return entry.keywords.some((k) => haystack.includes(k));
-    });
-  }, [vids, topic]);
+    if (effectiveTopic === "All") return vids;
+    const wanted = effectiveTopic.toLowerCase();
+    return vids.filter((v) =>
+      (v.tags ?? []).some((t) => t.toLowerCase() === wanted),
+    );
+  }, [vids, effectiveTopic]);
+
+  // Tag change resets pagination to page 1 (drops any loaded pages
+  // past the first; page 1 itself is not refetched).
+  const handleTopic = (label: string) => {
+    setTopic(label);
+    resetPagedVideosToFirstPage(queryClient);
+  };
+
+  // Auto-load the next page when the sentinel scrolls near the
+  // viewport (200px early, so the next rows are ready before the
+  // user reaches them). The "Load more" button below is the fallback
+  // when the observer never fires. Guarded: jsdom / old browsers
+  // have no IntersectionObserver, and the sentinel only exists once
+  // the grid has rendered.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasNextPage) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries.some((entry) => entry.isIntersecting) &&
+          !isFetchingNextPage
+        ) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const isEmpty = !isLoading && !isError && filtered?.length === 0;
 
@@ -60,20 +129,17 @@ const Home = () => {
     <div className="container_Pages_App">
       <div className="container2_Pages_App">
         <div className="navigation_Home" role="group" aria-label="Topics">
-          {TOPICS.map((t) => (
+          {categories.map((label) => (
             <button
-              key={t.label}
+              key={label}
               type="button"
-              className={`btn_nav_home${topic === t.label ? " active" : ""}`}
-              aria-pressed={topic === t.label}
-              onClick={() => setTopic(t.label)}
+              className={`btn_nav_home${effectiveTopic === label ? " active" : ""}`}
+              aria-pressed={effectiveTopic === label}
+              onClick={() => handleTopic(label)}
             >
-              {t.label}
+              {label}
             </button>
           ))}
-          <Link to="/studio/upload" className="home-upload-pill">
-            + Upload
-          </Link>
         </div>
         {isLoading ? (
           <LoadingCard />
@@ -83,12 +149,39 @@ const Home = () => {
           </p>
         ) : isEmpty ? (
           <p style={{ color: "var(--forground_text)", padding: "1rem" }}>
-            {topic === "All"
+            {effectiveTopic === "All"
               ? "No videos yet. Be the first to upload one!"
-              : `No videos about ${topic} yet.`}
+              : `No videos about ${effectiveTopic} yet.`}
           </p>
         ) : (
-          <Showvideogrid vid={filtered} />
+          <>
+            <div className="home-video-grid">
+              {filtered?.map((vi) => (
+                <HomeVideoCard key={vi._id} vid={vi} />
+              ))}
+            </div>
+            <div
+              ref={sentinelRef}
+              data-testid="home-load-more-sentinel"
+              aria-hidden="true"
+              style={{ minHeight: 1 }}
+            />
+            {isFetchingNextPage ? (
+              <p role="status" style={sentinelStatusStyle}>
+                Loading more videos…
+              </p>
+            ) : hasNextPage ? (
+              <button
+                type="button"
+                style={loadMoreStyle}
+                onClick={() => void fetchNextPage()}
+              >
+                Load more
+              </button>
+            ) : (
+              <p style={sentinelStatusStyle}>You&apos;ve reached the end.</p>
+            )}
+          </>
         )}
       </div>
     </div>
