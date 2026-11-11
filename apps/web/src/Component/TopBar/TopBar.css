@@ -104,6 +104,12 @@
 .topbar-menu a,
 .topbar-menu button {
   display: block;
+  /* border-box: with the default content-box, width:100% (= the menu's
+   * 180px content width) PLUS the 24px horizontal padding made each
+   * link 204px wide — 17px past the menu's right edge, so the hover
+   * background painted outside the container. (Buttons escaped only
+   * because Chromium's UA stylesheet gives <button> border-box.) */
+  box-sizing: border-box;
   width: 100%;
   text-align: left;
   background: none;
@@ -115,7 +121,9 @@
   cursor: pointer;
 }
 .topbar-menu a:hover,
-.topbar-menu button:hover { background: var(--surface-2); text-decoration: none; }
+.topbar-menu button:hover,
+.topbar-menu a:focus-visible,
+.topbar-menu button:focus-visible { background: var(--surface-2); text-decoration: none; }
 .topbar-signin { display: flex; align-items: center; }
 @media (max-width: 768px) {
   .topbar { flex-wrap: wrap; height: auto; padding: 8px 12px; row-gap: 8px; }
