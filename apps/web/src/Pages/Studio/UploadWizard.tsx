@@ -32,6 +32,7 @@ export default function UploadWizard() {
   const [visibility, setVisibility] = useState<VideoVisibility>("public");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [thumbBroken, setThumbBroken] = useState(false);
   const currentuser = useAppSelector((s) => s.auth.session);
   const progress = useAppSelector((s) => s.upload.progress);
   const uploadStatus = useAppSelector((s) => s.upload.status);
@@ -234,15 +235,22 @@ export default function UploadWizard() {
                   className="acube-input"
                   aria-label="Thumbnail URL"
                   value={thumbnailUrl}
-                  onChange={(e) => setThumbnailUrl(e.target.value)}
+                  onChange={(e) => {
+                    setThumbnailUrl(e.target.value);
+                    setThumbBroken(false);
+                  }}
                   placeholder="https://…"
                 />
               </label>
             </div>
             <div>
               <div className="studio-thumb-preview" aria-label="Thumbnail preview">
-                {thumbnailUrl ? (
-                  <img src={thumbnailUrl} alt="Thumbnail preview" />
+                {thumbnailUrl && !thumbBroken ? (
+                  <img
+                    src={thumbnailUrl}
+                    alt="Thumbnail preview"
+                    onError={() => setThumbBroken(true)}
+                  />
                 ) : (
                   <span className="play" aria-hidden="true">▶</span>
                 )}

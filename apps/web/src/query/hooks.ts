@@ -66,7 +66,7 @@ export function useVideosNewestFirst(): Video[] | undefined {
   );
 }
 
-/** O(1) by-id lookup for WHL lists (kills the N+1 Showvideolist filter). */
+/** O(1) by-id lookup for library lists. */
 export function useVideosById(): Record<string, Video> {
   const { data } = useVideos();
   return useMemo(() => {

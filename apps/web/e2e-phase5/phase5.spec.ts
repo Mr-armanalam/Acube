@@ -97,16 +97,27 @@ test.describe("Acube Phase 5 click-through", () => {
     await page.goto("/studio");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
     // Seeded ChannelDailyStat row: 7 views, 2 likes, 12.5 watch minutes.
+    // Match-preview Dashboard (preview image 9) is exactly 4 KPI cards —
+    // Total views / Likes / Videos / Watch time — no "Total likes",
+    // "Total comments" or "Watch minutes" card: the spec's old labels
+    // were stale after the frontend match-preview rewrite (dde0a20).
+    // Watch time is real hours from the seeded 12.5 watch minutes.
+    // Labels render uppercased via CSS, so innerText() returns them
+    // in caps ("TOTAL VIEWS", "WATCH TIME") — assert the rendered text.
     const stats = await page.locator(".studio-stat-grid").innerText();
-    expect(stats).toContain("Total views");
+    expect(stats).toContain("TOTAL VIEWS");
     expect(stats).toContain("7");
-    expect(stats).toContain("Total likes");
+    expect(stats).toContain("LIKES");
     expect(stats).toContain("2");
-    expect(stats).toContain("Total videos");
+    expect(stats).toContain("VIDEOS");
     expect(stats).toContain("1");
-    expect(stats).toContain("Total comments");
-    expect(stats).toContain("Watch minutes");
-    expect(stats).toContain("12.5");
+    expect(stats).toContain("from your 1 live videos");
+    expect(stats).toContain("1 public · 0 private");
+    expect(stats).toContain("WATCH TIME");
+    expect(stats).toContain("0.2 hrs");
+    expect(stats).toContain("12.5 minutes watched");
+    expect(stats).not.toContain("Total comments");
+    expect(stats).not.toContain("Watch minutes");
     // Top videos + latest comments come from the same seeded rows.
     // (The title text appears twice — top-videos link + "on <title>"
     // in the comment — so match the link exactly.)
@@ -148,9 +159,24 @@ test.describe("Acube Phase 5 click-through", () => {
     await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Last 7 days" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Last 90 days" })).toBeVisible();
-    // Best day is today (the only seeded stat day) with 7 views.
-    const today = new Date().toISOString().slice(0, 10);
-    await expect(page.getByText(`${today} · 7 views`)).toBeVisible();
+    // Preview image 11 has exactly 4 cards under the chart — Views
+    // (28d), Avg views / video, Like rate, Top source — and NO "Best
+    // day" card: the spec's best-day line was stale after the frontend
+    // match-preview rewrite (dde0a20) removed it. Same seeded numbers,
+    // asserted in the new layout: 7 views / 1 live video → avg 7,
+    // 2 likes ÷ 7 views → 28.6%, peak day 7 views, source not tracked.
+    // Card labels render uppercased via CSS, so innerText() returns
+    // them in caps — assert the rendered text.
+    const cards = await page.locator(".studio-stat-grid").innerText();
+    expect(cards).toContain("VIEWS (28D)");
+    expect(cards).toContain("7");
+    expect(cards).toContain("AVG VIEWS / VIDEO");
+    expect(cards).toContain("LIKE RATE");
+    expect(cards).toContain("28.6%");
+    expect(cards).toContain("TOP SOURCE");
+    expect(cards).toContain("Not tracked yet");
+    expect(cards).not.toContain("Best day");
+    await expect(page.getByText("Peak · 7 views")).toBeVisible();
     expect(errors).toEqual([]);
     await page.screenshot({ path: shot("studio-analytics.png") });
   });

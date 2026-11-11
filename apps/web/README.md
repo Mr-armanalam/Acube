@@ -4,9 +4,14 @@ Vite 7 + React 19 + React Router 8. TypeScript is strict and incremental
 (`src/tsconfig.json`, `allowJs` / `checkJs: false`): the store, query
 hooks, API layer, most pages/components, and (Phase 3c) `StreamRoom` and
 `PaymentStatus` are `.ts`/`.tsx`. A few legacy files are still plain
-JS/JSX (`RoomContext`, `LoadingCard`, `Drawersliderbar`, `Leftsidebar`,
-`Showvideo`, `ProgressRing`, `Searchlist`, `CreateButton`, utils);
-converting them is separate work. The web ESLint flat config lives in
+JS/JSX (`RoomContext`, `LoadingCard`, `Showvideo`, `CreateButton`,
+utils); converting them is separate work. (Phase 5 match-preview: the
+legacy Navbar / Leftsidebar / Searchbar / ProgressRing / WHL /
+Showvideolist components and the Likedvideo / Watchlater /
+Watchhistory / Yourvideo / Videoupload pages are deleted; the watch
+side renders the premium `TopBar`, Studio is its own shell, and
+liked / history / watch-later live in `/library` + `/history`.) The
+web ESLint flat config lives in
 `packages/config/eslint.web.config.mjs` (imported by `eslint.config.mjs`).
 
 ## Scripts
@@ -28,6 +33,6 @@ JS sent to the browser — never put server secrets here.
 - `simple-peer` (video calls in `StreamRoom`) needs Node built-ins
   (`buffer`, `stream`, `process`); `vite-plugin-node-polyfills`
   provides them — see `vite.config.ts`.
-- The upload progress ring is a small custom SVG component
-  (`src/Component/ProgressRing/`), not `react-circular-progressbar`
-  (its peer range stops at React 18).
+- The upload progress bar is rendered by the Studio UploadWizard
+  (the old custom-SVG `ProgressRing` component was deleted in the
+  Phase 5 match-preview pass).

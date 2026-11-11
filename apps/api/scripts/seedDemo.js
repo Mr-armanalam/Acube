@@ -450,6 +450,10 @@ export async function seedDemoData() {
   );
 
   // 9. Nested comments incl. one pinned creator comment (v1).
+  // Timestamps are STAGGERED (2h / 5h / 1d / 2d ago, like the preview's
+  // inbox) — without commentedon every seeded comment reads "less than
+  // a minute ago", which is not what the preview shows.
+  const hoursAgo = (h) => new Date(Date.now() - h * 60 * 60 * 1000);
   const v1 = String(publicVideos[0]._id);
   const v2 = String(publicVideos[1]._id);
   const v4 = String(publicVideos[3]._id);
@@ -460,6 +464,7 @@ export async function seedDemoData() {
     userid: viewerIds[2],
     commentbody: "This finally made hooks click for me — thank you!",
     usercommented: "demoviewer03",
+    commentedon: hoursAgo(2),
     parentId: null,
     demo: true,
   });
@@ -469,6 +474,7 @@ export async function seedDemoData() {
     userid: viewerIds[4],
     commentbody: "Same — the useEffect part was the missing piece for me.",
     usercommented: "demoviewer05",
+    commentedon: hoursAgo(1),
     parentId: String(top1._id),
     demo: true,
   });
@@ -478,6 +484,7 @@ export async function seedDemoData() {
     userid: viewerIds[2],
     commentbody: "Exactly, the cleanup example helped a lot.",
     usercommented: "demoviewer03",
+    commentedon: hoursAgo(0.75),
     parentId: String(reply1._id),
     demo: true,
   });
@@ -488,6 +495,7 @@ export async function seedDemoData() {
     userid: channelByN.get(1),
     commentbody: "Pinned by the creator: the companion repo is linked in the description.",
     usercommented: "codestreamer",
+    commentedon: hoursAgo(3),
     parentId: null,
     pinnedByCreator: channelByN.get(1),
     demo: true,
@@ -499,6 +507,7 @@ export async function seedDemoData() {
     userid: viewerIds[6],
     commentbody: "Could you do a follow-up on conditional types?",
     usercommented: "demoviewer07",
+    commentedon: hoursAgo(5),
     parentId: null,
     demo: true,
   });
@@ -508,6 +517,7 @@ export async function seedDemoData() {
     userid: channelByN.get(1),
     commentbody: "On the list for next week!",
     usercommented: "codestreamer",
+    commentedon: hoursAgo(4),
     parentId: String(top2._id),
     demo: true,
   });
@@ -518,6 +528,7 @@ export async function seedDemoData() {
     userid: viewerIds[8],
     commentbody: "Grid finally makes sense. More CSS, please!",
     usercommented: "demoviewer09",
+    commentedon: hoursAgo(24),
     parentId: null,
     demo: true,
   });
@@ -528,6 +539,7 @@ export async function seedDemoData() {
     userid: viewerIds[10],
     commentbody: "The $lookup example saved my afternoon.",
     usercommented: "demoviewer11",
+    commentedon: hoursAgo(48),
     parentId: null,
     demo: true,
   });

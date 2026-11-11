@@ -8,6 +8,7 @@
 // never invented.
 import React from "react";
 import { Link } from "react-router";
+import { formatDistanceToNow } from "date-fns";
 import StudioShell from "./Studio";
 import {
   StatCard,
@@ -52,10 +53,21 @@ export default function Dashboard() {
   const t = overview.data.totals;
   const channelName = overview.data.channel?.name;
   const items = videos.data?.items ?? [];
-  const publicCount = items.filter((v) => v.visibility === "public").length;
-  const privateCount = items.filter((v) => v.visibility === "private").length;
+  // The split counts LIVE videos only: a soft-deleted row (e.g. the
+  // seeded trailer, visibility public) must not inflate "public" past
+  // the Videos card's own live count — it used to read "8 public"
+  // against a card that says 7.
+  const liveItems = items.filter((v) => v.deletedAt == null);
+  // Legacy rows with no visibility field count as public — same rule
+  // as the backend live-video count and the VisibilityBadge.
+  const publicCount = liveItems.filter(
+    (v) => (v.visibility ?? "public") === "public",
+  ).length;
+  const privateCount = liveItems.filter(
+    (v) => v.visibility === "private",
+  ).length;
   const videosSubtext =
-    items.length > 0
+    liveItems.length > 0
       ? `${publicCount} public · ${privateCount} private`
       : `${t.totalVideos} videos`;
   const watchSubtext =
@@ -115,26 +127,35 @@ export default function Dashboard() {
           />
         ) : (
           <div>
-            {overview.data.latestComments.map((c) => (
-              <div key={c._id} className="studio-list-row">
-                <div style={{ flex: 1 }}>
-                  <p style={{ margin: "0 0 4px", fontWeight: 600 }}>
-                    {c.commentbody}
-                  </p>
-                  <p style={{ margin: 0, color: "var(--text-2)" }}>
-                    on {c.videotitle ?? "your video"}
-                    {c.usercommented ? ` · ${c.usercommented}` : ""}
-                  </p>
+            {overview.data.latestComments.map((c) => {
+              // Preview image 9 shows a relative time ("2h ago"), not
+              // the commenter's name.
+              const when = c.commentedon ?? c.createdAt;
+              return (
+                <div key={c._id} className="studio-list-row">
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: "0 0 4px", fontWeight: 600 }}>
+                      {c.commentbody}
+                    </p>
+                    <p style={{ margin: 0, color: "var(--text-2)" }}>
+                      on {c.videotitle ?? "your video"}
+                      {when
+                        ? ` · ${formatDistanceToNow(new Date(when), { addSuffix: true })}`
+                        : c.usercommented
+                          ? ` · ${c.usercommented}`
+                          : ""}
+                    </p>
+                  </div>
+                  <Link
+                    to="/studio/comments"
+                    className="studio-reply-btn"
+                    aria-label={`Reply to comment on ${c.videotitle ?? "your video"}`}
+                  >
+                    Reply
+                  </Link>
                 </div>
-                <Link
-                  to="/studio/comments"
-                  className="studio-reply-btn"
-                  aria-label={`Reply to comment on ${c.videotitle ?? "your video"}`}
-                >
-                  Reply
-                </Link>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

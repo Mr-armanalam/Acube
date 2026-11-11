@@ -8,6 +8,7 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import StudioShell from "./Studio";
+import VideoThumb from "../../Component/VideoThumb";
 import {
   StudioEmptyState,
   StudioErrorState,
@@ -23,7 +24,17 @@ import {
 import type { Video, VideoVisibility } from "../../types";
 
 const formatDate = (v: Video): string => {
-  return (v.createdAt ?? v.createdat ?? "").slice(0, 10) || "—";
+  // Preview format ("22 Nov 2024"), not the ISO slice — and a real
+  // date never wraps mid-token the way "2026-11-11" did in the column.
+  const raw = v.createdAt ?? v.createdat ?? "";
+  const d = new Date(raw);
+  if (!raw || Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 export default function Content() {
@@ -253,10 +264,9 @@ export default function Content() {
                     </td>
                     <td>
                       {v.thumbnailUrl || v.thumbnail ? (
-                        <img
+                        <VideoThumb
                           className="studio-row-thumb"
                           src={v.thumbnailUrl ?? v.thumbnail ?? ""}
-                          alt=""
                           style={{ marginBottom: 4 }}
                         />
                       ) : null}

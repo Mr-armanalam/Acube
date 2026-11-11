@@ -7,6 +7,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { api, createUser } from "./helpers.js";
 import { seedDemoData } from "../scripts/seedDemo.js";
 import { clearStudioCache } from "../utils/studioCache.js";
+import Comment from "../Models/comment.js";
 
 const DEMO_CHANNEL_EMAIL = "demo-channel-codestreamer@demo.acube.test";
 const DEMO_VIEWER_EMAIL = "demo-viewer-01@demo.acube.test";
@@ -107,5 +108,22 @@ describe("POST /auth/demo-login", () => {
     enableDemoLogin();
     const res = await api.post("/auth/demo-login").send({ email: "not-an-email" });
     expect(res.status).toBe(400);
+  });
+
+  it("seeds staggered comment timestamps (preview's 2h / 5h / 1d / 2d spread)", async () => {
+    await seedDemoData();
+    const times = (
+      await Comment.find({ demo: true }).select("commentedon").lean()
+    )
+      .map((c) => new Date(c.commentedon).getTime())
+      .sort((a, b) => a - b);
+    expect(times).toHaveLength(8);
+    // Not all "just now": the oldest is ~2 days old, the newest <1h.
+    expect(times[0]).toBeLessThan(Date.now() - 24 * 60 * 60 * 1000);
+    expect(times[times.length - 1]).toBeGreaterThan(
+      Date.now() - 60 * 60 * 1000,
+    );
+    // And they are not all the same instant.
+    expect(new Set(times).size).toBeGreaterThan(1);
   });
 });

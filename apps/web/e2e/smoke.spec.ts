@@ -43,11 +43,15 @@ test.describe("Acube smoke", () => {
     expect(peerChunkRequested).toEqual([]);
   });
 
-  test("search navigation via the navbar search box", async ({ page }) => {
+  test("search navigation via the TopBar search box", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByText(SEEDED_VIDEO_TITLE).first()).toBeVisible();
     await page.getByPlaceholder("Search").fill("E2E Smoke");
-    await page.locator(".searchIcon_SearchBar").click();
+    // Legacy Searchbar icon is deleted with the Navbar; the TopBar has a
+    // Search submit button.
+    await page
+      .getByRole("button", { name: "Search", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/search\/E2E%20Smoke$/);
     await expect(page.getByText(SEEDED_VIDEO_TITLE).first()).toBeVisible();
   });

@@ -7,6 +7,7 @@
 // against playlist.owner.
 import React, { useMemo } from "react";
 import { Link, useParams } from "react-router";
+import VideoThumb from "../../Component/VideoThumb";
 import { useAppSelector } from "../../store";
 import {
   useStudioPlaylist,
@@ -80,10 +81,9 @@ export default function PlaylistPage() {
                     {i + 1}.
                   </span>
                   {v.thumbnailUrl || v.thumbnail ? (
-                    <img
+                    <VideoThumb
                       className="studio-row-thumb"
                       src={v.thumbnailUrl ?? v.thumbnail ?? ""}
-                      alt=""
                       style={{ width: 120 }}
                     />
                   ) : null}

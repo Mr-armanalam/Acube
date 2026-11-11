@@ -590,3 +590,357 @@ touched; no merge. API suite **190/190 (12 files)** after this pass
   deleting them here would break the new UI; if the frontend worker
   finds an endpoint that becomes genuinely dead after the legacy
   pages are deleted, that deletion belongs in its report.
+
+### 8.9 Verification pass — match-the-preview (11 Nov 2026, coordinator)
+
+Independent verification of the two match-preview workers
+(`a666549` backend, `dde0a20` frontend) on branch
+`feat/acube-phase5-studio`. The workers' claims were re-checked, not
+taken on trust — and the pass found real defects, fixed below. No
+merge; PR #2 is updated by snapshot push only (see §8.9.6).
+
+#### 8.9.1 End-to-end seed + demo-login verification (not just unit tests)
+
+A throwaway script (deleted after use) seeded via `seedDemoData()`
+against in-memory MongoDB, signed in via `POST /auth/demo-login`,
+and called the Studio endpoints with the issued JWT:
+
+- Seed summary: **1,503 view events / 113 likes / 11 videos
+  (7 public)**, daily-stat and per-video-counter aggregates all
+  1,503 / 113 — the seed's own assertion passed.
+- `POST /auth/demo-login` as
+  `demo-channel-codestreamer@demo.acube.test` → **200, Code
+  Streamer**, normal 6h JWT.
+- `GET /studio/overview` → **totalViews 1,503, totalLikes 113,
+  totalVideos 7 (live), watchMinutes 5,918.65, watchHours 98.64**,
+  top videos 239 / 228 / 221 / 214 / 203 (real per-video counters).
+- `GET /studio/analytics?range=28` → views 1,503, **avgViewsPerVideo
+  214.71, likeRate 0.08, watchHours 98.64**, 28 days, peak day 68.
+- `GET /studio/videos?limit=50` → **total 11** (7 public + draft +
+  unlisted + private + soft-deleted).
+- `GET /studio/settings` → Code Streamer / @codestreamer /
+  hello@demo.acube.test / India / watermark off.
+- Watch-time cross-check: `ViewEvent.watchSeconds` sums to 355,119 s
+  = **98.64 h**, exactly the overview's `watchHours`. No hardcoded
+  totals anywhere in this chain; `watchMinutes` (backend) and the
+  frontend's `watchMinutes / 60` formatting agree — no shape
+  mismatch between the workers.
+
+#### 8.9.2 Fresh uncached counts (after the §8.9.4 fixes)
+
+| Check | Command | Result |
+|---|---|---|
+| Test (turbo, forced) | `pnpm test --force` | **API 191/191 (12 files) + web 116/116 (16 files) = 307, exit 0** |
+| Lint (forced) | `pnpm lint --force` | exit 0, **0 errors, 6 warnings** (pre-existing legacy files; was 7 in §8.7 — one went away with the deleted legacy files) |
+| Typecheck (forced) | `pnpm typecheck --force` | exit 0, 3 tasks |
+| Build (forced) | `pnpm build --force` | exit 0 (web ~13 s; API build is the syntax check, same "no output files" note as Phase 4) |
+| Playwright Phase 5 | `pnpm --filter @acube/web test:e2e:phase5` | **10/10 passed** |
+| Playwright Phase 4 | `pnpm --filter @acube/web test:e2e` (final re-run via `playwright test -c playwright.config.ts` against the same fresh build) | **15 passed, 1 skipped** (was 14/1 — a new 4b test covers the deleted legacy URLs 404ing) |
+
+No flakes in the final runs. Two environment incidents, both
+recorded honestly: (1) the first Phase 5 e2e run failed **10/10**
+because `/tmp` (512 MB tmpfs) was full — two orphaned ~201 MB
+`mongo-mem-*` dirs from earlier vitest/e2e runs left only 97 MB
+free and the in-memory mongod died with `ENOSPC` / `InterruptedAtShutdown`.
+Cleaning the orphans and re-running gave green; `/tmp` was left at
+3% used. (2) The first Phase 4 e2e run after the deletions failed
+5 tests — all stale specs, fixed in §8.9.4, not app regressions.
+
+#### 8.9.3 Fresh screenshots
+
+Retaken 11 Nov 2026 with demo data loaded via demo-login as Code
+Streamer, desktop 1280×800 + mobile 390×844, full-page, zero page
+errors on every screen: `phase5-dashboard-full/mobile.png`,
+`phase5-content-full/mobile.png`, `phase5-analytics-full/mobile.png`,
+`phase5-upload-full/mobile.png`,
+`phase5-upload-step2-full/mobile.png` (step 2 with a small file
+picked — the old step-2/step-3 shots were from 10 Nov),
+`phase5-comments-full/mobile.png`,
+`phase5-settings-full/mobile.png`. The Phase 5 + Phase 4 e2e runs
+also re-took `studio-*.png`, `home.png`, `search.png`,
+`theme-dark.png`, `watch.png`, `library.png`, `history.png`,
+`premium.png`, `streamroom.png`, `videopage.png`,
+`library-guard.png`, `chat.png`.
+
+#### 8.9.4 Defects found in this pass — all fixed, all tested
+
+1. **Phase 5 e2e spec was stale after `dde0a20`** (the frontend
+   worker never re-ran it). Test 2 still expected the old 6-card
+   dashboard ("Total likes", "Total comments", "Watch minutes");
+   test 4 still expected a "Best day" card the preview rewrite
+   removed. Updated to the preview-matched 4-card layout with the
+   same seeded numbers (7 views / 2 likes / 1 video / 0.2 hrs from
+   12.5 watch minutes; Analytics 7 / avg 7 / 28.6% / "Not tracked
+   yet" / "Peak · 7 views"). The labels render CSS-uppercased, so
+   the assertions match the rendered caps text. No assertion was
+   weakened — the old labels are now asserted ABSENT.
+2. **Phase 4 e2e specs were stale after the legacy deletion**
+   (5 failures): `.logo_title_navbar` "Your-Tube",
+   `.searchIcon_SearchBar`, `.themeContainer`/`.theme_box`, and the
+   guarded-routes list containing the deleted pages. Updated to the
+   TopBar (Acube wordmark, Search submit button, one-button theme
+   toggle asserting the body class flips and flips back) and to the
+   live guarded routes; a new test 4b asserts the four deleted URLs
+   404 with the "404 — Page not found" page.
+3. **Dashboard "Videos" split counted the soft-deleted trailer as
+   public** — the screenshot read "8 public · 1 private" against a
+   card that says 7 live videos. `Dashboard.tsx` now excludes
+   `deletedAt` rows from the split (and keeps the legacy
+   no-visibility-means-public rule). Test: a soft-deleted row in the
+   MSW videos list leaves the split at "3 public · 0 private".
+4. **Studio shell avatar showed "CO"** (first two characters of
+   "Code Streamer") instead of the preview's "CS". `Studio.tsx` now
+   uses word initials, like Settings already did. Test: mock channel
+   "Test User" renders "TU", not "TE".
+5. **Dashboard Latest comments showed the commenter's name**; the
+   preview shows a relative time ("2h ago"). Now renders
+   `formatDistanceToNow` ("about 2 hours ago"), falling back to the
+   name only when no timestamp exists. Test with a 2-hour-old
+   mocked comment.
+6. **Content dates were ISO** ("2026-11-11", wrapping mid-token in
+   the narrow column); the preview shows "22 Nov 2024". Now
+   `en-GB` short format in UTC ("11 Nov 2026"). Test asserts
+   "1 Nov 2026" and no ISO string.
+7. **Every Content row showed a broken-image icon**: the seeded
+   thumbnail URLs are `example.com` placeholders that 404. New
+   shared `Component/VideoThumb.tsx` renders a neutral 16:9 ▶ block
+   when the image fails to load; wired into Studio Content,
+   Playlist, and the UploadWizard thumbnail preview (which resets
+   its broken state when the URL changes). Test: `fireEvent.error`
+   on a row thumb swaps in the "Video thumbnail unavailable"
+   fallback and removes the `<img>`.
+8. **All 8 seeded comments read "less than a minute ago"** — the
+   seed never set `commentedon`. `seedDemo.js` now staggers them
+   (45 min / 1 h / 2 h / 3 h / 4 h / 5 h / 1 d / 2 d, matching the
+   preview inbox's spread). API test asserts the spread (oldest
+   > 24 h, newest < 1 h, not all equal).
+9. **Stale prose references to deleted components**: `apps/web/README.md`
+   still listed `Drawersliderbar`/`Leftsidebar`/`ProgressRing`/
+   `Searchlist` as live legacy files and described the deleted
+   `ProgressRing`; `query/hooks.ts` still mentioned the deleted
+   `Showvideolist` filter. Both updated. Remaining mentions of the
+   deleted names are intentional comments explaining the deletion.
+
+#### 8.9.5 Per-screen comparison vs preview images 9–15 (fresh screenshots)
+
+Status: **Matched** · **Differs** (real, listed plainly) ·
+**Explicit cut** (needs Arman's decision). "Demo data" = the seed's
+stand-in content (titles/tags/text are labelled demo content — the
+real catalogue titles were never recorded anywhere in the repo), not
+an app bug. The verdict is still **not "no single difference"** —
+the remaining diffs are listed here, none hidden.
+
+| Preview field/control (images 9–15) | Status | Note |
+|---|---|---|
+| Dashboard: 4 KPI cards, 1,503 / 113 / 7 | Matched | Real aggregates (§8.9.1). |
+| Dashboard: Watch time | Matched (more) | **98.6 hrs** real, from 5,918.65 watch minutes. The preview itself shows "— hrs" ("New in Phase 5 · needs view events") — the preview's placeholder, now filled by real events. |
+| Dashboard: Videos subtext | Matched | "7 public · 1 private" after fix #3 (was "8 public · 1 private"). |
+| Dashboard: Top performing videos, red bars | Matched | 239 / 228 / 221 / 214 / 203, real per-video counters. Long demo titles truncate with "…" in the narrow title column — the preview's titles are short. Minor, still differs. |
+| Dashboard: Latest comments + Reply | Matched | 5 comments, relative times after fix #5, Reply links to the inbox. |
+| Dashboard: shell identity "CS" avatar | Matched | After fix #4. |
+| Content: columns Video/Visibility/Date/Views/Likes, search + filter + bulk-select, "Edit details", visibility dropdown, View analytics, Delete/Restore | Matched | Deleted trailer row shows "Deleted" + Restore. Actions stack vertically (no overlap — the §8.6(2) overlap diff is closed). |
+| Content: header count | Differs | **"11 videos"** vs preview's "7 videos": the seed deliberately has 11 rows (7 public + draft + unlisted + private + soft-deleted) so every visibility state is exercisable. |
+| Content: dates | Matched | "11 Nov 2026" after fix #6; wraps to two lines in the narrow DATE column. |
+| Content: thumbnails | Matched | ▶ placeholder blocks after fix #7 — no broken-image icons anywhere. |
+| Content: mobile | Matched (scroll wrapper) | Page is 390 px wide; the table scrolls horizontally inside its wrapper. The §8.6(2) 547 px page-overflow diff is closed. |
+| Analytics: chart + 4 cards, 1,503 / 215 / 7.5% | Matched | Real aggregates; chart is the real 28-day series (Peak · 68 views — the preview's 148 is its illustrative shape). |
+| Analytics: range control | Differs | Buttons "Last 7 / 28 / 90 days" instead of the preview's "Last 28 days ▾ · All videos ▾" dropdowns. Same ranges, different control. |
+| Analytics: Top source | Explicit cut | "Not tracked yet" + honest note — no referrer is stored on ViewEvent. Unchanged from §8.6(1). |
+| Upload step 1 / step 2 | Matched | Step 2 shows file card, Title (required) / Description / Tags, PREVIEW thumb, Visibility Public/Private/Draft, Publish + Save as draft — as in image 12. |
+| Upload: progress + file size | Differs (preview wrong) | Step 2 progress bar sits at 0% before Publish (the preview shows a mid-upload 68%); the preview's 84 MB example file exceeds the enforced 10 MB limit — the limit stays 10 MB, the preview is wrong here. Step 2 also has an extra "Back" button and a Thumbnail URL field the preview does not show. |
+| Comments: table Comment/Video/When/Actions, Reply · Heart · Delete, Unreplied filter, Pinned badge | Matched | All 8 seeded comments, staggered times after fix #8 (about 1 hour ago … 2 days ago), pinned badge on the creator comment. Actions wrap so Delete sits on a second line at desktop width — the preview shows them inline. Minor, still differs. |
+| Comments: Heart | Explicit cut | Session-local only, labelled honestly under the table. Unchanged from §8.6(1). |
+| Settings: banner + avatar, 2-column grid, red toggles, Save/Discard + unsaved indicator | Matched | Gradient banner renders (seeded URL does not resolve, so the gradient shows, never a broken icon); avatar falls back to "CS" initials. |
+| Settings: field values | Demo data | Description "Demo channel — full-stack tutorials…", contact email hello@demo.acube.test, links Website/Docs, watermark OFF — the seed's values, not the preview's text ("Short, honest videos…", hello@codestreamer.example, GitHub · Portfolio, watermark ON). |
+| Settings: handle "✓ available" | Differs | No handle-availability endpoint exists, so no "✓ available" state is ever rendered; uniqueness is enforced server-side on save (HANDLE_TAKEN). A real live check needs a backend endpoint — Arman's decision. |
+| Settings: extra URL fields, Upload-default control, Channel URL | Differs | "Banner image URL" / "Profile picture URL" fields are additions (the preview has only Change/Remove); Upload default uses a visibility select + comments toggle instead of the preview's "Edit ▾"; Channel URL shows the local origin (`http://localhost:4173/@codestreamer`) — correct per environment, the preview shows acube.app. |
+| Settings: mobile | Matched | Page fits 390 px; Links rows wrap. The §8.6(2) 580 px overflow diff is closed. |
+| Shell: nav, red active pill, "Back to Acube / Your channel" | Matched | No "Send feedback" footer link (the preview's image 14 shows one). Minor, still differs. |
+| Shell: mobile tabs | Matched | Horizontal-scroll tab row; Upload / Channel settings sit off-screen until scrolled. |
+| TopBar (watch side) | Matched | Acube wordmark, search, Studio + Upload, theme toggle, avatar menu; verified by the updated Phase 4 e2e (tests 1, 2, 9) and the web unit tests. |
+
+**§8.6(2) status after this pass.** Of the eight remaining UI
+diffs: **closed** — Draft in Top videos (live-only rule, §8.8),
+Comments list-not-table / no Unreplied filter / no pinned badge in
+the inbox (table + filter + badge in `dde0a20`), Content "View
+analytics" overlap (stacked actions), mobile Content overflow,
+mobile Settings Links overflow. **Still open** — no
+handle-availability check (needs a backend endpoint — decision),
+no Autoplay toggle, History missing per-row like/save annotations.
+The six §8.6(1) explicit cuts (Subscribe, CC/HD, traffic source,
+comment-heart backend, banner/avatar file upload, chapters) are
+unchanged and still need Arman's decision.
+
+**§8.3 corrections.** The §8.3 table's per-channel numbers are
+stale: the seed is now ONE channel, so Dashboard/Analytics show
+**1,503 / 113 / 7** (not 613 / 49 / 4), avg **215**, like rate
+**7.5%**, and the "Best day" and "Watch minutes" extra cards in D
+are gone (the Analytics screen is now exactly the preview's 4
+cards). Timestamps in F are staggered, not "7 minutes ago". The
+banner/avatar broken icons in G are gone (gradient + initials
+fallback). Everything else in §8.3 stands.
+
+#### 8.9.6 Demo sign-in for Arman (local) — updated instructions
+
+Prerequisites: a local MongoDB. The seed refuses a DB_URL
+containing "atlas" or "prod" unless `SEED_DEMO_ALLOW_REMOTE=1` is
+set — demo data must never land in a production database.
+
+```powershell
+# PowerShell (Windows, from the repo root D:\web development\project\Acube)
+$env:DB_URL = "mongodb://127.0.0.1:27017/acube"
+pnpm --filter @acube/api seed:demo
+# or: node apps/api/scripts/seed-demo.js   (same, from the repo root)
+```
+
+```bash
+# macOS / Linux / WSL (same, from the repo root)
+DB_URL=mongodb://127.0.0.1:27017/acube pnpm --filter @acube/api seed:demo
+```
+
+The seed is idempotent (clears `demo:true` rows first, re-inserts,
+asserts 1,503 views / 113 likes) and prints a JSON summary. Then:
+
+1. Start the API with the demo-login flag (never in production):
+   `DEMO_LOGIN_ENABLED=1 pnpm --filter @acube/api dev`
+   (or `DEMO_LOGIN_ENABLED=1 node apps/api/index.js`). The flag must
+   be exactly `1`, and `NODE_ENV` must not be `production` — otherwise
+   the route 404s.
+2. Sign in as the demo channel (no Google account, no OTP):
+   `POST http://localhost:5000/auth/demo-login` with body
+   `{ "email": "demo-channel-codestreamer@demo.acube.test" }`
+   (e.g. `curl -X POST localhost:5000/auth/demo-login -H
+   "Content-Type: application/json" -d
+   '{"email":"demo-channel-codestreamer@demo.acube.test"}'`).
+   The response carries the normal 6h JWT (`{ result, token }`).
+   Any `demo-viewer-NN@demo.acube.test` (NN = 01–24) works the same
+   way; a real or unknown email gets the same 404.
+3. In the web app, store the session as the `Profile` localStorage
+   entry (`{ result, token }`) — or sign in through the UI once a
+   Google flow is wired — then open `http://localhost:3000/studio`
+   (dev) or the preview/production URL's `/studio`.
+
+What Arman should see: **Channel dashboard — Total views 1,503,
+Likes 113, Videos 7, Watch time 98.6 hrs**; Top performing videos
+239 / 228 / 221 / 214 / 203; Latest comments with relative times;
+Content listing 11 videos (7 public + draft + unlisted + private +
+soft-deleted trailer with Restore); Analytics 1,503 / 215 / 7.5%
+with Top source "Not tracked yet"; Comments inbox of 8 with
+staggered times and a 📌 Pinned badge; Settings prefilled for Code
+Streamer (@codestreamer). Note the demo video titles/tags are
+stand-ins — the real catalogue titles were never recorded — and the
+thumbnails are ▶ placeholders because the seeded `example.com`
+media URLs do not resolve.
+
+#### 8.9.7 Deletion list — verified complete
+
+The 29 files deleted in `dde0a20`, all confirmed gone from disk
+with no remaining import/route reference (only intentional comments
+explaining the deletion, plus the two prose fixes in §8.9.4 #9):
+
+- `apps/web/src/Component/Comment/Comment.css`,
+  `Comment.tsx`, `Displaycommment.tsx`
+- `apps/web/src/Component/Leftsidebar/Drawersliderbar.jsx`,
+  `Leftsidebar.css`, `Leftsidebar.jsx`, `shorts.png`
+- `apps/web/src/Component/Navbar/Navbar.css`, `Navbar.tsx`,
+  `Searchbar/Searchbar.css`, `Searchbar.tsx`, `Searchlist.css`,
+  `Searchlist.jsx`, `ThemeBox.tsx`, `logo.ico`
+- `apps/web/src/Component/ProgressRing/ProgressRing.css`,
+  `ProgressRing.jsx`
+- `apps/web/src/Component/Showvideolist/Showvideolist.tsx`
+- `apps/web/src/Component/WHL/WHL.css`, `WHL.tsx`,
+  `WHLvideolist.tsx`
+- `apps/web/src/Pages/Likedvideo/Likedvideo.tsx`
+- `apps/web/src/Pages/Videoupload/Videoupload.css`,
+  `Videoupload.tsx`
+- `apps/web/src/Pages/Watchhistory/Watchhistory.tsx`
+- `apps/web/src/Pages/Watchlater/Watchlater.tsx`
+- `apps/web/src/Pages/Yourvideo/Yourvideo.css`, `Yourvideo.tsx`
+- `apps/web/src/test/upload.test.tsx`
+
+Clarifications against the handoff wording: the old Videopage
+*page* is gone — `/videopage/:id` redirects to `/watch/:id` — but
+the `Pages/Videopage/` directory still holds
+`Likewatchlatersavebtns.tsx`, which the rebuilt Watch page still
+uses (Like / Dislike / Thanks / Download only; Save/Share moved
+out in §8.7). `Pages/Watch/Player.tsx` is the current rebuilt
+Watch player, not a deleted legacy file. The old Library *page* is
+gone; `Pages/Library/LibraryHub.tsx` is the current hub. No backend
+route was deleted: the endpoints the legacy pages used are the same
+ones Studio / Library / Watch use. No files were added to the
+deletion list in this pass.
+
+#### 8.9.8 Still needing Arman's decision
+
+- The six §8.6(1) explicit cuts, unchanged: Subscribe (no follow
+  system), CC/HD (no captions/renditions), traffic source (no
+  referrer stored on ViewEvent), comment-heart backend (hearts stay
+  session-local), banner/avatar file upload (preview-only, no
+  endpoint), chapters (no chapter data).
+- A live handle-availability check ("✓ available" in Settings):
+  honest absence today — needs a backend endpoint if wanted.
+- Autoplay toggle in the Watch showcase (preview shows "Autoplay
+  ON"; no autoplay behaviour exists).
+- History per-row like/save annotations ("You liked this", "Saved
+  to Watch Later", clock times) — work, not a decision, but
+  unstarted.
+- Content lists 11 videos vs the preview's 7 — the seed's extra
+  draft/unlisted/private/deleted rows are deliberate (every state
+  exercisable); if Arman wants the Content header to read 7, the
+  seed model is the thing to change, not the UI.
+- The demo catalogue titles/tags/descriptions are stand-ins. If
+  Arman supplies the real 7 titles (or the real catalogue), the
+  seed can carry them.
+- Screenshots still need Arman's local push from his machine, and
+  the snapshot push itself is BLOCKED until he re-grants the App
+  access to the Acube repo (see §8.9.9); `ci.yml` is included in
+  the snapshot manifest once the push goes through.
+  Nothing was merged.
+
+#### 8.9.9 PR #2 state — SNAPSHOT PUSH BLOCKED (11 Nov ~03:00 IST)
+
+PR #2 (https://github.com/Mr-armanalam/Acube/pull/2,
+`feat/acube-phase5-studio`) is **open, not merged, head still
+`5396f9cc`** — the snapshot push from this pass did **not** land.
+The push was prepared exactly as in Phases 4–5 (manifest: 255
+UTF-8 files, 1.51 MB, binaries excluded; remote head verified to
+match the sync record's last entry `5396f9cc`; local commit
+`8f902c2` ready), the approval card was approved, and GitHub
+answered `403 Resource not accessible by integration` on
+`POST /repos/Mr-armanalam/Acube/git/trees` — the Muse GitHub App
+installation currently has no write access to the Acube repo. This
+is the same failure mode PHASE4_REPORT.md §4 documents (the App
+*does* have write on `armanalam-portfolio`); the earlier Phase 5
+snapshots (up to `5396f9cc`, 10 Nov 19:57 UTC) succeeded, so the
+installation's access changed after that. **No partial commit was
+created and the sync record was NOT advanced** — the record still
+ends at `5396f9cc`, so a later retry will not double-push.
+
+**Unblock step (Arman, ~1 minute):** open
+https://github.com/apps/meta-muse-ai/installations/new and select
+the **Acube** repository for the Muse GitHub App (same step as for
+the portfolio repo), then tell Muse to retry the snapshot push.
+The retry is just re-running the push with the existing manifest
+(`/tmp/acube-snapshot-paths.txt`, 255 paths) and the local commit
+`8f902c2` — no work needs redoing.
+
+What the (blocked) snapshot would have carried: one squashed
+commit on top of `5396f9cc` with the current working-copy content
+(the two worker commits' changes + this verification pass's fixes,
+tests, and this report); it does **not** carry the local commit
+history (`a666549`, `dde0a20`, `8f902c2` stay local-only). It
+**would have included `.github/workflows/ci.yml`** — tracked
+locally since the Phase 5 base commit `bb76901` but never
+snapshot-pushed before, so CI would run on the PR. Still excluded
+even after the unblock (the connector cannot carry binaries):
+all 43 binary files (40+ screenshots in `docs/screenshots/`,
+`apps/web/public/log.ico`, `apps/web/public/shorts.png`) — those
+need Arman's local push from his machine. **Known limitation,
+stated plainly: the snapshot cannot delete files, so the 27
+deleted legacy files listed in §8.9.7 that were in the previous
+snapshot (all but the 2 binary ones, `shorts.png` and `logo.ico`,
+which were never pushed) remain as stale copies on the GitHub
+branch after the push.** Only a real `git push` from a full local
+clone (Arman's machine) can remove them; the app does not import
+them, so they are dead weight, not live code. Arman merges PRs
+himself; do not merge #2 as part of this pass.

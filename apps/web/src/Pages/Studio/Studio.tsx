@@ -33,7 +33,15 @@ export default function StudioShell({
   const overview = useStudioOverview();
   const channel = overview.data?.channel;
   const channelName = channel?.name ?? sessionName ?? "Your channel";
-  const channelInitial = channelName.charAt(0).toUpperCase();
+  // Word initials ("Code Streamer" → "CS"), like the preview's avatar
+  // and the Settings page — the first two characters ("CO") are wrong.
+  const channelInitials =
+    channelName
+      .split(/\s+/)
+      .map((w) => w.charAt(0))
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?";
   // The seeded banner/avatar URLs are example.com placeholders that do
   // not resolve to real images; a broken <img> icon must never show,
   // so a failed avatar falls back to the initials circle.
@@ -53,8 +61,7 @@ export default function StudioShell({
             />
           ) : (
             <span className="studio-identity-avatar" aria-hidden="true">
-              {channelInitial}
-              {channelName.charAt(1)?.toUpperCase() ?? ""}
+              {channelInitials}
             </span>
           )}
           <span className="studio-identity-text">

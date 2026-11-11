@@ -4,11 +4,15 @@
 // and each Studio screen matches preview images 9–15 field by field.
 import { describe, it, expect } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { server } from "../mocks/server";
-import { fixtureStudioComments } from "../mocks/handlers";
+import {
+  fixtureStudioComments,
+  fixtureStudioOverview,
+  fixtureVideos,
+} from "../mocks/handlers";
 import { renderWithProviders, testSession } from "./testUtils";
 import { InternetStatusProvider } from "../utils/internetStatusContext";
 import Allroutes from "../Allroutes";
@@ -92,6 +96,13 @@ describe("Preview — Dashboard (image 9)", () => {
     expect(screen.getByText("Videos")).toBeInTheDocument();
     expect(screen.getByText("Watch time")).toBeInTheDocument();
     expect(screen.getByText("0.7 hrs")).toBeInTheDocument();
+    // Word initials in the shell identity ("Test User" → "TU", not
+    // the old first-two-characters "TE") and the live-videos split
+    // (3 public + 1 draft in the fixture, none deleted) — both were
+    // screenshot diffs in the verification pass.
+    expect(screen.getByText("TU")).toBeInTheDocument();
+    expect(screen.queryByText("TE")).not.toBeInTheDocument();
+    expect(screen.getByText("3 public · 0 private")).toBeInTheDocument();
     // No 28-day data table on the Dashboard.
     expect(
       screen.queryByLabelText(/data table/),
@@ -102,6 +113,74 @@ describe("Preview — Dashboard (image 9)", () => {
         name: "Views for Python Basics Tutorial",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("counts a legacy video with no visibility field as public in the Videos subtext", async () => {
+    // Backend live-video rule + VisibilityBadge both treat a missing
+    // visibility as public; the Dashboard split must agree (it used to
+    // count such a row as neither public nor private).
+    const legacy = { ...fixtureVideos[0] };
+    delete (legacy as { visibility?: string }).visibility;
+    server.use(
+      http.get("*/studio/videos", () =>
+        HttpResponse.json({
+          items: [legacy],
+          page: 1,
+          limit: 50,
+          total: 1,
+          totalPages: 1,
+        }),
+      ),
+    );
+    renderRoutes("/studio", testSession);
+    expect(await screen.findByText("Total views")).toBeInTheDocument();
+    expect(screen.getByText("1 public · 0 private")).toBeInTheDocument();
+  });
+
+  it("Latest comments show a relative time like the preview, not the commenter", async () => {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    server.use(
+      http.get("*/studio/overview", () =>
+        HttpResponse.json({
+          ...fixtureStudioOverview,
+          latestComments: [
+            {
+              ...fixtureStudioOverview.latestComments[0],
+              commentedon: twoHoursAgo,
+            },
+          ],
+        }),
+      ),
+    );
+    renderRoutes("/studio", testSession);
+    expect(await screen.findByText("Total views")).toBeInTheDocument();
+    expect(screen.getByText(/2 hours ago/)).toBeInTheDocument();
+    expect(screen.queryByText(/· carol/)).not.toBeInTheDocument();
+  });
+
+  it("excludes a soft-deleted row from the Videos visibility split", async () => {
+    // The deleted trailer (visibility public) used to read as an 8th
+    // public video against a Videos card that says 7 live.
+    const deleted = {
+      ...fixtureVideos[0],
+      _id: "vid-deleted",
+      videotitle: "Retired trailer",
+      deletedAt: new Date().toISOString(),
+    };
+    server.use(
+      http.get("*/studio/videos", () =>
+        HttpResponse.json({
+          items: [deleted, ...fixtureVideos],
+          page: 1,
+          limit: 50,
+          total: 5,
+          totalPages: 1,
+        }),
+      ),
+    );
+    renderRoutes("/studio", testSession);
+    expect(await screen.findByText("Total views")).toBeInTheDocument();
+    expect(screen.getByText("3 public · 0 private")).toBeInTheDocument();
   });
 });
 
@@ -133,6 +212,45 @@ describe("Preview — Content (image 10)", () => {
     expect(
       screen.getAllByRole("link", { name: "View analytics" }).length,
     ).toBeGreaterThan(0);
+    // Preview date format ("22 Nov 2024"), not the ISO slice.
+    expect(screen.getByText("1 Nov 2026")).toBeInTheDocument();
+    expect(screen.queryByText("2026-11-01")).not.toBeInTheDocument();
+  });
+
+  it("a thumbnail URL that does not resolve falls back instead of a broken-image icon", async () => {
+    server.use(
+      http.get("*/studio/videos", () =>
+        HttpResponse.json({
+          items: [
+            {
+              ...fixtureVideos[0],
+              thumbnailUrl: "https://example.com/broken-thumb.jpg",
+            },
+          ],
+          page: 1,
+          limit: 50,
+          total: 1,
+          totalPages: 1,
+        }),
+      ),
+    );
+    const { container } = renderRoutes("/studio/content", testSession);
+    expect(
+      await screen.findByText("Python Basics Tutorial"),
+    ).toBeInTheDocument();
+    const img = container.querySelector(
+      'img[src="https://example.com/broken-thumb.jpg"]',
+    );
+    expect(img).not.toBeNull();
+    fireEvent.error(img as Element);
+    expect(
+      screen.getByLabelText("Video thumbnail unavailable"),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(
+        'img[src="https://example.com/broken-thumb.jpg"]',
+      ),
+    ).toBeNull();
   });
 });
 
