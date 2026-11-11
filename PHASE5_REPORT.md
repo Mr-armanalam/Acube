@@ -1400,11 +1400,13 @@ e2e-verified for the owner's channel page; other surfaces that
 render channel pictures (video cards, comments, search) still use
 their existing rendering and were not part of this task.
 
-**PR #5 state.** Branch `feat/acube-settings-watch-polish` to be
-pushed via the GitHub connector snapshot push (see §8.9.9 for the
+**PR #5 state.** Branch `feat/acube-settings-watch-polish` pushed
+via the GitHub connector snapshot push (see §8.9.9 for the
 procedure) from main @ `4def719` (PR #4 merged while this branch
-was in flight; see the merge note in the intro above); PR #5 to be
+was in flight; see the merge note in the intro above); PR #5
 created with base `main`, title "Settings: live handle check,
 working banner/avatar upload, preview match; Watch: Autoplay
-toggle". Head at push time: the merge commit `7406d40` plus the
-spec-secret commit and this docs commit.
+toggle" — https://github.com/Mr-armanalam/Acube/pull/5, head
+`03f090709a1aa0dd51277a4f14f90b6ecb6be59b` (snapshot commit; local
+head `24da88c`). Screenshots are not in the PR (binaries are
+excluded from snapshot pushes).
