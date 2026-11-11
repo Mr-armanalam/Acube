@@ -9,6 +9,8 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "path";
 import videoroutes from "./Routes/video.js";
+import watchroutes from "./Routes/watch.js";
+import studioroutes from "./Routes/studio.js";
 import userroutes from "./Routes/User.js";
 import commentroutes from "./Routes/comment.js";
 import chatroutes from "./Routes/chat.js";
@@ -85,6 +87,10 @@ app.get("/health", (req, res) => {
 app.use("/auth", authLimiter, Otpauth);
 app.use("/user", userroutes);
 app.use("/video", videoroutes);
+// Phase 5 fix: watch-page routes (GET /watch/:id/suggestions).
+app.use("/watch", watchroutes);
+// Phase 5: Creator Studio (see Routes/studio.js).
+app.use("/studio", studioroutes);
 app.use("/comment", commentroutes);
 app.use("/chat", chatroutes);
 app.use("/download", downloadVid);

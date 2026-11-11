@@ -1,5 +1,29 @@
 import likedvideo from "../Models/likevideo.js"
+import LibraryEntry from "../Models/LibraryEntry.js";
+import logger from "../utils/logger.js";
 import { paginate, paginationOf } from "../utils/pagination.js";
+
+// Phase 5: dual-write the LibraryEntry row — see
+// Controllers/watchlater.js (same pattern, kind "liked").
+async function syncLibraryEntry(viewer, videoid) {
+    try {
+        await LibraryEntry.findOneAndUpdate(
+            { userId: viewer, videoid, kind: "liked" },
+            { userId: viewer, videoid, kind: "liked", addedAt: new Date() },
+            { upsert: true },
+        );
+    } catch (error) {
+        logger.warn({ err: error }, "liked LibraryEntry sync failed");
+    }
+}
+
+async function removeLibraryEntry(viewer, videoid) {
+    try {
+        await LibraryEntry.deleteOne({ userId: viewer, videoid, kind: "liked" });
+    } catch (error) {
+        logger.warn({ err: error }, "liked LibraryEntry removal failed");
+    }
+}
 
 // Phase 3b: the viewer is ALWAYS req.userid (a body `viewer` is
 // ignored), lists are scoped to the caller, and adds are upserts — the
@@ -14,6 +38,7 @@ export const likedvideocontroller = async (req, res) => {
             { videoid, viewer },
             { upsert: true, returnDocument: "after" },
         )
+        await syncLibraryEntry(viewer, videoid);
         res.status(200).json("added to likedvideo")
     } catch (error) {
         res.status(400).json(error.message)
@@ -43,6 +68,7 @@ export const deletelikedvideo = async (req, res) => {
         await likedvideo.findOneAndDelete({
             videoid:videoid,viewer:viewer,
         })
+        await removeLibraryEntry(viewer, videoid);
         res.status(200).json({message:"removed from liked video"})
     } catch (error) {
         res.status(400).json(error.message)

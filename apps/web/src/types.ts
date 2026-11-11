@@ -37,6 +37,30 @@ export interface SessionProfile {
   token: string;
 }
 
+export type VideoVisibility = "public" | "unlisted" | "private" | "draft";
+
+/** POST /video/uploadvideo response (Phase 5 fix): the created video's
+ * id + persisted details, so the wizard can link straight to it. */
+export interface UploadVideoResponse {
+  message: string;
+  video: {
+    id: string;
+    videotitle: string;
+    visibility: VideoVisibility;
+    description: string;
+    tags: string[];
+    thumbnailUrl: string | null;
+  };
+}
+
+/** A real chapter, from the server. No chapter data exists yet, so the
+ * player renders NO chapter ticks until the backend returns chapters —
+ * never fake ones (Phase 5 fix audit). */
+export interface VideoChapter {
+  title: string;
+  startSec: number;
+}
+
 export interface Video {
   _id: string;
   videotitle: string;
@@ -51,6 +75,23 @@ export interface Video {
   createdat?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** Phase 5: visibility + processing status (server-owned). */
+  visibility?: VideoVisibility;
+  status?: "ready" | "processing";
+  /** Phase 5 fix contract: description / tags / thumbnail / duration. */
+  description?: string;
+  tags?: string[];
+  thumbnailUrl?: string;
+  /** Cloudinary thumbnail (legacy field name from the API model). */
+  thumbnail?: string | null;
+  /** Duration in seconds (Cloudinary `duration`, legacy field name). */
+  duration?: number | null;
+  /** Duration in seconds (contract field name). */
+  durationSec?: number;
+  /** Soft-delete timestamp; null/undefined = live. */
+  deletedAt?: string | null;
+  /** Real chapters only — absent means "no chapters", never fake ticks. */
+  chapters?: VideoChapter[];
 }
 
 export interface Channel {
@@ -77,6 +118,17 @@ export interface CommentItem {
   commenton?: string;
   commentedon?: string;
   createdAt?: string;
+  /** Phase 5: null = top-level comment; otherwise the parent comment id. */
+  parentId?: string | null;
+  /** Phase 5: video title attached by /studio/comments. */
+  videotitle?: string;
+  /** Phase 5 fix contract: user id of the creator who pinned this. */
+  pinnedByCreator?: string | null;
+  /** Phase 5 fix: whether the creator has replied in this thread
+   * (drives the Studio Comments "Unreplied" filter server-side). */
+  hasReply?: boolean;
+  /** Server-owned like count on the comment, when the API returns one. */
+  likes?: number;
 }
 
 /** History / liked / watch-later rows all share this shape. */
@@ -86,6 +138,148 @@ export interface VideoListEntry {
   viewer: string;
   likedon?: string;
   createdAt?: string;
+  /** Phase 5: watch progress 0–1 when the server reports it; absent = unknown. */
+  progress?: number;
+  /** Phase 5 fix contract: resume position in seconds. */
+  progressSec?: number;
+  /** Phase 5 fix contract: video length in seconds (for progress math). */
+  durationSec?: number;
+}
+
+/** Phase 5 — Creator Studio + playlists (API contract, PHASE5_PLAN.md).
+ * Shapes match the backend exactly: bestDay is an object (or null),
+ * settings nest under `channel`, PATCH /studio/settings takes
+ * { name?, desc? } — there are no handle/links fields on the server. */
+export interface StudioOverview {
+  channel?: {
+    _id: string;
+    name?: string;
+    email?: string;
+    desc?: string;
+    picture?: string;
+    username?: string;
+  };
+  totals: {
+    totalViews: number;
+    totalLikes: number;
+    totalVideos: number;
+    totalComments: number;
+    watchMinutes: number;
+    completions: number;
+  };
+  /** Sums of the per-video counters, including pre-Phase 5 traffic. */
+  allTime?: { views: number; likes: number; note: string };
+  /** First day with an event row, or null. */
+  statsSince?: string | null;
+  topVideos: Video[];
+  latestComments: CommentItem[];
+}
+
+export interface StudioAnalyticsDay {
+  date: string;
+  views: number;
+  watchMinutes: number;
+  likes: number;
+}
+
+export interface StudioAnalytics {
+  range: number;
+  days: StudioAnalyticsDay[];
+  totals: { views: number; watchMinutes: number; likes: number; completions?: number };
+  bestDay: { date: string; views: number } | null;
+  /** Phase 5 fix: traffic-source split, ONLY when the backend returns
+   * a real one. Absent = "not tracked yet" empty state, never faked. */
+  trafficSources?: { source: string; views: number }[];
+}
+
+export interface StudioChannelLink {
+  label: string;
+  url: string;
+}
+
+/** Phase 5 fix contract — GET/PATCH /studio/settings, full shape.
+ * The backend worker is building this in parallel; until it lands the
+ * MSW handlers answer the same shape. No subscribe/follower field
+ * exists anywhere: there is no follow system, so none is rendered. */
+export interface StudioSettings {
+  channel: {
+    _id: string;
+    name?: string;
+    email?: string;
+    desc?: string;
+    picture?: string;
+    username?: string;
+    handle?: string;
+    links?: StudioChannelLink[];
+    contactEmail?: string;
+    country?: string;
+    language?: string;
+    bannerUrl?: string;
+    avatarUrl?: string;
+    channelPublic?: boolean;
+    keepSubscriptionsPrivate?: boolean;
+    uploadDefaultVisibility?: VideoVisibility;
+    uploadDefaultComments?: boolean;
+    watermarkEnabled?: boolean;
+  };
+}
+
+export type StudioSettingsPatch = {
+  name?: string;
+  desc?: string;
+  handle?: string;
+  links?: StudioChannelLink[];
+  contactEmail?: string;
+  country?: string;
+  language?: string;
+  bannerUrl?: string;
+  avatarUrl?: string;
+  channelPublic?: boolean;
+  keepSubscriptionsPrivate?: boolean;
+  uploadDefaultVisibility?: VideoVisibility;
+  uploadDefaultComments?: boolean;
+  watermarkEnabled?: boolean;
+};
+
+/** Phase 5 fix contract — GET /watch/:id/suggestions. */
+export type SuggestionReason =
+  | "Same channel"
+  | "Same topic"
+  | "Viewers also watched"
+  | "Similar length";
+
+export interface WatchSuggestion {
+  video: Video;
+  reason: SuggestionReason;
+}
+
+export interface Playlist {
+  _id: string;
+  owner: string;
+  title: string;
+  description?: string;
+  visibility: VideoVisibility;
+  videoIds: string[];
+  createdAt?: string;
+  /** GET /studio/playlists/:id only: videos in playlist order. */
+  videos?: Video[];
+  videoCount?: number;
+}
+
+/** GET /studio/library: full video objects per tab + own playlists. */
+export interface LibraryData {
+  watchlater: Video[];
+  saved: Video[];
+  liked: Video[];
+  playlists: Playlist[];
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 export interface ChatUser {

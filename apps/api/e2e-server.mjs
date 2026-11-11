@@ -41,6 +41,13 @@ const mongod = await MongoMemoryServer.create();
 await mongoose.connect(mongod.getUri());
 
 const { default: Videofiles } = await import("./Models/videofile.js");
+// Phase 5: PHASE5_SEED=1 (used by the Phase 5 Playwright config only)
+// seeds the Creator Studio data for the fake e2e user — a User row,
+// the seeded video as THEIR video, one ChannelDailyStat row, a comment,
+// a history row, a playlist and a saved library entry. The default
+// (unset) seeding is unchanged, so the Phase 3c/4 specs are unaffected.
+const PHASE5_SEED = process.env.PHASE5_SEED === "1";
+export const FAKE_USER_ID = "507f1f77bcf86cd799439012";
 await Videofiles.create({
   _id: new mongoose.Types.ObjectId(SEEDED_VIDEO_ID),
   videotitle: SEEDED_VIDEO_TITLE,
@@ -48,11 +55,66 @@ await Videofiles.create({
   filetype: "video/mp4",
   filepath: "/videos/e2e-smoke.mp4",
   filesize: "12345",
-  videochanel: "e2e-channel",
+  videochanel: PHASE5_SEED ? FAKE_USER_ID : "e2e-channel",
   uploader: "e2e",
   Like: 0,
   views: 0,
 });
+
+if (PHASE5_SEED) {
+  // Phase 5 fix: the Phase 5 e2e mode now seeds the SAME demo dataset
+  // as `pnpm seed:demo` (1 demo channel, Code Streamer, 7 public
+  // videos, 1,503 views / 113 likes across 28 days, comments,
+  // playlists, library, history) — the e2e user's own rows below are added on top, so the
+  // Phase 5 specs' expectations for that user (7 views / 2 likes /
+  // 12.5 watch minutes, one comment, one playlist) are unchanged.
+  const { seedDemoData } = await import("./scripts/seedDemo.js");
+  await seedDemoData();
+  const { default: User } = await import("./Models/Auth.js");
+  const { default: ChannelDailyStat } = await import("./Models/ChannelDailyStat.js");
+  const { default: Comment } = await import("./Models/comment.js");
+  const { default: History } = await import("./Models/history.js");
+  const { default: Playlist } = await import("./Models/Playlist.js");
+  const { default: LibraryEntry } = await import("./Models/LibraryEntry.js");
+  const today = new Date().toISOString().slice(0, 10);
+  await User.create({
+    _id: new mongoose.Types.ObjectId(FAKE_USER_ID),
+    name: "E2E User",
+    username: "e2euser",
+    email: "e2e@example.com",
+    desc: "E2E test channel",
+  });
+  // Seeded (not invented-at-runtime) analytics: the dashboard must show
+  // exactly these numbers — 7 views, 2 likes, 12.5 watch minutes.
+  await ChannelDailyStat.create({
+    videochanel: FAKE_USER_ID,
+    day: today,
+    views: 7,
+    likes: 2,
+    watchMinutes: 12.5,
+    completions: 1,
+  });
+  await Comment.create({
+    videoid: SEEDED_VIDEO_ID,
+    userid: "507f1f77bcf86cd799439099",
+    commentbody: "Great tutorial!",
+    usercommented: "carol",
+    commentedon: new Date(),
+  });
+  await History.create({ videoid: SEEDED_VIDEO_ID, viewer: FAKE_USER_ID });
+  await Playlist.create({
+    owner: FAKE_USER_ID,
+    title: "My favourites",
+    description: "E2E playlist",
+    visibility: "public",
+    videoIds: [SEEDED_VIDEO_ID],
+  });
+  await LibraryEntry.create({
+    userId: FAKE_USER_ID,
+    videoid: SEEDED_VIDEO_ID,
+    kind: "saved",
+  });
+}
 
 const { default: app } = await import("./app.js");
 const server = app.listen(5000, () => {

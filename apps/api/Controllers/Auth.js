@@ -8,6 +8,7 @@ import {
   POINTS_PER_WATCH_COMPLETE,
 } from "@acube/shared";
 import { verifyGoogleIdToken } from "../utils/googleAuth.js";
+import { recordWatchComplete } from "../utils/analytics.js";
 
 // Phase 3a: login no longer trusts body email/name/picture. It succeeds
 // with EITHER a Google ID token verified server-side against
@@ -107,6 +108,50 @@ export const login = async (req, res) => {
   }
 };
 
+// Phase 5 match-preview: demo sign-in (POST /auth/demo-login).
+// TEST-ONLY, for the seeded demo data (scripts/seedDemo.js) — the demo
+// users have no Google account and no OTP, so without this Arman sees
+// nothing after seeding. It is env-gated TWICE, checked on every call:
+//   * DEMO_LOGIN_ENABLED must be exactly "1", AND
+//   * NODE_ENV must not be "production".
+// Either condition failing returns 404 (not 403 — the route should not
+// advertise itself in production). The body carries only an email; the
+// user is looked up by { email, demo: true }, so a real account can
+// never sign in through this route, and no password/token is accepted.
+// An unknown or non-demo email gets the same 404, so the route does
+// not leak which demo emails exist. On success it issues the NORMAL
+// JWT (same shape/expiry as login) — the demo user then uses every
+// authed endpoint as themselves. There is NO .env.example in the repo
+// (removed from main in f37c013 — do not re-add); the flag is
+// documented in PHASE5_REPORT.md §8.8 instead.
+export const demoLogin = async (req, res) => {
+  if (
+    process.env.DEMO_LOGIN_ENABLED !== "1" ||
+    process.env.NODE_ENV === "production"
+  ) {
+    return res.status(404).json({
+      error: { code: "NOT_FOUND", message: "Not found" },
+    });
+  }
+  try {
+    const { email } = req.body;
+    const user = await users.findOne({ email, demo: true });
+    if (!user) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Not found" },
+      });
+    }
+    const token = jwt.sign(
+      { email: user.email, id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "6h" },
+    );
+    return res.status(200).json({ result: user, token });
+  } catch (error) {
+    return res.status(500).json({ mess: "something went wrong..." });
+  }
+};
+
 // Phase 3b: session refresh. GET /user/me returns the current user
 // from the JWT — the channel editor used to re-login with an email-only
 // body to refresh the session, which 401s since Phase 3a. The token
@@ -120,6 +165,42 @@ export const getMe = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
     return res.status(200).json({ result: user });
+  } catch (error) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// GET /user/history-paused — the caller's own history-pause flag.
+// The client reads `paused` (historyPaused is the same value under
+// the model field name). See Models/Auth.js historyPaused.
+export const getHistoryPaused = async (req, res) => {
+  try {
+    const user = await users.findById(req.userid).select("historyPaused").lean();
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const paused = user.historyPaused ?? false;
+    return res.status(200).json({ paused, historyPaused: paused });
+  } catch (error) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// PATCH /user/history-paused { paused: boolean } — the caller's own
+// flag only (req.userid is the only user this can ever touch).
+export const setHistoryPaused = async (req, res) => {
+  try {
+    const { paused } = req.body;
+    const updated = await users.findByIdAndUpdate(
+      req.userid,
+      { $set: { historyPaused: paused } },
+      { returnDocument: "after" },
+    );
+    if (!updated) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const value = updated.historyPaused ?? false;
+    return res.status(200).json({ paused: value, historyPaused: value });
   } catch (error) {
     return res.status(500).json({ error: "Internal server error" });
   }
@@ -149,6 +230,12 @@ export const watchComplete = async (req, res) => {
     if (!video) {
       return res.status(404).json({ error: "Video not found" });
     }
+
+    // Phase 5: every completed watch writes the analytics event
+    // (completions +1, watchMinutes += min(duration, 600)/60) — even
+    // when the points cap below is already reached, the watch happened.
+    // See utils/analytics.js.
+    await recordWatchComplete({ viewer: userId, video });
 
     const day = new Date().toISOString().slice(0, 10);
     const alreadyAwarded = await PointsAward.aggregate([

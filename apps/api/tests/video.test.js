@@ -207,9 +207,13 @@ describe("POST /video/uploadvideo", () => {
       .field("chanel", "test-channel")
       .field("uploader", "tester");
     expect(res.status).toBe(200);
-    expect(res.text).toBe("File uploaded successfully");
+    // Phase 5 fix: JSON response carrying the created video id (the
+    // wizard links to it); the old bare-text response is gone.
+    expect(res.body.message).toBe("File uploaded successfully");
+    expect(typeof res.body.video?.id).toBe("string");
     const saved = await Videofile.findOne({ videotitle: "Mocked upload" });
     expect(saved).not.toBeNull();
+    expect(String(saved._id)).toBe(res.body.video.id);
     expect(saved.filepath).toBe("https://res.cloudinary.com/test/video/upload/test.mp4");
     // Phase 3b: secure_url + duration/thumbnail stored; the uploader
     // comes from the signed-in user, NOT the body's "tester".
@@ -221,6 +225,123 @@ describe("POST /video/uploadvideo", () => {
     expect(saved.filename).not.toBe("clip.mp4");
     expect(saved.filename).not.toMatch(/[\\/]/);
     expect(saved.filename.endsWith(".mp4")).toBe(true);
+  });
+
+  it("persists description/tags/visibility/thumbnailUrl from the upload form", async () => {
+    const user = await createUser();
+    const res = await api
+      .post("/video/uploadvideo")
+      .set(authHeader(user))
+      .attach("file", Buffer.from("fake-mp4-bytes"), {
+        filename: "clip.mp4",
+        contentType: "video/mp4",
+      })
+      .field("title", "Detailed upload")
+      .field("chanel", "test-channel")
+      .field("description", "A detailed description")
+      .field("tags", "planning, productivity,, routine ")
+      .field("visibility", "unlisted")
+      .field("thumbnailUrl", "https://example.com/thumb.jpg");
+    expect(res.status).toBe(200);
+    expect(res.body.video.visibility).toBe("unlisted");
+    expect(res.body.video.description).toBe("A detailed description");
+    expect(res.body.video.tags).toEqual(["planning", "productivity", "routine"]);
+    expect(res.body.video.thumbnailUrl).toBe("https://example.com/thumb.jpg");
+    const saved = await Videofile.findById(res.body.video.id);
+    expect(saved.description).toBe("A detailed description");
+    expect(saved.tags).toEqual(["planning", "productivity", "routine"]);
+    expect(saved.visibility).toBe("unlisted");
+    expect(saved.thumbnailUrl).toBe("https://example.com/thumb.jpg");
+  });
+
+  it("upload without description/tags/visibility defaults to public with empty details", async () => {
+    const user = await createUser();
+    const res = await api
+      .post("/video/uploadvideo")
+      .set(authHeader(user))
+      .attach("file", Buffer.from("fake-mp4-bytes"), {
+        filename: "clip.mp4",
+        contentType: "video/mp4",
+      })
+      .field("title", "Plain upload")
+      .field("chanel", "test-channel");
+    expect(res.status).toBe(200);
+    expect(typeof res.body.video?.id).toBe("string");
+    expect(res.body.video.visibility).toBe("public");
+    expect(res.body.video.description).toBe("");
+    expect(res.body.video.tags).toEqual([]);
+    expect(res.body.video.thumbnailUrl).toBeNull();
+    const saved = await Videofile.findById(res.body.video.id);
+    expect(saved.visibility).toBe("public");
+    expect(saved.description).toBe("");
+    expect(saved.tags).toEqual([]);
+    expect(saved.thumbnailUrl).toBeNull();
+    // A default-public upload DOES appear in the public feed.
+    const feed = await api.get("/video/getvideos?page=1&limit=50");
+    expect(feed.body.items.map((v) => String(v._id))).toContain(
+      String(saved._id),
+    );
+  });
+
+  it("Save as draft: visibility=draft is stored, hidden from the feed, owner-only", async () => {
+    const user = await createUser();
+    const res = await api
+      .post("/video/uploadvideo")
+      .set(authHeader(user))
+      .attach("file", Buffer.from("fake-mp4-bytes"), {
+        filename: "clip.mp4",
+        contentType: "video/mp4",
+      })
+      .field("title", "Draft upload")
+      .field("chanel", String(user._id))
+      .field("description", "Not ready yet")
+      .field("visibility", "draft");
+    expect(res.status).toBe(200);
+    expect(res.body.video.visibility).toBe("draft");
+    const saved = await Videofile.findById(res.body.video.id);
+    expect(saved.visibility).toBe("draft");
+    expect(saved.description).toBe("Not ready yet");
+    // A draft never appears in the public feed…
+    const feed = await api.get("/video/getvideos?page=1&limit=50");
+    expect(feed.body.items.map((v) => String(v._id))).not.toContain(
+      String(saved._id),
+    );
+    // …and is 404 for anonymous readers, but readable by its owner.
+    const anon = await api.get(`/video/${saved._id}`);
+    expect(anon.status).toBe(404);
+    const owner = await api
+      .get(`/video/${saved._id}`)
+      .set(authHeader(user));
+    expect(owner.status).toBe(200);
+    expect(owner.body.visibility).toBe("draft");
+  });
+
+  it("rejects an invalid visibility and an invalid thumbnailUrl with 400", async () => {
+    const user = await createUser();
+    const badVisibility = await api
+      .post("/video/uploadvideo")
+      .set(authHeader(user))
+      .attach("file", Buffer.from("fake-mp4-bytes"), {
+        filename: "clip.mp4",
+        contentType: "video/mp4",
+      })
+      .field("title", "Bad visibility")
+      .field("chanel", "test-channel")
+      .field("visibility", "everyone");
+    expect(badVisibility.status).toBe(400);
+    expect(badVisibility.body.error.code).toBe("VALIDATION_ERROR");
+    const badThumb = await api
+      .post("/video/uploadvideo")
+      .set(authHeader(user))
+      .attach("file", Buffer.from("fake-mp4-bytes"), {
+        filename: "clip.mp4",
+        contentType: "video/mp4",
+      })
+      .field("title", "Bad thumb")
+      .field("chanel", "test-channel")
+      .field("thumbnailUrl", "not-a-url");
+    expect(badThumb.status).toBe(400);
+    expect(badThumb.body.error.code).toBe("VALIDATION_ERROR");
   });
 
   it("returns 401 without a token", async () => {

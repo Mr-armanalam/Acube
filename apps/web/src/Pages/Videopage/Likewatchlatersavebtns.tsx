@@ -6,22 +6,14 @@ import {
   AiOutlineDislike,
   AiOutlineLike,
 } from "react-icons/ai";
-import { MdPlaylistAddCheck } from "react-icons/md";
-import {
-  RiHeartAddFill,
-  RiPlayListAddFill,
-  RiShareForwardLine,
-} from "react-icons/ri";
+import { RiHeartAddFill } from "react-icons/ri";
 import "./Likewatchlatersavebtn.css";
 import { useAppSelector } from "../../store";
 import {
   useAddLikedVideo,
-  useAddWatchLater,
   useDeleteLikedVideo,
-  useDeleteWatchLater,
   useLikeVideo,
   useLikedVideos,
-  useWatchLater,
 } from "../../query/hooks";
 import DownloadVideo from "../../Component/DownloadVideo/DownloadVideo";
 import type { Video } from "../../types";
@@ -33,52 +25,24 @@ const Likewatchlatersavebtns = ({
   vv: Video | undefined;
   vid: string | undefined;
 }) => {
-  const [savevideo, setsavevideo] = useState(false);
   const [dislikebtn, setdislikebtn] = useState(false);
   const [likebtn, setlikebtn] = useState(false);
 
   const currentuser = useAppSelector((s) => s.auth.session);
   const { data: likedvideolist } = useLikedVideos();
-  const { data: watchlaterlist } = useWatchLater();
   const likeMutation = useLikeVideo();
   const addLikedMutation = useAddLikedVideo();
   const deleteLikedMutation = useDeleteLikedVideo();
-  const addWatchLaterMutation = useAddWatchLater();
-  const deleteWatchLaterMutation = useDeleteWatchLater();
 
   useEffect(() => {
     const likedVideo = likedvideolist?.some(
       (q) => q.videoid === vid && q.viewer === currentuser?.result._id,
     );
-    const savedVideo = watchlaterlist?.some(
-      (q) => q.videoid === vid && q.viewer === currentuser?.result._id,
-    );
 
     if (likedVideo) setlikebtn(likedVideo);
-    if (savedVideo) setsavevideo(savedVideo);
-  }, [likedvideolist, watchlaterlist, vid, currentuser]);
+  }, [likedvideolist, vid, currentuser]);
 
   const viewerId = currentuser?.result?._id;
-  const togglesavedvideo = useCallback(() => {
-    if (currentuser && vid && viewerId) {
-      if (savevideo) {
-        setsavevideo(false);
-        deleteWatchLaterMutation.mutate({ videoid: vid, viewer: viewerId });
-      } else {
-        setsavevideo(true);
-        addWatchLaterMutation.mutate({ videoid: vid, viewer: viewerId });
-      }
-    } else {
-      alert("please login to save video");
-    }
-  }, [
-    currentuser,
-    savevideo,
-    vid,
-    viewerId,
-    addWatchLaterMutation,
-    deleteWatchLaterMutation,
-  ]);
 
   // Phase 3b: liking is a toggle — the client sends only the action
   // and the server $inc's the counter. No absolute Like count is ever
@@ -160,26 +124,9 @@ const Likewatchlatersavebtns = ({
           )}
           <b>Dislike</b>
         </div>
-        <div className="like_videoPage" onClick={togglesavedvideo}>
-          {savevideo ? (
-            <>
-              <MdPlaylistAddCheck size={22} className="btns_videoPage" />
-              <b>Saved</b>
-            </>
-          ) : (
-            <>
-              <RiPlayListAddFill size={22} className="btns_videoPage" />
-              <b>Save</b>
-            </>
-          )}
-        </div>
         <div className="like_videoPage">
           <RiHeartAddFill size={22} className="btns_videoPage" />
           <b>Thanks</b>
-        </div>
-        <div className="like_videoPage">
-          <RiShareForwardLine size={22} className="btns_videoPage" />
-          <b>Share</b>
         </div>
       </div>
     </div>

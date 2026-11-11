@@ -112,17 +112,24 @@ test.describe("Acube click-through", () => {
   test("1. Home feed renders the seeded video", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByText(SEEDED_VIDEO_TITLE).first()).toBeVisible();
-    await expect(page.locator(".logo_title_navbar")).toHaveText("Your-Tube");
+    // Match-preview: the legacy "Your-Tube" Navbar is deleted; the watch
+    // side renders the premium TopBar with the Acube wordmark.
+    await expect(page.locator(".topbar-logo-word")).toHaveText("Acube");
+    expect(page.getByText("Your-Tube")).toHaveCount(0);
     await page.screenshot({ path: shot("home.png") });
   });
 
-  test("2. Search via navbar for 'E2E Smoke' renders results", async ({
+  test("2. Search via TopBar for 'E2E Smoke' renders results", async ({
     page,
   }) => {
     await page.goto("/");
     await expect(page.getByText(SEEDED_VIDEO_TITLE).first()).toBeVisible();
     await page.getByPlaceholder("Search").fill("E2E Smoke");
-    await page.locator(".searchIcon_SearchBar").click();
+    // Legacy Searchbar icon is deleted with the Navbar; the TopBar has a
+    // Search submit button.
+    await page
+      .getByRole("button", { name: "Search", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/search\/E2E%20Smoke$/);
     await expect(page.getByText(SEEDED_VIDEO_TITLE).first()).toBeVisible();
     await page.screenshot({ path: shot("search.png") });
@@ -138,15 +145,21 @@ test.describe("Acube click-through", () => {
       dialogs.push(d.message());
       void d.accept();
     });
+    // Phase 5: /videopage/:id redirects to the rebuilt /watch/:id page.
     await page.goto(`/videopage/${SEEDED_VIDEO_ID}`);
-    await expect(page.locator(".video_title_VideoPage")).toHaveText(
-      SEEDED_VIDEO_TITLE,
-    );
-    const playButton = page.locator(".play-pause-btn");
+    await expect(page).toHaveURL(new RegExp(`/watch/${SEEDED_VIDEO_ID}$`));
+    await expect(
+      page.getByRole("heading", { name: SEEDED_VIDEO_TITLE }),
+    ).toBeVisible();
+    const playButton = page.getByRole("button", {
+      name: "Play",
+      exact: true,
+    });
     await expect(playButton).toBeVisible();
-    await expect(playButton.locator(".play-icon")).toHaveCount(1);
     await playButton.click();
-    await expect(playButton.locator(".pause-icon")).toHaveCount(1);
+    await expect(
+      page.getByRole("button", { name: "Pause" }),
+    ).toBeVisible();
     // Logged-out like: the app alerts instead of toggling.
     await page.locator(".like_videoPage").first().click();
     expect(dialogs).toContain("please login to like video");
@@ -155,7 +168,6 @@ test.describe("Acube click-through", () => {
       page.locator(".like_videoPage").first().locator("svg").first(),
     ).toBeVisible();
     // Comments section renders (heading; no comments seeded).
-    await expect(page.locator(".comments_VideoPage")).toBeVisible();
     await expect(page.getByText("Comments").first()).toBeVisible();
     expect(pageErrors).toEqual([]);
     await page.screenshot({ path: shot("videopage.png") });
@@ -164,12 +176,15 @@ test.describe("Acube click-through", () => {
   test("4. Auth guards redirect logged-out users from all guarded routes", async ({
     page,
   }) => {
+    // Match-preview: the legacy /Likedvideo, /Watchhistory, /Watchlater
+    // and /Yourvideo pages are deleted — their URLs 404 (see the
+    // deleted-routes test below), so they are no longer guarded routes.
+    // The live guarded routes still redirect logged-out users home.
     const guarded = [
       "/Library",
-      "/Likedvideo",
-      "/Watchhistory",
-      "/Watchlater",
-      "/Yourvideo",
+      "/studio",
+      "/studio/content",
+      "/history",
       "/chat",
     ];
     for (const [i, route] of guarded.entries()) {
@@ -179,6 +194,22 @@ test.describe("Acube click-through", () => {
       if (i === 0) {
         await page.screenshot({ path: shot("library-guard.png") });
       }
+    }
+  });
+
+  test("4b. Deleted legacy page URLs 404 instead of rendering", async ({
+    page,
+  }) => {
+    for (const route of [
+      "/Likedvideo",
+      "/Watchhistory",
+      "/Watchlater",
+      "/Yourvideo",
+    ]) {
+      await page.goto(route);
+      await expect(
+        page.getByRole("heading", { name: "404 — Page not found" }),
+      ).toBeVisible();
     }
   });
 
@@ -281,7 +312,9 @@ test.describe("Acube click-through", () => {
       }
     });
     await seedFakeSession(page);
+    // Phase 5: /videopage/:id redirects to the rebuilt /watch/:id page.
     await page.goto(`/videopage/${SEEDED_VIDEO_ID}`);
+    await expect(page).toHaveURL(new RegExp(`/watch/${SEEDED_VIDEO_ID}$`));
     const upgradeBtn = page.getByRole("button", { name: /Upgrade/i });
     await expect(upgradeBtn).toBeVisible();
     await upgradeBtn.click();
@@ -300,28 +333,54 @@ test.describe("Acube click-through", () => {
       type: "payment-responses",
       description: JSON.stringify(paymentResponses),
     });
-    expect(page.url()).toContain(`/videopage/${SEEDED_VIDEO_ID}`);
+    expect(page.url()).toContain(`/watch/${SEEDED_VIDEO_ID}`);
     // Premium must NOT be granted: reload and the Upgrade button is back.
-    await page.goto(`/videopage/${SEEDED_VIDEO_ID}`);
+    await page.goto(`/watch/${SEEDED_VIDEO_ID}`);
     await expect(
       page.getByRole("button", { name: /Upgrade/i }),
     ).toBeVisible();
     await page.screenshot({ path: shot("premium.png") });
   });
 
-  test("9. Theme toggle switches light/dark and navbar renders", async ({
+  test("9. Theme toggle switches light/dark and TopBar renders", async ({
     page,
   }) => {
     await page.goto("/");
     await expect(page.getByText(SEEDED_VIDEO_TITLE).first()).toBeVisible();
-    await page.locator(".themeContainer").click();
-    await expect(page.locator(".theme_box")).toBeVisible();
-    await page.locator(".theme_item", { hasText: "Dark" }).click();
-    await expect(page.locator("body")).not.toHaveClass(/white-theme/);
+    // Match-preview: the legacy ThemeBox (.themeContainer/.theme_box)
+    // is deleted with the Navbar; the TopBar has one toggle button that
+    // flips light ↔ dark. The starting mode is not assumed — assert the
+    // body class flips, then flips back.
+    const body = page.locator("body");
+    const initiallyLight = await body.evaluate((b) =>
+      b.classList.contains("white-theme"),
+    );
+    const toggle = page.getByRole("button", {
+      name: /Switch to (light|dark) theme/,
+    });
+    await toggle.click();
+    if (initiallyLight) {
+      await expect(body).not.toHaveClass(/white-theme/);
+    } else {
+      await expect(body).toHaveClass(/white-theme/);
+    }
+    await toggle.click();
+    if (initiallyLight) {
+      await expect(body).toHaveClass(/white-theme/);
+    } else {
+      await expect(body).not.toHaveClass(/white-theme/);
+    }
+    // Drive to dark explicitly for the theme-dark screenshot.
+    if (
+      await page
+        .getByRole("button", { name: "Switch to dark theme" })
+        .count()
+    ) {
+      await page
+        .getByRole("button", { name: "Switch to dark theme" })
+        .click();
+    }
+    await expect(body).not.toHaveClass(/white-theme/);
     await page.screenshot({ path: shot("theme-dark.png") });
-    await page.locator(".themeContainer").click();
-    await expect(page.locator(".theme_box")).toBeVisible();
-    await page.locator(".theme_item", { hasText: "Light" }).click();
-    await expect(page.locator("body")).toHaveClass(/white-theme/);
   });
 });

@@ -26,6 +26,42 @@ const userschema = mongoose.Schema(
     // client (see Controllers/downloadVideo/).
     stripeCheckoutSessionId: { type: String, default: null },
     premiumGrantedAt: { type: Date, default: null },
+    // Phase 5 fix: channel profile fields (GET/PATCH /studio/settings).
+    // handle is unique when set (sparse: unset handles do not collide);
+    // format is enforced by studioSettingsSchema in @acube/shared.
+    // There is NO subscribe/follower system — keepSubscriptionsPrivate
+    // is a stored preference only, it gates nothing today.
+    handle: { type: String, default: null, index: true, sparse: true },
+    links: {
+      type: [{ label: { type: String }, url: { type: String } }],
+      default: [],
+    },
+    contactEmail: { type: String, default: null },
+    country: { type: String, default: null },
+    language: { type: String, default: null },
+    bannerUrl: { type: String, default: null },
+    // avatarUrl is the channel avatar; `picture` (Google photo) stays
+    // the login avatar and is used as the fallback when this is unset.
+    avatarUrl: { type: String, default: null },
+    channelPublic: { type: Boolean, default: true },
+    keepSubscriptionsPrivate: { type: Boolean, default: false },
+    uploadDefaultVisibility: {
+      type: String,
+      enum: ["public", "unlisted", "private", "draft"],
+      default: "public",
+    },
+    uploadDefaultComments: { type: Boolean, default: true },
+    watermarkEnabled: { type: Boolean, default: false },
+    // Phase 5 fix: when true, POST /video/history does not record a
+    // row and PATCH /video/history/:videoid/progress does not store a
+    // position (see Controllers/History.js). Read/changed via
+    // GET/PATCH /user/history-paused.
+    historyPaused: { type: Boolean, default: false },
+    // Phase 5 fix: demo seed marker (apps/api/scripts/seed-demo.js).
+    // True ONLY for rows created by the demo seed; the seed clears
+    // demo:true rows before re-inserting, so re-runs are idempotent
+    // and never touch real user data.
+    demo: { type: Boolean, default: false },
   },
   {
     timestamps: true,

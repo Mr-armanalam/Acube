@@ -1,0 +1,124 @@
+/* Premium watch-side top bar (replaces the legacy Your-Tube Navbar):
+ * Obsidian + Acube Red, Plus Jakarta Sans wordmark, Manrope UI. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-family: "Manrope", sans-serif;
+}
+.topbar a { color: var(--text); text-decoration: none; }
+.topbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.topbar-logo:hover { text-decoration: none; }
+.topbar-logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+}
+.topbar-logo-word {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+.topbar-search {
+  flex: 1;
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  gap: 8px;
+}
+.topbar-search input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: 400 14px/20px "Manrope", sans-serif;
+}
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+  font-weight: 600;
+  font-size: 14px;
+}
+.topbar-nav > a:hover { color: var(--accent); }
+.topbar-upload:hover { color: #fff; text-decoration: none; }
+.topbar-icon-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+}
+.topbar-user { position: relative; }
+.topbar-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+}
+.topbar-menu {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.topbar-menu a,
+.topbar-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: 600 14px/20px "Manrope", sans-serif;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.topbar-menu a:hover,
+.topbar-menu button:hover { background: var(--surface-2); text-decoration: none; }
+.topbar-signin { display: flex; align-items: center; }
+@media (max-width: 768px) {
+  .topbar { flex-wrap: wrap; height: auto; padding: 8px 12px; row-gap: 8px; }
+  .topbar-search { order: 3; flex-basis: 100%; max-width: none; }
+  .topbar-logo-word { display: none; }
+}

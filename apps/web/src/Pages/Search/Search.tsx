@@ -1,5 +1,4 @@
 import React, { useMemo } from "react";
-import Leftsidebar from "../../Component/Leftsidebar/Leftsidebar";
 import Showvideogrid from "../../Component/Showvideogrid/Showvideogrid";
 import { useParams } from "react-router";
 import { useVideos } from "../../query/hooks";
@@ -22,9 +21,6 @@ const Search = () => {
   }, [data, Searchquery]);
   return (
     <div className="container_Pages_App">
-      <div className="at_small_sizel">
-        <Leftsidebar />
-      </div>
       <div className="container2_Pages_App">
         {isLoading ? (
           <LoadingCard />

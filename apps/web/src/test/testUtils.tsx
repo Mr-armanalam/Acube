@@ -2,7 +2,7 @@
 // Every test gets a FRESH Redux store and QueryClient so tests cannot
 // leak session / cache state into each other. The helper wraps the UI in
 // Redux + TanStack Query + MemoryRouter, matching the real app shell
-// minus Navbar / ThemeProvider / Google OAuth (not under test here).
+// minus TopBar / ThemeProvider / Google OAuth (not under test here).
 import React, { type ReactElement } from "react";
 import { render, type RenderOptions } from "@testing-library/react";
 import { Provider } from "react-redux";

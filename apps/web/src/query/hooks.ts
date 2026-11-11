@@ -15,8 +15,17 @@ import { queryKeys } from "./keys";
 import type {
   Channel,
   CommentItem,
+  LibraryData,
+  PagedResult,
+  Playlist,
+  StudioAnalytics,
+  StudioOverview,
+  StudioSettings,
+  StudioSettingsPatch,
   Video,
   VideoListEntry,
+  VideoVisibility,
+  WatchSuggestion,
 } from "../types";
 // Phase 3c: like-toggle / watch-complete request shapes are the
 // @acube/shared Zod input types (same schemas the API validates).
@@ -57,7 +66,7 @@ export function useVideosNewestFirst(): Video[] | undefined {
   );
 }
 
-/** O(1) by-id lookup for WHL lists (kills the N+1 Showvideolist filter). */
+/** O(1) by-id lookup for library lists. */
 export function useVideosById(): Record<string, Video> {
   const { data } = useVideos();
   return useMemo(() => {
@@ -72,6 +81,21 @@ export function useVideosById(): Record<string, Video> {
 export function useVideoById(id: string | undefined): Video | undefined {
   const byId = useVideosById();
   return id ? byId[id] : undefined;
+}
+
+// Phase 5 contract fix: single-video read from GET /video/:id — the
+// Watch page must NOT filter the page-1 feed (unlisted videos and
+// videos past page 1 are not in it, and private videos 404 for
+// non-owners server-side).
+export function useVideo(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.video(id ?? ""),
+    queryFn: async (): Promise<Video> => {
+      const { data } = await api.getVideo(id as string);
+      return data as Video;
+    },
+    enabled: Boolean(id),
+  });
 }
 
 export function useLikeVideo() {
@@ -122,12 +146,18 @@ export function useViewVideo() {
       await api.viewsvideo(id);
     },
     // Views are fire-and-forget; only the one video's count is patched.
+    // Phase 5 contract fix: patch the single-video query too — the
+    // Watch page reads GET /video/:id now, not the feed list, so
+    // patching only the list left its count stale at 0.
     onSuccess: (_data, id) => {
       if (!userId) return;
       queryClient.setQueryData<Video[]>(queryKeys.videos, (old) =>
         (old ?? []).map((v) =>
           v._id === id ? { ...v, views: (v.views ?? 0) + 1 } : v,
         ),
+      );
+      queryClient.setQueryData<Video>(queryKeys.video(id), (old) =>
+        old ? { ...old, views: (old.views ?? 0) + 1 } : old,
       );
     },
   });
@@ -249,6 +279,8 @@ export function usePostComment() {
       userid: string | undefined;
       commentbody: string;
       usercommented: string | undefined;
+      /** Phase 5: reply target; omitted/null = top-level comment. */
+      parentId?: string | null;
     }) => {
       await api.postcomment(input);
       return input;
@@ -265,6 +297,7 @@ export function usePostComment() {
         userid: input.userid,
         commentbody: input.commentbody,
         usercommented: input.usercommented,
+        parentId: input.parentId ?? null,
       };
       queryClient.setQueryData<CommentItem[]>(queryKeys.comments, (old) => [
         ...(old ?? []),
@@ -353,6 +386,38 @@ export function useAddToHistory() {
   return useMutation({
     mutationFn: async (input: { videoid: string; viewer: string }) => {
       await api.addtohistory(input);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.history });
+    },
+  });
+}
+
+export function useDeleteHistoryItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { videoid: string; viewer: string }) => {
+      await api.deleteHistoryItem(input.videoid, input.viewer);
+      return input;
+    },
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.history });
+      const previous = queryClient.getQueryData<VideoListEntry[]>(
+        queryKeys.history,
+      );
+      queryClient.setQueryData<VideoListEntry[]>(
+        queryKeys.history,
+        (old) =>
+          (old ?? []).filter(
+            (e) => !(e.videoid === input.videoid && e.viewer === input.viewer),
+          ),
+      );
+      return { previous };
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.history, context.previous);
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.history });
@@ -499,6 +564,404 @@ export function useDeleteWatchLater() {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.watchLater });
+    },
+  });
+}
+
+// ------------------------------------------------------- Phase 5: Studio
+
+export function useStudioOverview() {
+  return useQuery({
+    queryKey: queryKeys.studioOverview,
+    queryFn: async (): Promise<StudioOverview> => {
+      const { data } = await api.getStudioOverview();
+      return data as StudioOverview;
+    },
+  });
+}
+
+export function useStudioAnalytics(range: 7 | 28 | 90) {
+  return useQuery({
+    queryKey: queryKeys.studioAnalytics(range),
+    queryFn: async (): Promise<StudioAnalytics> => {
+      const { data } = await api.getStudioAnalytics(range);
+      return data as StudioAnalytics;
+    },
+  });
+}
+
+export function useStudioVideos(
+  page = 1,
+  opts: { q?: string; visibility?: string; limit?: number } = {},
+) {
+  return useQuery({
+    queryKey: queryKeys.studioVideos(page, opts.q ?? "", opts.visibility ?? ""),
+    queryFn: async (): Promise<PagedResult<Video>> => {
+      const { data } = await api.getStudioVideos(page, opts.limit ?? 50, {
+        q: opts.q || undefined,
+        visibility: opts.visibility || undefined,
+      });
+      const pageData = data as PagedResult<Video>;
+      return Array.isArray(data)
+        ? {
+            items: data as Video[],
+            page: 1,
+            limit: (data as Video[]).length,
+            total: (data as Video[]).length,
+            totalPages: 1,
+          }
+        : pageData;
+    },
+  });
+}
+
+export function useStudioComments(
+  page = 1,
+  opts: { filter?: string; sort?: string; limit?: number } = {},
+) {
+  return useQuery({
+    queryKey: queryKeys.studioComments(page, opts.filter ?? "", opts.sort ?? ""),
+    queryFn: async (): Promise<PagedResult<CommentItem>> => {
+      const { data } = await api.getStudioComments(page, opts.limit ?? 50, {
+        filter: opts.filter || undefined,
+        sort: opts.sort || undefined,
+      });
+      const pageData = data as PagedResult<CommentItem>;
+      return Array.isArray(data)
+        ? {
+            items: data as CommentItem[],
+            page: 1,
+            limit: (data as CommentItem[]).length,
+            total: (data as CommentItem[]).length,
+            totalPages: 1,
+          }
+        : pageData;
+    },
+  });
+}
+
+export function useStudioSettings() {
+  return useQuery({
+    queryKey: queryKeys.studioSettings,
+    queryFn: async (): Promise<StudioSettings> => {
+      const { data } = await api.getStudioSettings();
+      return data as StudioSettings;
+    },
+  });
+}
+
+export function useUpdateStudioSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    // Phase 5 fix contract: the server accepts the full settings shape.
+    mutationFn: async (input: StudioSettingsPatch) => {
+      const { data } = await api.patchStudioSettings(input);
+      return data as Channel;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.studioSettings,
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.channels });
+    },
+  });
+}
+
+export function useStudioPlaylists() {
+  return useQuery({
+    queryKey: queryKeys.studioPlaylists,
+    queryFn: async (): Promise<Playlist[]> => {
+      const { data } = await api.getStudioPlaylists();
+      return unwrapPage<Playlist>(data);
+    },
+  });
+}
+
+// Phase 5 contract fix: the /playlist/:id page reads the PUBLIC
+// endpoint (another creator's public/unlisted playlist, or a logged-out
+// visitor, must not 404 just because the owner-only list is empty).
+export function useStudioPlaylist(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.studioPlaylist(id ?? ""),
+    queryFn: async (): Promise<Playlist> => {
+      const { data } = await api.getStudioPlaylist(id as string);
+      return data as Playlist;
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useLibrary() {
+  return useQuery({
+    queryKey: queryKeys.studioLibrary,
+    queryFn: async (): Promise<LibraryData> => {
+      const { data } = await api.getLibrary();
+      return data as LibraryData;
+    },
+  });
+}
+
+export function useCreatePlaylist() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      title: string;
+      description?: string;
+      visibility?: VideoVisibility;
+      videoIds?: string[];
+    }) => {
+      const { data } = await api.createStudioPlaylist(input);
+      return data as Playlist;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.studioPlaylists,
+      });
+    },
+  });
+}
+
+export function useUpdatePlaylist() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      title?: string;
+      description?: string;
+      visibility?: VideoVisibility;
+      // Contract fix: the server takes addVideoIds/removeVideoIds.
+      addVideoIds?: string[];
+      removeVideoIds?: string[];
+    }) => {
+      const { id, ...rest } = input;
+      const { data } = await api.patchStudioPlaylist(id, rest);
+      return data as Playlist;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.studioPlaylists,
+      });
+    },
+  });
+}
+
+export function useDeletePlaylist() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.deleteStudioPlaylist(id);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.studioPlaylists,
+      });
+    },
+  });
+}
+
+/** Optimistic title/visibility patch; invalidates only studio + videos keys. */
+export function useUpdateVideo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      title?: string;
+      visibility?: VideoVisibility;
+      description?: string;
+      tags?: string[];
+      thumbnailUrl?: string;
+    }) => {
+      await api.patchVideo(input.id, {
+        title: input.title,
+        visibility: input.visibility,
+        description: input.description,
+        tags: input.tags,
+        thumbnailUrl: input.thumbnailUrl,
+      });
+      return input;
+    },
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: ["studio", "videos"] });
+      const previous = queryClient.getQueryData<PagedResult<Video>>(
+        queryKeys.studioVideos(1),
+      );
+      queryClient.setQueryData<PagedResult<Video>>(
+        queryKeys.studioVideos(1),
+        (old) =>
+          old
+            ? {
+                ...old,
+                items: old.items.map((v) =>
+                  v._id === input.id
+                    ? {
+                        ...v,
+                        videotitle: input.title ?? v.videotitle,
+                        visibility: input.visibility ?? v.visibility,
+                      }
+                    : v,
+                ),
+              }
+            : old,
+      );
+      return { previous };
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.studioVideos(1), context.previous);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["studio", "videos"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.videos });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.studioOverview,
+      });
+    },
+  });
+}
+
+export function useDeleteVideo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.deleteVideo(id);
+      return id;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["studio", "videos"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.videos });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.studioOverview,
+      });
+    },
+  });
+}
+
+// ------------------------------------------------------- Phase 5 fix: new hooks
+
+/** Ranked "Up next" from GET /watch/:id/suggestions, with a reason. */
+export function useWatchSuggestions(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.watchSuggestions(id ?? ""),
+    queryFn: async (): Promise<WatchSuggestion[]> => {
+      const { data } = await api.getWatchSuggestions(id as string);
+      const d = data as { items?: WatchSuggestion[] } | WatchSuggestion[];
+      return Array.isArray(d) ? d : (d.items ?? []);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+// Phase 5 fix: public playlists containing a video — the Watch page's
+// playlist showcase. This replaces the owner-only useStudioPlaylists
+// lookup the Watch page used before (the showcase only ever rendered
+// for the channel owner); the endpoint is public, so any viewer sees
+// the showcase for a public playlist.
+export function useWatchPlaylists(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.watchPlaylists(id ?? ""),
+    queryFn: async (): Promise<Playlist[]> => {
+      const { data } = await api.getWatchPlaylists(id as string);
+      const d = data as { items?: Playlist[] } | Playlist[];
+      return Array.isArray(d) ? d : (d.items ?? []);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+/** Creator pins a comment on their own video (server-enforced). */
+export function usePinComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.pinComment(id);
+      return id;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.comments });
+      void queryClient.invalidateQueries({ queryKey: ["studio", "comments"] });
+    },
+  });
+}
+
+/** Restore a soft-deleted video (POST /video/:id/restore). */
+export function useRestoreVideo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.restoreVideo(id);
+      return id;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["studio", "videos"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.videos });
+    },
+  });
+}
+
+/** Add one video to a library shelf (kind "saved" | "watchlater" | "liked"). */
+export function useAddLibraryEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { videoid: string; kind: string }) => {
+      await api.addLibraryEntry(input.videoid, input.kind);
+      return input;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.studioLibrary });
+    },
+  });
+}
+
+export function useRemoveLibraryEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { videoid: string; kind: string }) => {
+      await api.removeLibraryEntry(input.kind, input.videoid);
+      return input;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.studioLibrary });
+    },
+  });
+}
+
+/** Server-persisted history-pause flag (GET/PATCH /user/history-paused). */
+export function useHistoryPaused() {
+  return useQuery({
+    queryKey: queryKeys.historyPaused,
+    queryFn: async (): Promise<boolean> => {
+      const { data } = await api.getHistoryPaused();
+      const d = data as { paused?: boolean } | boolean;
+      return typeof d === "boolean" ? d : (d.paused ?? false);
+    },
+  });
+}
+
+export function useSetHistoryPaused() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (paused: boolean) => {
+      await api.patchHistoryPaused(paused);
+      return paused;
+    },
+    onSuccess: (paused) => {
+      queryClient.setQueryData(queryKeys.historyPaused, paused);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.historyPaused });
+    },
+  });
+}
+
+/** Persist watch position (PATCH /video/history/:videoid/progress).
+ * Path is the single Api function patchHistoryProgress — correct it
+ * there if the backend worker lands a different route. */
+export function useUpdateVideoProgress() {
+  return useMutation({
+    mutationFn: async (input: { videoid: string; progressSec: number }) => {
+      await api.patchHistoryProgress(input.videoid, input.progressSec);
+      return input;
     },
   });
 }

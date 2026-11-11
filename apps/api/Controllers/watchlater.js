@@ -1,5 +1,31 @@
 import watchlater from "../Models/watchlater.js";
+import LibraryEntry from "../Models/LibraryEntry.js";
+import logger from "../utils/logger.js";
 import { paginate, paginationOf } from "../utils/pagination.js";
+
+// Phase 5: dual-write the LibraryEntry row for the same (user, video,
+// kind) so the Library tabs (which read LibraryEntry rows, unioned
+// with this collection) stay in step. A LibraryEntry failure must not
+// fail the watch-later add itself, so it is logged and swallowed.
+async function syncLibraryEntry(viewer, videoid) {
+    try {
+        await LibraryEntry.findOneAndUpdate(
+            { userId: viewer, videoid, kind: "watchlater" },
+            { userId: viewer, videoid, kind: "watchlater", addedAt: new Date() },
+            { upsert: true },
+        );
+    } catch (error) {
+        logger.warn({ err: error }, "watchlater LibraryEntry sync failed");
+    }
+}
+
+async function removeLibraryEntry(viewer, videoid) {
+    try {
+        await LibraryEntry.deleteOne({ userId: viewer, videoid, kind: "watchlater" });
+    } catch (error) {
+        logger.warn({ err: error }, "watchlater LibraryEntry removal failed");
+    }
+}
 
 // Phase 3b: the viewer is ALWAYS req.userid (a body `viewer` is
 // ignored), lists are scoped to the caller, and adds are upserts — the
@@ -14,6 +40,7 @@ export const watchlatercontroller = async (req, res) => {
             { videoid, viewer },
             { upsert: true, returnDocument: "after" },
         )
+        await syncLibraryEntry(viewer, videoid);
         res.status(200).json("added to watchlater")
     } catch (error) {
         res.status(400).json(error.message)
@@ -43,6 +70,7 @@ export const deletewatchlater = async (req, res) => {
         await watchlater.findOneAndDelete({
             videoid:videoid,viewer:viewer,
         })
+        await removeLibraryEntry(viewer, videoid);
         res.status(200).json({message:"removed from watch later"})
     } catch (error) {
         res.status(400).json(error.message)

@@ -1,0 +1,58 @@
+/* Phase 5 — Watch page styles (Obsidian + Acube Red). */
+.watch-page {
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Manrope", sans-serif;
+  align-items: flex-start;
+}
+.watch-main { flex: 1; min-width: 0; }
+.watch-side { width: 360px; flex-shrink: 0; }
+@media (max-width: 900px) {
+  .watch-page { flex-direction: column; padding: 16px; }
+  .watch-side { width: 100%; }
+}
+.acube-player { position: relative; background: #000; border-radius: 16px; overflow: hidden; outline: none; }
+.acube-player video { width: 100%; display: block; aspect-ratio: 16 / 9; }
+.acube-player-controls {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 12px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.75), transparent);
+  color: #fff;
+}
+.acube-seek-track {
+  position: relative; height: 6px; border-radius: 3px;
+  background: rgba(255, 255, 255, 0.3); margin-bottom: 8px; cursor: pointer;
+}
+.acube-seek-buffered { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(255,255,255,0.45); border-radius: 3px; }
+.acube-seek-played { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); border-radius: 3px; }
+.acube-seek-knob {
+  position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); transform: translate(-50%, -50%);
+}
+.acube-seek-tick { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.7); }
+.acube-seek-preview {
+  position: absolute; bottom: 14px; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); color: #fff; padding: 2px 8px;
+  border-radius: 8px; font: 600 12px/16px "Manrope", sans-serif;
+  pointer-events: none; white-space: nowrap;
+}
+.watch-comment-pinned { color: var(--accent); font-weight: 700; font-size: 12px; }
+.acube-player-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acube-player-row button {
+  background: transparent; border: none; color: #fff; cursor: pointer;
+  font: 600 14px/20px "Manrope", sans-serif; padding: 4px 8px; border-radius: 12px;
+}
+.acube-player-row button:hover { background: rgba(255,255,255,0.15); }
+.acube-gesture-indicator {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.7); color: #fff; padding: 8px 16px;
+  border-radius: 12px; font-weight: 600; pointer-events: none;
+}
+.watch-up-next { display: flex; flex-direction: column; gap: 12px; }
+.watch-up-next a { color: var(--text); text-decoration: none; font-weight: 600; }
+.watch-comment { margin-bottom: 12px; }
+.watch-comment-body { display: flex; gap: 12px; }
+.watch-replies { margin-left: 48px; border-left: 2px solid var(--border); padding-left: 12px; }

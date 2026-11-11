@@ -4,8 +4,8 @@ import { useAppDispatch, useAppSelector } from "../store";
 import { setMode, type ThemeMode } from "../store/slices/themeSlice";
 
 // Phase 2b: theme mode now lives in the theme RTK slice (persisted by the
-// store subscriber). This context keeps its old {mode, setMode} shape so
-// ThemeBox is unchanged, but the body-class effect is driven by the slice.
+// store subscriber). This context keeps its old {mode, setMode} shape, but
+// the body-class effect is driven by the slice.
 export const ThemeContext = createContext<{
   mode: ThemeMode;
   setMode: (mode: ThemeMode) => void;

@@ -2,15 +2,14 @@ import React from "react";
 import "./Describechannel.css";
 import { FaEdit, FaUpload } from "react-icons/fa";
 import { MdFileDownload } from "react-icons/md";
+import { Link } from "react-router";
 import { useAppSelector } from "../../store";
 import { useChannelById } from "../../query/hooks";
 
 const Describechannel = ({
-  setvideouploadpage,
   cid,
   seteditcreatechanelbtn,
 }: {
-  setvideouploadpage: (v: boolean) => void;
   cid: string | undefined;
   seteditcreatechanelbtn: (v: boolean) => void;
 }) => {
@@ -55,13 +54,10 @@ const Describechannel = ({
             <FaEdit />
             <b>Edit Channel</b>
           </p>
-          <p
-            className="uploadbtn_chanel"
-            onClick={() => setvideouploadpage(true)}
-          >
+          <Link to="/studio/upload" className="uploadbtn_chanel">
             <FaUpload />
             <b>Upload Video</b>
-          </p>
+          </Link>
         </div>
       )}
     </div>
