@@ -1,6 +1,16 @@
 // Express app factory (no listen / no DB connect here — see index.js).
 // Split out of index.js so Supertest can import the app without starting
 // a server or opening a database connection.
+//
+// dotenv MUST load as the first import (not the dotenv.config() call
+// further down): ES imports are hoisted, so the route imports below
+// (Routes/video.js → Controllers/video.js → cloudinary.js) are evaluated
+// BEFORE any body statement runs. Loading dotenv here means .env is
+// read before any imported module's body executes. This is defence in
+// depth only — cloudinary.js configures the SDK lazily at upload time
+// and must stand on its own, because tests import app.js directly and
+// dotenv may legitimately be absent there.
+import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
