@@ -6,8 +6,16 @@
 // Top-level posts OMIT parentId entirely: the server Zod schema
 // rejects an explicit `parentId: null` (400 VALIDATION_ERROR), which
 // used to roll the optimistic comment straight back off screen.
+// Timestamps: GET /comment returns `commentedon` (the Mongoose Date
+// field — the schema has no timestamps, so there is NO createdAt on
+// real rows). createdMs reads commentedon first and falls back to
+// createdAt (the optimistic insert carries both); a comment with
+// neither renders no time at all — never an invented one. Handles
+// are the same story: no handle field exists, so the meta line shows
+// "@" + the display name.
 import React, { useMemo, useState } from "react";
 import { AiFillDislike, AiFillLike, AiOutlineDislike, AiOutlineLike } from "react-icons/ai";
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { useAppSelector } from "../../store";
 import {
   useCommentsForVideo,
@@ -78,15 +86,25 @@ function countDescendants(node: TreeNode): number {
   );
 }
 
-/** Sort key for "newest": a real timestamp when present. Comments
- * without one (the optimistic insert carries one; old fixtures carry
- * none) sort as newest, with the original server position breaking
- * ties — the server lists newest-first, so an earlier position is
- * newer. */
+/** Sort key for "newest": a real timestamp when present. The API
+ * returns `commentedon`, not `createdAt` (see header) — reading only
+ * createdAt made every real comment sort as timestamp-less. Comments
+ * without either (old fixtures carry none) sort as newest, with the
+ * original server position breaking ties — the server lists
+ * newest-first, so an earlier position is newer. */
 function createdMs(comment: CommentItem): number {
-  if (!comment.createdAt) return Number.POSITIVE_INFINITY;
-  const ms = Date.parse(comment.createdAt);
+  const raw = comment.commentedon ?? comment.createdAt;
+  if (!raw) return Number.POSITIVE_INFINITY;
+  const ms = Date.parse(raw);
   return Number.isNaN(ms) ? Number.POSITIVE_INFINITY : ms;
+}
+
+/** Relative time ("2h ago") from the real timestamp, or null when
+ * the comment has none — the caller renders no time, never a fake. */
+function timeAgo(comment: CommentItem): string | null {
+  const ms = createdMs(comment);
+  if (!Number.isFinite(ms)) return null;
+  return formatDistanceToNow(new Date(ms), { addSuffix: true });
 }
 
 function sortRoots(
@@ -143,16 +161,13 @@ function CommentNode({
   // Visual indent caps at level 3; deeper replies still render.
   const indent = Math.min(depth, 3) * 16;
   const totalReplies = countDescendants(node);
+  const time = timeAgo(c);
   const visibleChildren =
     visibility === "collapsed"
       ? []
       : visibility === "partial"
         ? node.children.slice(0, INITIAL_REPLIES_SHOWN)
         : node.children;
-  const hiddenDirect =
-    visibility === "partial"
-      ? node.children.length - INITIAL_REPLIES_SHOWN
-      : 0;
 
   const toggleReplies = () => {
     setVisibility((current) =>
@@ -184,17 +199,27 @@ function CommentNode({
   };
 
   return (
-    <div className="watch-comment" style={depth > 3 ? { marginLeft: indent } : undefined}>
-      <div className="watch-comment-body">
-        <div className="studio-avatar">
-          {(c.usercommented ?? "?").charAt(0).toUpperCase()}
+    <div
+      className="watch-comment"
+      style={depth > 0 ? { marginLeft: indent } : undefined}
+    >
+      <div
+        className={`watch-comment-body${c.pinnedByCreator ? " watch-comment-body--pinned" : ""}`}
+      >
+        <div
+          className={`studio-avatar${c.pinnedByCreator ? " watch-comment-avatar--pinned" : ""}`}
+        >
+          {c.pinnedByCreator
+            ? "★"
+            : (c.usercommented ?? "?").charAt(0).toUpperCase()}
         </div>
         <div style={{ flex: 1 }}>
           <div className="watch-comment-meta">
-            <strong>{c.usercommented}</strong>
+            <strong>@{c.usercommented}</strong>
             {c.pinnedByCreator ? (
               <span className="watch-comment-pinned"> · Pinned by creator</span>
             ) : null}
+            {time ? <span> · {time}</span> : null}
           </div>
           <p className="watch-comment-text">{c.commentbody}</p>
           <div className="watch-comment-actions">
@@ -236,34 +261,48 @@ function CommentNode({
               ) : (
                 <AiOutlineDislike size={16} />
               )}
-              <span>{c.dislikes ?? 0}</span>
             </button>
             {currentuser ? (
               <button
                 type="button"
-                className="acube-btn-secondary"
+                className="watch-comment-text-action"
                 onClick={() => setReplyOpen((v) => !v)}
               >
                 Reply
               </button>
             ) : null}
-            {totalReplies > 0 ? (
+            {totalReplies > 0 && visibility !== "expanded" ? (
               <button
                 type="button"
-                className="acube-btn-secondary"
+                className="watch-comment-text-action watch-comment-replies-toggle"
+                aria-expanded={visibility !== "collapsed"}
                 onClick={toggleReplies}
               >
-                {visibility === "collapsed"
-                  ? `Show ${totalReplies} ${totalReplies === 1 ? "reply" : "replies"}`
-                  : visibility === "partial"
-                    ? `Show ${hiddenDirect} more ${hiddenDirect === 1 ? "reply" : "replies"}`
-                    : "Hide replies"}
+                {totalReplies} {totalReplies === 1 ? "reply" : "replies"} ↓
+              </button>
+            ) : null}
+            {totalReplies > 0 && visibility === "partial" ? (
+              <button
+                type="button"
+                className="watch-comment-text-action"
+                onClick={toggleReplies}
+              >
+                Show more replies
+              </button>
+            ) : null}
+            {totalReplies > 0 && visibility === "expanded" ? (
+              <button
+                type="button"
+                className="watch-comment-text-action"
+                onClick={toggleReplies}
+              >
+                Hide replies
               </button>
             ) : null}
             {isOwn ? (
               <button
                 type="button"
-                className="acube-btn-danger"
+                className="watch-comment-text-action watch-comment-delete"
                 onClick={() => deleteMutation.mutate(c._id)}
               >
                 Delete
@@ -272,7 +311,7 @@ function CommentNode({
             {isVideoOwner && !c.pinnedByCreator ? (
               <button
                 type="button"
-                className="acube-btn-secondary"
+                className="watch-comment-text-action"
                 onClick={() => pinMutation.mutate(c._id)}
               >
                 Pin
@@ -288,7 +327,10 @@ function CommentNode({
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
               />{" "}
-              <button type="submit" className="acube-btn">
+              <button
+                type="submit"
+                className="watch-comment-text-action watch-comment-submit"
+              >
                 Post reply
               </button>
             </form>
@@ -324,9 +366,13 @@ export default function NestedComments({
   const commentlist = useCommentsForVideo(videoid);
   const postMutation = usePostComment();
   const [text, setText] = useState("");
+  // Inline guard message — the old alert()s are gone.
+  const [error, setError] = useState<string | null>(null);
   // Sort: Top (most-liked first) is the preview default; Newest is
-  // newest-first. Both sort from the real filtered list.
+  // newest-first. Both sort from the real filtered list. The control
+  // is a TEXT button opening a small menu, not a boxed dropdown.
   const [sort, setSort] = useState<CommentSort>("top");
+  const [sortOpen, setSortOpen] = useState(false);
   const isVideoOwner =
     Boolean(currentuser?.result._id) &&
     currentuser?.result._id === videoOwnerId;
@@ -338,13 +384,14 @@ export default function NestedComments({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim()) {
-      alert("please type your comment!!");
+      setError("Please type your comment first.");
       return;
     }
     if (!currentuser) {
-      alert("Please login to comment");
+      setError("Please sign in to comment.");
       return;
     }
+    setError(null);
     // Top-level post: parentId is OMITTED (never null) — see header.
     postMutation.mutate({
       videoid,
@@ -355,33 +402,110 @@ export default function NestedComments({
     setText("");
   };
 
+  const pickSort = (next: CommentSort) => {
+    setSort(next);
+    setSortOpen(false);
+  };
+
   return (
-    <div>
+    <div className="watch-comments">
       <div className="watch-comments-header">
-        <h2>Comments {commentlist ? commentlist.length : ""}</h2>
-        <label className="watch-comments-sort">
-          Sort:{" "}
-          <select
+        <h2>Comments · {commentlist ? commentlist.length : ""}</h2>
+        <div className="watch-comments-sort-wrap">
+          <button
+            type="button"
+            className="watch-comments-sort"
             aria-label="Sort comments"
-            value={sort}
-            onChange={(e) => setSort(e.target.value as CommentSort)}
+            aria-haspopup="menu"
+            aria-expanded={sortOpen}
+            onClick={() => setSortOpen((v) => !v)}
           >
-            <option value="top">Top</option>
-            <option value="newest">Newest</option>
-          </select>
-        </label>
+            Sort: {sort === "top" ? "Top" : "Newest"} ▾
+          </button>
+          {sortOpen ? (
+            <>
+              <span
+                className="watch-menu-overlay"
+                aria-hidden="true"
+                onClick={() => setSortOpen(false)}
+              />
+              <div
+                className="acube-card watch-comments-sort-menu"
+                role="menu"
+                aria-label="Sort comments"
+              >
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={sort === "top"}
+                  className="watch-comments-sort-item"
+                  onClick={() => pickSort("top")}
+                >
+                  {sort === "top" ? "✓ Top" : "Top"}
+                </button>
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={sort === "newest"}
+                  className="watch-comments-sort-item"
+                  onClick={() => pickSort("newest")}
+                >
+                  {sort === "newest" ? "✓ Newest" : "Newest"}
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+        <span className="watch-comments-note">
+          Nested replies — reply to any level
+        </span>
       </div>
-      <form onSubmit={handleSubmit} style={{ marginBottom: 16 }}>
-        <input
-          className="acube-input"
-          aria-label="Add a comment"
-          placeholder="Add a comment..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />{" "}
-        <button type="submit" className="acube-btn">
-          Comment
-        </button>
+      <form onSubmit={handleSubmit} className="watch-add-comment">
+        <span className="studio-avatar">
+          {(currentuser?.result.name ?? "?").charAt(0).toUpperCase()}
+        </span>
+        <div className="watch-add-comment-main">
+          <label
+            htmlFor="watch-add-comment-input"
+            className="watch-add-comment-label"
+          >
+            ADD A COMMENT...
+          </label>
+          <textarea
+            id="watch-add-comment-input"
+            className="watch-add-comment-input"
+            aria-label="Add a comment"
+            placeholder="Be specific — what part helped?"
+            rows={2}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              if (error) setError(null);
+            }}
+            onKeyDown={(e) => {
+              // Enter submits (Shift+Enter is a newline).
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
+          />
+          <div className="watch-add-comment-footer">
+            {error ? (
+              <span className="watch-add-comment-error" role="alert">
+                {error}
+              </span>
+            ) : (
+              <span />
+            )}
+            <button
+              type="submit"
+              className="watch-comment-text-action watch-add-comment-submit"
+            >
+              Comment
+            </button>
+          </div>
+        </div>
       </form>
       {tree.length === 0 ? (
         <p className="watch-comment-text" style={{ color: "var(--text-2)" }}>

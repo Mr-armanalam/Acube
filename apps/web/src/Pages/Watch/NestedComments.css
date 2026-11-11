@@ -12,22 +12,179 @@
   flex-wrap: wrap;
 }
 
+.watch-comments-sort-wrap {
+  position: relative;
+}
+
+/* The sort toggle sits above the dismiss overlay (z 5) so the menu
+ * can be closed by clicking it again; the menu itself is z 10. */
+.watch-comments-sort-wrap .watch-comments-sort {
+  position: relative;
+  z-index: 6;
+}
+
+/* Sort is a TEXT control (button opening a small menu), not a boxed
+ * dropdown. */
 .watch-comments-sort {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-2);
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.watch-comments-sort:hover {
+  background: var(--body_second_top_navlight);
+}
+
+.watch-comments-sort-menu {
+  position: absolute;
+  z-index: 10;
+  margin-top: 4px;
+  min-width: 120px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.watch-comments-sort-item {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.watch-comments-sort-item:hover {
+  background: var(--surface-2);
+}
+
+.watch-comments-note {
   font-size: 13px;
   line-height: 1.4;
   color: var(--text-2);
 }
 
-.watch-comments-sort select {
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text);
-  background: transparent;
+/* Add-comment: large dark rounded box, avatar at left, small label,
+ * real placeholder, submit as a TEXT link (not a red pill). */
+.watch-add-comment {
+  display: flex;
+  gap: 12px;
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 2px 4px;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
 }
 
+.watch-add-comment-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.watch-add-comment-label {
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.watch-add-comment-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  font-family: inherit;
+  padding: 0;
+}
+
+.watch-add-comment-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.watch-add-comment-error {
+  color: var(--accent);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.watch-add-comment-submit {
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+/* Comment actions are TEXT only — Reply / Delete / Pin / Show more /
+ * Post reply / Comment submit. No pill buttons anywhere here. */
+.watch-comment-text-action {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 2px 4px;
+  border-radius: 8px;
+}
+
+.watch-comment-text-action:hover:not(:disabled) {
+  background: var(--body_second_top_navlight);
+}
+
+.watch-comment-text-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* "N replies ↓" in red; Delete in red; the submit link is red too. */
+.watch-comment-replies-toggle {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.watch-comment-delete {
+  color: var(--accent);
+}
+
+.watch-comment-submit {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Pinned comment: red-tinted bordered box, ★ avatar. The tint is on
+ * the body row only, so nested replies render outside the box. */
+.watch-comment-body.watch-comment-body--pinned {
+  background: rgba(232, 72, 47, 0.1);
+  border: 1px solid rgba(232, 72, 47, 0.45);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+/* Stronger than Watch.css's .watch-details .studio-avatar so the
+ * pinned star stays red regardless of stylesheet order. */
+.watch-details .studio-avatar.watch-comment-avatar--pinned {
+  background: var(--accent);
+  color: #fff;
+}
 /* Comment author / meta line: 13px. */
 .watch-comment-meta {
   font-size: 13px;

@@ -57,9 +57,16 @@
 }
 .acube-chapter-segment:hover { background: rgba(255, 255, 255, 0.65); }
 .acube-chapter-segment--current { background: var(--accent); }
-/* Watch channel row: avatar + name link, real Subscribe pill beside it. */
-.watch-channel-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
-.watch-channel-link { display: flex; gap: 12px; align-items: center; color: var(--text); text-decoration: none; }
+/* Watch channel row: avatar + name + meta on the left, real
+ * Subscribe pill (+ muted count, rendered by SubscribeButton) at the
+ * far right. */
+.watch-channel-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
+.watch-channel-link { display: flex; gap: 12px; align-items: center; color: var(--text); text-decoration: none; min-width: 0; }
+.watch-channel-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.watch-channel-meta { color: var(--text-2); font-size: 13px; line-height: 1.4; }
+/* "Resumed from 0:11" stays visible but subtle — same muted tone as
+ * the rest of the meta line, never dropped. */
+.watch-resumed { color: var(--text-2); }
 .subscribe-wrap { display: inline-flex; align-items: center; gap: 8px; }
 .watch-subscribe {
   background: #e8482f; color: #fff; border: 0; border-radius: 999px;
@@ -112,4 +119,93 @@
 .watch-up-next a { color: var(--text); text-decoration: none; font-weight: 600; }
 .watch-comment { margin-bottom: 12px; }
 .watch-comment-body { display: flex; gap: 12px; }
-.watch-replies { margin-left: 48px; border-left: 2px solid var(--border); padding-left: 12px; }
+/* Nested replies: a vertical guide line at the thread's left edge.
+ * The indent itself is capped at level 3 in NestedComments (the
+ * inline marginLeft), so the container adds no further margin —
+ * deeper replies stop drifting right. */
+.watch-replies { margin-left: 0; border-left: 2px solid var(--border); padding-left: 12px; }
+
+/* ---- Watch details redesign (image-37) ---- */
+.watch-title { font-size: 20px; margin: 16px 0 12px; }
+/* Avatars on this page are 36px circles — defined here, not borrowed
+ * from Studio.css (that chunk is not loaded on /watch, so the bare
+ * span stretched to the full row height; invisible until the pinned
+ * avatar's red background exposed it). */
+.watch-details .studio-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surface-2); color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-weight: 700;
+}
+/* One uniform action row of dark rounded pills. */
+.watch-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.watch-action-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px;
+  font: 600 14px/20px "Manrope", sans-serif; cursor: pointer;
+}
+.watch-action-pill:hover:not(:disabled) { filter: brightness(1.2); }
+.watch-action-pill:disabled { cursor: not-allowed; opacity: 0.6; }
+/* Combined Like pill: 👍 count + 👎 joined in ONE pill, red when active. */
+.watch-like-pill {
+  display: inline-flex; align-items: center;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
+}
+.watch-like-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; border: 0; color: var(--text);
+  padding: 8px 12px; font: 600 14px/20px "Manrope", sans-serif; cursor: pointer;
+}
+.watch-like-btn:hover { background: rgba(255, 255, 255, 0.08); }
+.watch-like-btn:first-child:hover { border-radius: 999px 0 0 999px; }
+.watch-like-btn:last-child:hover { border-radius: 0 999px 999px 0; }
+.watch-like-btn.active { color: var(--accent); }
+.watch-like-divider { width: 1px; align-self: stretch; margin: 8px 0; background: var(--border); }
+/* "··· More" menu: every item does something real (see Watch.tsx). */
+.watch-more-wrap { position: relative; display: inline-block; }
+/* The toggle sits above the dismiss overlay (z 5) so the menu can be
+ * closed by clicking it again; the menu itself is z 10. */
+.watch-more-wrap .watch-action-pill { position: relative; z-index: 6; }
+.watch-menu-overlay { position: fixed; inset: 0; z-index: 5; }
+.watch-more-menu {
+  position: absolute; z-index: 10; right: 0; margin-top: 8px;
+  min-width: 230px; padding: 6px; display: flex; flex-direction: column;
+}
+.watch-more-item {
+  background: transparent; border: 0; color: var(--text); text-align: left;
+  padding: 8px 10px; border-radius: 8px;
+  font: 600 14px/20px "Manrope", sans-serif; cursor: pointer;
+}
+.watch-more-item:hover:not(:disabled) { background: var(--surface-2); }
+.watch-more-item:disabled { cursor: not-allowed; opacity: 0.55; }
+/* Description: plain text, no box/border. */
+.watch-description { margin: 0 0 24px; font-size: 14px; line-height: 1.5; }
+.watch-description p { margin: 0; }
+/* Text actions (NOT pill buttons): description toggle, comment
+ * submit, Reply / Delete / Pin / Show-more links. */
+.watch-text-action {
+  background: transparent; border: 0; padding: 0; color: var(--accent);
+  font: 700 14px/20px "Manrope", sans-serif; cursor: pointer;
+}
+.watch-desc-toggle { margin-left: 6px; }
+/* Download pill: DownloadVideo keeps its own (shared) rendering —
+ * an icon-only anchor and, when not premium, an "Upgrade" button.
+ * Scoped here only: the pill label is appended to each, and when
+ * both render (non-premium with a free download left) only the
+ * premium-gated Upgrade control shows, so the row keeps ONE pill.
+ * `.ishidden` (from the deleted Likewatchlatersavebtn.css) hides the
+ * anchor for logged-out / out-of-free-download viewers. */
+.ishidden { display: none !important; }
+.watch-download-pill { padding: 0; }
+.watch-download-pill a.download,
+.watch-download-pill button.download {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; border: 0; color: var(--text);
+  padding: 8px 14px; margin: 0;
+  font: 600 14px/20px "Manrope", sans-serif; cursor: pointer;
+}
+.watch-download-pill a.download::after { content: "Download · Premium"; }
+.watch-download-pill button.download b { display: none; }
+.watch-download-pill button.download::after { content: "Download · Premium"; }
+.watch-download-pill:has(> button.download) > a.download { display: none; }
