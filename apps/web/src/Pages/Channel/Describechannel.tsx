@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { useAppSelector } from "../../store";
 import { useChannelById, useChannels } from "../../query/hooks";
 import { resolveApiMediaUrl } from "../../Api";
+import SubscribeButton from "../../Component/SubscribeButton";
 
 // Channel header, rebuilt to the approved preview (image-26): wide
 // banner, avatar circle overlapping the banner's bottom edge, channel
@@ -12,12 +13,11 @@ import { resolveApiMediaUrl } from "../../Api";
 // videos" (Studio Analytics) instead of the old "Edit Channel" /
 // "Upload Video" buttons.
 //
-// NO subscribe system exists (explicit cut): there is no follow
-// endpoint and no subscriber count anywhere in the app, so the
-// Subscribe button is rendered disabled with a "Coming soon"
-// affordance and no subscriber number is ever shown. The old "⬇ 0"
-// download counter and the "Points: 100" / "Premium: active" pills
-// are gone with the old header.
+// Subscribe is real now (POST /subscriptions/:channelId/toggle via
+// SubscribeButton, with the real subscriber count): the disabled
+// "Coming soon" button is gone. The old "⬇ 0" download counter and
+// the "Points: 100" / "Premium: active" pills are gone with the old
+// header.
 const DESCRIPTION_PREVIEW_CHARS = 140;
 
 const Describechannel = ({
@@ -125,17 +125,22 @@ const Describechannel = ({
                 </Link>
               </>
             ) : (
-              <>
-                <button
-                  type="button"
-                  className="channel_subscribe"
-                  disabled
-                  title="Subscriptions aren't available yet"
-                >
-                  Subscribe
-                </button>
-                <span className="channel_subscribe_soon">Coming soon</span>
-              </>
+              <SubscribeButton
+                channelId={currentchannel?._id ?? cid ?? ""}
+                channelName={currentchannel?.name}
+                isOwner={false}
+                loggedIn={Boolean(currentuser)}
+                initial={
+                  typeof currentchannel?.subscriberCount === "number"
+                    ? {
+                        subscribed: currentchannel.subscribed ?? false,
+                        subscriberCount: currentchannel.subscriberCount,
+                      }
+                    : undefined
+                }
+                className="channel_subscribe"
+                subscribedClassName="channel_subscribe channel_subscribe--subscribed"
+              />
             )}
           </div>
         </div>

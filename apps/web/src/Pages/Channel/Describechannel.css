@@ -104,22 +104,25 @@
 .channel_owner_btn:hover {
   border-color: var(--accent);
 }
-/* Disabled on purpose: no subscribe system exists, so the button must
- * not fake a subscription. */
+/* Real Subscribe toggle (POST /subscriptions/:channelId/toggle):
+ * red pill per the preview; Subscribed is a quiet pill; disabled
+ * only when logged out (SubscribeButton) — never "Coming soon". */
 .channel_subscribe {
-  background: #f2eee6;
-  color: #0c0b0a;
+  background: #e8482f;
+  color: #fff;
   border: 0;
   border-radius: 999px;
   padding: 0.6rem 1.25rem;
   font: 600 0.95rem/1 "Manrope", sans-serif;
-  cursor: not-allowed;
-  opacity: 0.75;
+  cursor: pointer;
 }
-.channel_subscribe_soon {
-  color: var(--text-2);
-  font-size: 0.85rem;
+.channel_subscribe:hover { background: #d03d27; }
+.channel_subscribe--subscribed {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
+.channel_subscribe:disabled { cursor: not-allowed; opacity: 0.6; }
 .channel_empty {
   color: var(--text-2);
   text-align: center;

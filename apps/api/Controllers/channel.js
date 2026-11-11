@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import users from "../Models/Auth.js"
 import videofile from "../Models/videofile.js";
 import Playlist from "../Models/Playlist.js";
+import { isSubscribed, subscriberCountFor } from "./subscriptions.js";
 import { paginate, paginationOf } from "../utils/pagination.js";
 
 const NOT_FOUND = (message) => ({ error: { code: "NOT_FOUND", message } });
@@ -50,16 +51,32 @@ export const getallchanels=async(req,res)=>{
         // Phase 3b: paginated + lean. Response shape is now
         // { items, page, limit, total, totalPages }; each item keeps the
         // old {_id, name, email, desc} projection. The list stays public
-        // (it is the channel directory) — no auth on this route.
+        // (it is the channel directory) — the route uses optionalAuth,
+        // so anonymous callers still read it and `subscribed` is
+        // simply false for them.
         const page = await paginate(
             users.find().sort({ createdAt: 1, _id: 1 }),
             paginationOf(req),
         );
-        const allchaneldata = page.items.map((channel)=>({
-            _id:channel._id,
-            name:channel.name,
-            email:channel.email,
-            desc:channel.desc,
+        // Watch page: every channel item carries its honest derived
+        // subscriberCount (0 when none) and `subscribed` for the
+        // requesting user (false when anonymous — the route uses
+        // optionalAuth, so req.userid is set only for a signed-in
+        // caller). Both come from the Subscription rows, so the
+        // channel header, the Watch page and GET /subscriptions/:id
+        // can never disagree.
+        const allchaneldata = await Promise.all(
+            page.items.map(async (channel) => {
+                const channelId = String(channel._id);
+                const [subscriberCount, subscribed] = await Promise.all([
+                    subscriberCountFor(channelId),
+                    isSubscribed(channelId, req.userid ?? null),
+                ]);
+                return {
+                    _id: channel._id,
+                    name: channel.name,
+                    email: channel.email,
+                    desc: channel.desc,
             // Channel header renders "@handle" (Describechannel.tsx
             // reads channel.handle ?? channel.username) — the
             // projection used to drop it, so every header fell back
@@ -72,10 +89,14 @@ export const getallchanels=async(req,res)=>{
             // Settings polish fix: the channel header renders the
             // uploaded avatar/banner — the projection used to drop
             // them, so an upload never reached the channel page.
-            picture:channel.picture,
-            avatarUrl:channel.avatarUrl ?? channel.picture ?? null,
-            bannerUrl:channel.bannerUrl ?? null,
-        }));
+            picture: channel.picture,
+            avatarUrl: channel.avatarUrl ?? channel.picture ?? null,
+            bannerUrl: channel.bannerUrl ?? null,
+            subscriberCount,
+            subscribed,
+                };
+            }),
+        );
         res.status(200).json({ ...page, items: allchaneldata })
     } catch (error) {
         res.status(405).json({message:error.message})

@@ -21,6 +21,15 @@ const commentschema = mongoose.Schema({
     pinnedByCreator: { type: String, default: null },
     // Phase 5 fix: demo seed marker (see Models/Auth.js).
     demo: { type: Boolean, default: false },
+    // Watch page: server-owned per-user like/dislike reactions. A
+    // user id appears in at most one of the two arrays (liking
+    // removes a dislike and vice versa — see
+    // Controllers/Comment.js toggleCommentReaction), so the counts
+    // are derived (array lengths), never client-supplied, and a
+    // toggle is idempotent. Old rows have neither field; readers
+    // treat a missing array as empty.
+    likedBy: { type: [String], default: [] },
+    dislikedBy: { type: [String], default: [] },
 })
 
 // Phase 3b: comment lists are filtered by video.

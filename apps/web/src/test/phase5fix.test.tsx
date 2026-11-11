@@ -445,17 +445,30 @@ describe("G — Settings", () => {
 });
 
 describe("H — Watch", () => {
-  it("Up Next comes from suggestions with Because: reason labels", async () => {
+  it("Up Next comes from suggestions with Because: reason labels, and the channel row has a real Subscribe button", async () => {
     server.use(
       http.get("*/comment/get", () =>
         HttpResponse.json(pageOf(fixtureNestedComments)),
       ),
     );
     renderRoutes("/watch/vid1", testSession);
-    expect(await screen.findByText("Up next")).toBeInTheDocument();
+    // 5 s wait (repo precedent: settingsWatchPolish.test.tsx): the
+    // heading renders only after the suggestions query resolves,
+    // and the 1 s default is too tight under full-suite parallel
+    // load on a small box — the page was still on its loading
+    // skeleton when the 1 s wait expired (2 failures in 3 full runs,
+    // passes in isolation every time).
+    expect(
+      await screen.findByText("Up next", {}, { timeout: 5000 }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Because: Same channel")).toBeInTheDocument();
     expect(screen.getByText("Because: Same topic")).toBeInTheDocument();
-    expect(screen.queryByText("Subscribe")).not.toBeInTheDocument();
+    // Watch-page rebuild: Subscribe is real now (non-owner viewer) —
+    // the old "no Subscribe button" assertion is superseded.
+    expect(
+      screen.getByRole("button", { name: "Subscribe to alice" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("42 subscribers")).toBeInTheDocument();
   });
 
   it("renders nested replies to depth 4 (the old depth-cap bug)", async () => {

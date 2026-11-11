@@ -22,6 +22,10 @@ import {
 import { paginate, paginationOf } from "../utils/pagination.js";
 import { checkReachableImageUrl } from "../utils/validateImageUrl.js";
 import { invalidateChannelCache } from "../utils/studioCache.js";
+import {
+  isSubscribed,
+  subscriberCountFor,
+} from "./subscriptions.js";
 
 // Phase 3b upload hardening:
 //  * MIME + size are re-checked here (multer's filter/limit are the
@@ -220,6 +224,9 @@ export const uploadvideo = async (req, res) => {
         thumbnailUrl: null,
         autoThumbnails,
         durationSec: duration,
+        // Watch page: chapters validated by uploadVideoBodySchema
+        // (chaptersSchema); absent means no chapters, never invented.
+        chapters: req.body.chapters ?? [],
       });
       // Local fallback only, and only when nothing was supplied:
       // extract three ffmpeg frames from the stored file. (On the
@@ -274,6 +281,7 @@ export const uploadvideo = async (req, res) => {
           tags: file.tags,
           thumbnailUrl: file.thumbnailUrl,
           autoThumbnails: file.autoThumbnails,
+          chapters: file.chapters ?? [],
         },
       });
     } catch (error) {
@@ -320,6 +328,9 @@ export const getallvideos = async (req, res) => {
 // Phase 5 fix: drafts behave like private (owner only), and a
 // soft-deleted video is 404 for EVERYONE, owner included — restore it
 // via POST /video/:id/restore first.
+// Watch page: the DTO also carries `subscriberCount` (honest derived
+// count for the video's channel, 0 when none) and `subscribed` for
+// the requesting user (false when anonymous).
 export const getVideoById = async (req, res, next) => {
   try {
     const video = await videofile.findById(req.params.id).lean();
@@ -337,16 +348,20 @@ export const getVideoById = async (req, res, next) => {
         error: { code: "NOT_FOUND", message: "Video not found" },
       });
     }
-    return res.status(200).json(video);
+    const [subscriberCount, subscribed] = await Promise.all([
+      subscriberCountFor(String(video.videochanel)),
+      isSubscribed(String(video.videochanel), req.userid ?? null),
+    ]);
+    return res.status(200).json({ ...video, subscriberCount, subscribed });
   } catch (error) {
     return next(error);
   }
 };
 
 // Phase 5: edit own video — title / visibility / description / tags /
-// thumbnailUrl / durationSec (updateVideoSchema is strict: any other
-// field is 400). Non-owner → 403; missing video → 404; a soft-deleted
-// video is 404 until restored.
+// thumbnailUrl / durationSec / chapters (updateVideoSchema is strict:
+// any other field is 400). Non-owner → 403; missing video → 404; a
+// soft-deleted video is 404 until restored.
 export const updateVideo = async (req, res, next) => {
   try {
     const video = await videofile.findById(req.params.id);
@@ -394,6 +409,11 @@ export const updateVideo = async (req, res, next) => {
     }
     if (req.body.durationSec !== undefined) {
       updates.durationSec = req.body.durationSec;
+    }
+    // Watch page: chapters replace wholesale (the Edit-details modal
+    // sends the full edited list). An empty array clears them.
+    if (req.body.chapters !== undefined) {
+      updates.chapters = req.body.chapters;
     }
     // Multipart edit (Studio Content modal): a local thumbnail file
     // wins over a pasted thumbnailUrl in the same request. A

@@ -97,6 +97,19 @@ const videofileschema=new mongoose.Schema(
             type:Number,
             default:null,
         },
+        // Watch page: real chapters only — [{ title, startSec }],
+        // validated by chaptersSchema in @acube/shared (title
+        // non-empty, max 120 chars; startSec >= 0; strictly
+        // ascending, no duplicates). Absent/empty means "no
+        // chapters" — the player renders no ticks, never invented
+        // ones. Set on upload and via PATCH /video/:id.
+        chapters:{
+            type:[{
+                title:{ type:String, required:true },
+                startSec:{ type:Number, required:true },
+            }],
+            default:[],
+        },
         // Phase 5 fix: soft delete. DELETE /video/:id sets this
         // (nothing is hard-deleted any more); POST /video/:id/restore
         // clears it. A soft-deleted video is 404 on GET /video/:id,

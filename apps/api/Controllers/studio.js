@@ -14,6 +14,7 @@ import Watchlater from "../Models/watchlater.js";
 import Likedvideo from "../Models/likevideo.js";
 import ViewEvent from "../Models/ViewEvent.js";
 import { paginate, paginationOf } from "../utils/pagination.js";
+import { reactionFields } from "./Comment.js";
 import { getCached, setCached, invalidateChannelCache } from "../utils/studioCache.js";
 import { getChannelTotals } from "../utils/analytics.js";
 import { uploadOnCloudinary, isCloudinaryConfigured } from "../cloudinary.js";
@@ -465,6 +466,8 @@ export const getStudioComments = async (req, res, next) => {
         ...c,
         videotitle: titles.get(String(c.videoid)) ?? null,
         hasReply: repliedIds.has(String(c._id)),
+        // Watch page: same reaction shape as GET /comment/get.
+        ...reactionFields(c, req.userid),
       })),
     });
   } catch (error) {

@@ -6,15 +6,20 @@
 // depth, Up Next from GET /watch/:id/suggestions with "Because:
 // <reason>" labels, and a playlist showcase with thumbnails, index
 // numbers, current-video highlight, progress, Play-all / Shuffle /
-// Loop / Save-a-copy. NO Subscribe button: there is no follow system,
-// so a Subscribe button would fake one (explicit cut — see report).
-// Resume: ?t=<seconds> or the stored history progress seeks the
-// player; playback position is persisted via the progress endpoint.
+// Loop / Save-a-copy. Subscribe is real now: the Watch channel row
+// carries the Subscribe toggle (POST /subscriptions/:channelId/toggle)
+// with the real subscriber count; the owner sees no button and a
+// logged-out viewer sees it disabled. Resume: ?t=<seconds> or the
+// stored history progress seeks the player; playback position is
+// persisted via the progress endpoint.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./Watch.css";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useAppSelector } from "../../store";
+import { resolveApiMediaUrl } from "../../Api";
+import SubscribeButton from "../../Component/SubscribeButton";
+import VideoThumb from "../../Component/VideoThumb";
 import {
   useAddToHistory,
   useCreatePlaylist,
@@ -58,7 +63,7 @@ function readAutoplayPreference(): boolean {
 const Watch = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const videoQuery = useVideo(id);
   const suggestionsQuery = useWatchSuggestions(id);
   const { data: feedVideos } = useVideos();
@@ -193,6 +198,23 @@ const Watch = () => {
     if (nextAutoplayId) navigate(`/watch/${nextAutoplayId}`);
   }, [currentuser, id, watchCompleteMutation, autoplay, nextAutoplayId, navigate]);
 
+  // A chapter click seeks (the Player does that) and puts the second
+  // in the URL — ?t= seek-on-load already works, so a shared chapter
+  // link resumes at the chapter. ?t= still wins over stored progress.
+  const handleChapterSeek = useCallback(
+    (sec: number) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("t", String(sec));
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   const share = useCallback(() => {
     const url = window.location.href;
     if (navigator.clipboard?.writeText) {
@@ -235,12 +257,14 @@ const Watch = () => {
     <div className="watch-page">
       <div className="watch-main">
         <Player
-          src={vv.filepath}
+          src={resolveApiMediaUrl(vv.filepath)}
+          poster={resolveApiMediaUrl(vv.thumbnailUrl ?? vv.thumbnail ?? undefined)}
           initialTime={initialTime || undefined}
           onProgressSec={handleProgress}
           chapters={vv.chapters}
           loop={loop}
           onEnded={handleEnded}
+          onChapterSeek={handleChapterSeek}
         />
         <h1 style={{ fontSize: 20, margin: "16px 0 8px" }}>{vv.videotitle}</h1>
         <div style={{ color: "var(--text-2)", marginBottom: 12 }}>
@@ -257,15 +281,33 @@ const Watch = () => {
             {shareCopied ? "Link copied" : "Share"}
           </button>
         </div>
-        <Link
-          to={`/channel/${vv.videochanel}`}
-          style={{ display: "flex", gap: 12, alignItems: "center", margin: "16px 0", color: "var(--text)", textDecoration: "none" }}
-        >
-          <span className="studio-avatar">
-            {(vv.uploader ?? "?").charAt(0).toUpperCase()}
-          </span>
-          <strong>{vv.uploader}</strong>
-        </Link>
+        <div className="watch-channel-row">
+          <Link
+            to={`/channel/${vv.videochanel}`}
+            className="watch-channel-link"
+          >
+            <span className="studio-avatar">
+              {(vv.uploader ?? "?").charAt(0).toUpperCase()}
+            </span>
+            <strong>{vv.uploader}</strong>
+          </Link>
+          <SubscribeButton
+            channelId={vv.videochanel}
+            channelName={vv.uploader}
+            isOwner={viewerId === vv.videochanel}
+            loggedIn={Boolean(currentuser)}
+            initial={
+              typeof vv.subscriberCount === "number"
+                ? {
+                    subscribed: vv.subscribed ?? false,
+                    subscriberCount: vv.subscriberCount,
+                  }
+                : undefined
+            }
+            className="watch-subscribe"
+            subscribedClassName="watch-subscribe watch-subscribe--subscribed"
+          />
+        </div>
         <div className="acube-card" style={{ padding: 16, marginBottom: 24 }}>
           <p style={{ margin: 0 }}>
             {vv.views ?? 0} views ·{" "}
@@ -306,24 +348,39 @@ const Watch = () => {
               {orderedPlaylistVideos.map((v) => {
                 const idx = playlist.videoIds.indexOf(v._id);
                 const isCurrent = v._id === vv._id;
+                const playlistDuration = formatDuration(
+                  v.durationSec ?? v.duration ?? undefined,
+                );
                 return (
                   <Link
                     key={v._id}
                     to={`/watch/${v._id}`}
+                    className="watch-up-next-item"
                     style={
                       isCurrent
                         ? { outline: "2px solid var(--accent)", borderRadius: 8, padding: 4 }
                         : undefined
                     }
                   >
-                    <span style={{ color: "var(--text-2)" }}>
-                      {idx + 1}.{" "}
+                    <span className="watch-thumb-wrap">
+                      <VideoThumb
+                        src={v.thumbnailUrl ?? v.thumbnail ?? undefined}
+                        className="watch-thumb"
+                      />
+                      {playlistDuration ? (
+                        <span className="watch-duration-badge">{playlistDuration}</span>
+                      ) : null}
                     </span>
-                    <span>{v.videotitle}</span>
-                    {isCurrent ? " · Playing now" : ""}
-                    <span style={{ display: "block", color: "var(--text-2)", fontWeight: 400, fontSize: 13 }}>
-                      {formatDuration(v.durationSec ?? v.duration ?? undefined)}{" "}
-                      {v.uploader} · {v.views ?? 0} views
+                    <span className="watch-up-next-text">
+                      <span style={{ color: "var(--text-2)" }}>
+                        {idx + 1}.{" "}
+                      </span>
+                      <span>{v.videotitle}</span>
+                      {isCurrent ? " · Playing now" : ""}
+                      <span style={{ display: "block", color: "var(--text-2)", fontWeight: 400, fontSize: 13 }}>
+                        {playlistDuration}{" "}
+                        {v.uploader} · {v.views ?? 0} views
+                      </span>
                     </span>
                   </Link>
                 );
@@ -389,17 +446,41 @@ const Watch = () => {
           </p>
         ) : (
           <div className="watch-up-next">
-            {suggestions.map(({ video, reason }) => (
-              <Link key={video._id} to={`/watch/${video._id}`}>
-                {video.videotitle}
-                <span style={{ display: "block", color: "var(--text-2)", fontWeight: 400, fontSize: 13 }}>
-                  {video.uploader} · {video.views ?? 0} views
-                </span>
-                <span style={{ display: "block", color: "var(--text-2)", fontWeight: 400, fontSize: 13 }}>
-                  Because: {reason}
-                </span>
-              </Link>
-            ))}
+            {suggestions.map(({ video, reason }) => {
+              // Duration comes from the suggestion DTO only — absent
+              // means no badge, never an invented one.
+              const suggestionDuration = formatDuration(
+                video.durationSec ?? video.duration ?? undefined,
+              );
+              return (
+                <Link
+                  key={video._id}
+                  to={`/watch/${video._id}`}
+                  className="watch-up-next-item"
+                >
+                  <span className="watch-thumb-wrap">
+                    <VideoThumb
+                      src={video.thumbnailUrl ?? video.thumbnail ?? undefined}
+                      className="watch-thumb"
+                    />
+                    {suggestionDuration ? (
+                      <span className="watch-duration-badge">
+                        {suggestionDuration}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="watch-up-next-text">
+                    <span>{video.videotitle}</span>
+                    <span style={{ display: "block", color: "var(--text-2)", fontWeight: 400, fontSize: 13 }}>
+                      {video.uploader} · {video.views ?? 0} views
+                    </span>
+                    <span style={{ display: "block", color: "var(--text-2)", fontWeight: 400, fontSize: 13 }}>
+                      Because: {reason}
+                    </span>
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         )}
       </aside>

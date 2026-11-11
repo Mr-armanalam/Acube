@@ -1896,3 +1896,228 @@ single-call PATCH covers the flow); if Arman prefers the separate
 endpoint, the modal call is one function (`patchVideo` in
 `Api/index.ts`). (3) `useEditComment` still invalidates only
 `["comments"]` — same bug class, no caller on the Comments page.
+
+#### 8.9.17 Watch page rebuild — poster + auto-hide player, working comments, real Subscribe, chapters (11 Nov 2026, branch `feat/acube-watch-page`, base `main` @ `bdae647`, PR #9 merge)
+
+Three parallel implementation workers, then a verification worker
+(reconcile + >50-comments fix + full verification + e2e + report).
+Commits on this branch: `0437c5f` (API), `8db4c9e` (player),
+`dfd3498` (comments), `e2601bd` (reconcile), `301a552` (>50 fix),
+`e3fb508` (e2e + verification fixes). Base is `main` @ `bdae647`;
+nothing else was touched, nothing merged.
+
+**What changed vs preview images 34–35 (Watch page).**
+
+- Player (`Player.tsx`, `8db4c9e`): the `<video>` takes the real
+  poster (the video's `thumbnailUrl`); a load failure shows that
+  poster large with "This video couldn't be played" + Retry, never
+  a gradient box pretending to be the video. Controls auto-hide
+  ~3 s after the last interaction while playing
+  (`CONTROLS_HIDE_DELAY_MS = 3000`) and return on mouse move / tap
+  / keypress; while paused they stay visible. Icons are
+  `react-icons` (play/pause, volume, speed, PiP, fullscreen).
+  One seek control only: a draggable knob on the seek track with
+  buffered + played bars and a hover time preview. Up Next
+  suggestions render real thumbnails
+  (`VideoThumb`, duration badge, "Because: <reason>").
+- Comments (`NestedComments.tsx`, `dfd3498`): per-video fetch
+  (`?videoid=`), composer, like/dislike with server counts,
+  threaded replies, Sort Top (default) / Newest, pinned first,
+  "Show more replies" (first 3), reply auto-expands. Typography
+  14px body / 13px meta + actions (was inherited 16px).
+- Subscribe (real, `0437c5f` + `8db4c9e`): see design below.
+- Chapters (real data only, `0437c5f` + `8db4c9e`): see approach
+  below.
+
+**Comment-posting root cause (the bug this rebuild fixed).**
+Top-level posts sent `parentId: null` explicitly, and the server
+Zod schema for `POST /comment/post` rejects an explicit `null`
+(`parentId` is an optional string, not nullable) — 400
+`VALIDATION_ERROR`, so the optimistic comment rolled straight back
+off the screen. Root cause is the contract mismatch, not the
+network: the client sent a value the schema never accepted. Fix
+(`dfd3498`, `hooks.ts` `usePostComment`): top-level posts OMIT
+`parentId` entirely; replies pass the real id. The backend
+(`0437c5f`) additionally accepts `parentId: null` in the schema
+(nullish handling) so the exact old web payload now also 200s —
+pinned by an API test posting the literal old payload. A reply's
+parent must be a live comment on the SAME video (400 otherwise);
+a malformed parentId is already 400 from Zod.
+
+**Subscribe design.** Server-owned, no invented counts
+(`Controllers/subscriptions.js`, `0437c5f`):
+`GET /subscriptions/:channelId` → `{ subscribed, subscriberCount }`,
+`POST /subscriptions/:channelId/toggle` → the same shape after the
+toggle. `subscriberCount` is always derived (a count query, never
+a stored counter); `subscribed` is false when anonymous. 400 =
+own channel (`VALIDATION_ERROR`), 404 = unknown OR malformed id
+(`NOT_FOUND` — the routes deliberately skip `validateParams`, so a
+malformed id never 400s), unauthenticated POST = 401. Client
+(`query/useSubscribe.ts`, `Component/SubscribeButton.tsx`): red
+Subscribe pill per the preview, quiet "Subscribed" pill after;
+the count renders only once the query (or the video/channel DTO's
+initial value) supplies it — never invented. Hidden for the
+channel owner; disabled with "Sign in to subscribe" when logged
+out. Optimistic toggle with rollback on error; the Watch channel
+row and the Channel header share the component and the query key,
+so a toggle on one page is visible on the other.
+
+**Chapter approach.** Chapters are real section markers only:
+`chapters: [{ title, startSec }]` on the video document (seeded
+per video in `seedDemo.js`; a `PATCH /video/:id` path accepts
+them). The player renders ticks + a chapter bar (segment buttons
+with the current chapter labelled) ONLY when `chapters` is
+non-empty and `duration > 0` — absent means "no chapters", never
+fake ticks. A chapter click seeks to `startSec` AND puts it in the
+URL (`?t=<seconds>`), so a shared chapter link resumes there;
+`?t=` on load seeks once when metadata loads (and now also when
+metadata is already loaded — see the verification fix below).
+`?t=` still wins over stored history progress.
+
+**Skipped, with reasons.** (1) Image-36 gesture/hint tags
+(swipe/volume/brightness hints, gesture map) — instruction only,
+not to build; Arman scoped them out of this rebuild. (2) CC/HD
+buttons — open cuts from the player scope, not built: no caption
+tracks and no quality variants exist to back them, so buttons
+would be dead UI. (3) Comment-heart backend — session-local by
+design (pre-existing open cut, see §8.9.16). (4) Traffic source —
+not built; no analytics event exists for it.
+
+**>50-comments residual — probed, confirmed, fixed (`301a552`).**
+The comments worker flagged it; the verification worker proved
+it first: the server sorted oldest-first (`{ commentedon: 1, _id: 1 }`)
+with `limit` clamped to `MAX_PAGE_LIMIT` (50), and the client only
+ever fetched page 1 — so a new comment past #50 sat on page 2 and
+stayed invisible after refetch (the optimistic insert masked it
+only until refetch). Probe: a new API test seeding 51 comments
+failed pre-fix (page 1 held comments 1–50, newest absent) and a
+bogus `sort` was silently ignored (200). Minimal fix, no API
+redesign: `GET /comment/get` gains `?sort=newest`
+(`commentListQuerySchema`, shared Zod; default stays
+oldest-first so Studio, which never sends `sort`, is unaffected;
+bogus sort is 400). The Watch page's `useComments` requests
+`sort=newest` (`getallcomment(1, 50, videoid, "newest")`); the
+Watch page still re-sorts client-side (Top / Newest, pinned
+first), so the fix only changes WHICH 50 arrive. Two follow-on
+fixes the flip exposed: reply threads now sort oldest-first
+explicitly in `buildTree` (they used to inherit server order, so
+newest-first would have shown Reply 5 first), and both the root
+and children comparators gained an `Infinity - Infinity` NaN
+guard so timestamp-less comments actually reach the position
+tie-break (the old tie-break assumed oldest-first order). Tests:
+3 new API tests (newest-first page 1 holds comment 51 first,
+oldest default unchanged, bogus sort 400); 1 new web test (51
+seeded comments: newest visible, oldest absent, `sort=newest`
+requested); the MSW comment-list helper mirrors the real sort +
+limit. Note: `packages/shared/dist/` is tracked in this repo, so
+the rebuilt `dist/schemas.*` ships in the same commit (the API
+resolves `@acube/shared` from `dist/` — the first probe run
+failed until the shared package was rebuilt).
+
+**Reconcile (`e2601bd`).** The three shared web files carried
+interleaved uncommitted changes from the player worker
+(subscribe API fns, MSW subscribe handlers, DTO fields) and the
+comments worker (per-video `getallcomment`, reaction fns,
+`CommentItem` fields, MSW reaction handlers — the comments
+worker's own hunks were already committed in `dfd3498` via a
+filtered patch). Verified both workers' changes present and
+coherent, no stray-brace artifact in the mixed `resetCaptured`
+hunk, typecheck clean, then committed; tree clean afterwards.
+
+**Verification (uncached, real exit codes).** `pnpm typecheck
+--force` exit 0 (3/3 tasks); `pnpm lint --force` exit 0, **0 errors,
+7 warnings** (pre-existing baseline, none in the changed files);
+`pnpm test --force` — API **328/328** (23 files, exit 0), web
+**267/267** (29 files, exit 0 after the flake fix below; two of the
+three full runs before the fix showed web 266/267 with the same
+single flake);
+`pnpm build --force` exit 0 (3/3 tasks). E2E (new
+`e2e-phase5/watch-page.spec.ts`, real API + seeded demo, production
+build): **9/9** — comment post survives reload, like→dislike
+toggles with real counts, reply threads (seeded + posted), subscribe
+toggles with the count changing on Watch AND Channel (toggled back
+off), `?t=84` seeks on load, chapter click seeks to 210 + URL
+`t=210`, controls hide after ~3 s idle and reappear on hover, dead
+source shows poster + error state, Up Next thumbnails per
+suggestion. Media tests serve a real 420 s black video
+(ffmpeg-generated into the OS tmp dir, range-aware route fulfill
+— see below). Other phase5 specs re-run separately (fresh servers
+each): `phase5.spec.ts` 10/10, `content-cleanup.spec.ts` 6/6,
+`studio-content-thumbnail.spec.ts` 3/3.
+
+**Verification fixes (small, in scope).** (1) `?t=` resume race
+(`Player.tsx`): a fast/cached source can fire `loadedmetadata`
+before the effect attaches its listener, so resume silently never
+happened — when `readyState >= 1` the effect now runs the resume
+check immediately (idempotent via `resumedRef`). Found because the
+new e2e `?t=`/chapter tests proved the seek never fired; a live
+probe showed `currentTime` 0 with `duration` 420 and `readyState`
+4, and even a manual `loadedmetadata` dispatch did not seek.
+(2) Range-aware e2e fixture serving: Chromium reports `seekable`
+`[0,0]` for a plain-200 fulfilled video, so every `currentTime`
+set is a silent no-op — the spec's route now answers `206` +
+`Content-Range` for `Range` requests (real hosts support ranges;
+`+faststart` alone did not fix it). (3) `phase5.spec.ts` #7: the
+seeded video file is intentionally not playable, and the new error
+overlay covers the controls by design — the Play toggle on a dead
+source is stale; the test now asserts the error state (message +
+Retry) and Play-toggle coverage on working media lives in
+`watch-page.spec.ts`. (4) `phase5fix.test.tsx` "Up next" flake:
+the 1 s default `findByText` wait expired under full-suite
+parallel load while the page was still on its loading skeleton
+(2 failures in 3 full runs, passes in isolation every time) —
+raised to 5 s, the repo's own precedent
+(`settingsWatchPolish.test.tsx`).
+
+**Environment incidents.** (1) `/usr/bin/pnpm` vanished
+mid-session (VM reset) — restored with
+`npm install -g pnpm@12.18.0`, same version. (2) `/tmp` (512 MB
+tmpfs) hit 100% from orphaned `mongo-mem-*` dirs — API tests
+failed fast with a mongod `fassert()` error; cleared only the
+orphaned dirs (no mongod running), re-ran green. (3) The first
+full-suite e2e run ignored the file filter (`-- watch-page.spec.ts`
+ran the whole suite) — the correct form is
+`pnpm test:e2e:phase5 watch-page.spec.ts`. Its failures in other
+specs were order/state interference (they pass in isolation),
+except `phase5.spec.ts` #7 (fixed above) and
+`studio-content-thumbnail.spec.ts` (missing fixture, see below).
+
+**Screenshots** (desktop 1280×850 + mobile 390×844, seeded demo,
+no page errors) in `docs/screenshots/`, visually inspected —
+`watch-page-desktop.png` (full page, 1280×1383), `watch-page-mobile.png`
+(full page, 390×2610), `watch-player-desktop.png`,
+`watch-comments-desktop.png` (script:
+`e2e-phase5/screenshots-watch.mjs`; the Watch page scrolls inside
+`.watch-page`, so the script un-constrains that scroller for the
+shot only). Layout matches images 34–35: player top-left with
+chapter bar + controls, title/views/actions, channel row with red
+Subscribe + count, description card, Comments 4 with pinned first
+and threaded replies, right sidebar with the playlist showcase
+(4 videos, "Playing now", Play all / Shuffle / Loop / Autoplay /
+Save a copy) and Up Next with "Because: Same channel / Similar
+length". Honest deltas, all data not layout: the video area is
+black (the fixture is a black video and the seeded poster URL is
+a dead `example.com` link); sidebar thumbnails show the ▶
+fallback (seeded thumbnails are dead links — the component falls
+back instead of showing broken-image icons); views read 217–218
+(seed 214 + visits from these runs); playlist progress reads
+"1 / 4 watched" after the run's own Watch visit. Mobile stacks
+to one column with no horizontal overflow; controls wrap to two
+rows. Screenshots are local only, not in the PR.
+
+**Open / flagged.** (1) `studio-content-thumbnail.spec.ts`
+fixture `e2e-phase5/fixtures/test-thumbnail.png` was never in the
+repo: it exists only on the unmerged PR #9 branch (`b5ec20e`);
+the `main`-line commit (`6538776`) does not contain it — the
+binary was dropped by the snapshot-push (binaries excluded). The
+spec failed 3/3 in isolation until the fixture was regenerated
+locally (800×450 PNG, untracked — it cannot be pushed via the
+connector, same as screenshots). Durable fix is either Arman
+copying the file in or the spec generating it like
+`settings-watch-polish.spec.ts` generates its PNGs. (2) The
+`?t=`-on-already-loaded-metadata fix above also covers the stored
+history-progress resume path, which shared the same listener.
+(3) Full-suite e2e order interference remains: `phase5.spec.ts`
+#2/#4/#8 and `content-cleanup.spec.ts` #1 failed in the full run
+but pass in isolation — earlier specs mutate shared seed state
+(the suite shares one API server); not investigated further.

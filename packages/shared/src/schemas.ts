@@ -102,6 +102,12 @@ export const commentListQuerySchema = paginationQuerySchema.extend({
   // get the flat list (every item carries its parentId, so clients can
   // thread top-level comments + replies themselves).
   parentId: z.string().optional(),
+  // Watch page: ?sort=newest returns newest-first. The default stays
+  // oldest-first so Studio (which never sends sort) is unaffected.
+  // The Watch page requests newest-first: with limit capped at 50, a
+  // new comment past #50 would otherwise sit on page 2 and stay
+  // invisible after refetch even though the post succeeded.
+  sort: z.enum(["oldest", "newest"]).default("oldest"),
 });
 
 export const chatUserSchema = z.object({
@@ -137,7 +143,12 @@ export const postCommentSchema = z.object({
   // Phase 5: nested comments. parentId must reference a comment on the
   // same video (enforced in the controller — a missing / other-video /
   // deleted parent is 400). Top-level when omitted.
-  parentId: objectId.optional(),
+  // Watch page fix: the web client posts top-level comments with an
+  // explicit `parentId: null`, and `.optional()` allows undefined but
+  // NOT null — so every top-level post was 400. `.nullish()` accepts
+  // both null and undefined (the Mongoose model already defaults
+  // parentId to null).
+  parentId: objectId.nullish(),
 });
 
 export const commentIdParamSchema = z.object({ id: objectId });
@@ -179,6 +190,29 @@ export const videoIdParamSchema = z.object({ id: objectId });
 // only (same rule as private) and never appears in feeds/search.
 export const visibilitySchema = z.enum(["public", "unlisted", "private", "draft"]);
 
+// Watch page chapters (see apps/web/src/types.ts VideoChapter): real
+// chapters only, never invented. A chapter is a non-empty title (max
+// 120 chars) starting at a non-negative second. The list must be
+// sorted by startSec strictly ascending — equal startSec values are
+// duplicates and rejected, so chapter ticks never collide. Enforced
+// on video create (uploadVideoBodySchema) and update
+// (updateVideoSchema); invalid chapters are 400 VALIDATION_ERROR.
+export const chapterSchema = z.object({
+  title: z.string().min(1, "must not be empty").max(120),
+  startSec: z.number().min(0, "must be 0 or more"),
+});
+
+export const chaptersSchema = z.array(chapterSchema).refine(
+  (chapters) =>
+    chapters.every(
+      (c, i) => i === 0 || c.startSec > chapters[i - 1].startSec,
+    ),
+  {
+    message:
+      "chapters must be sorted by startSec ascending with no duplicates",
+  },
+);
+
 // POST /video/uploadvideo (multipart FormData — every field arrives as
 // a string). Phase 5 fix: description / tags / visibility / thumbnailUrl
 // are part of the validated body now — before this they were stripped by
@@ -215,12 +249,16 @@ export const uploadVideoBodySchema = z.object({
     }),
   visibility: visibilitySchema.optional(),
   thumbnailUrl: z.string().url("must be a valid URL").max(1000).optional(),
+  // Watch page: chapters arrive as a JSON string in FormData (parsed
+  // back to an array by parseMultipartChapters in Routes/video.js) or
+  // as an array from a JSON client.
+  chapters: chaptersSchema.optional(),
 });
 
 // PATCH /video/:id — title / visibility / description / tags /
-// thumbnailUrl / durationSec only (updateVideoSchema is strict: any
-// other field is 400). At least one field is required. Views, Like and
-// counters are never writable — the server owns them.
+// thumbnailUrl / durationSec / chapters only (updateVideoSchema is
+// strict: any other field is 400). At least one field is required.
+// Views, Like and counters are never writable — the server owns them.
 export const updateVideoSchema = z
   .object({
     title: z.string().min(1, "must not be empty").max(100).optional(),
@@ -232,6 +270,7 @@ export const updateVideoSchema = z
       .optional(),
     thumbnailUrl: z.string().url("must be a valid URL").max(1000).optional(),
     durationSec: z.number().min(0).max(86400).optional(),
+    chapters: chaptersSchema.optional(),
   })
   .strict()
   .refine(
@@ -241,7 +280,8 @@ export const updateVideoSchema = z
       v.description !== undefined ||
       v.tags !== undefined ||
       v.thumbnailUrl !== undefined ||
-      v.durationSec !== undefined,
+      v.durationSec !== undefined ||
+      v.chapters !== undefined,
     { message: "at least one field is required" },
   );
 
@@ -422,6 +462,7 @@ export type HandlePaymentStatusInput = z.infer<
 >;
 export type UploadVideoBodyInput = z.infer<typeof uploadVideoBodySchema>;
 export type PostCommentInput = z.infer<typeof postCommentSchema>;
+export type ChapterInput = z.infer<typeof chapterSchema>;
 export type UpdateVideoInput = z.infer<typeof updateVideoSchema>;
 export type StudioAnalyticsQueryInput = z.infer<
   typeof studioAnalyticsQuerySchema

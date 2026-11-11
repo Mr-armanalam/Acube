@@ -3,7 +3,12 @@
 // Every mutation invalidates ONLY its own key (or optimistically patches
 // one entity); nothing refetches the whole app after a mutation.
 import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryKey,
+} from "@tanstack/react-query";
 import { useAppDispatch, useAppSelector } from "../store";
 import {
   setUploadError,
@@ -16,6 +21,8 @@ import { queryKeys } from "./keys";
 import type {
   Channel,
   CommentItem,
+  CommentReaction,
+  CommentReactionResult,
   HandleAvailability,
   LibraryData,
   PagedResult,
@@ -250,27 +257,42 @@ export function useUpdateChannel() {
 }
 
 // -------------------------------------------------------------- comments
-export function useComments() {
+// Watch fix: comments are fetched per video (?videoid= — the API
+// supports it; see apps/api/tests/comment.test.js "GET /comment/get
+// filters by ?videoid=") and newest-first (?sort=newest). The old
+// unfiltered page-1 fetch (limit 50, oldest-first) mixed in other
+// videos' comments, so on a busy video a just-posted comment could
+// sit beyond page 1 and stay invisible after refetch despite a 200.
+// The key carries the video id so each video has its own cache;
+// callers without a video still get the old unfiltered list.
+export function useComments(videoid?: string) {
   return useQuery({
-    queryKey: queryKeys.comments,
+    queryKey: [...queryKeys.comments, videoid ?? ""],
     queryFn: async (): Promise<CommentItem[]> => {
-      const { data } = await api.getallcomment();
+      // Watch page: newest-first, so a just-posted comment past #50
+      // is on page 1 after refetch (server limit caps at 50). The
+      // Watch page re-sorts client-side (Sort Top / Newest, pinned
+      // first), so this only changes WHICH 50 arrive, not their
+      // display order.
+      const { data } = await api.getallcomment(1, 50, videoid, "newest");
       return unwrapPage<CommentItem>(data);
     },
   });
 }
 
+// Server order is newest-first (useComments requests ?sort=newest);
+// the Watch page sorts explicitly (Sort: Top / Newest, pinned
+// first), so this returns the filtered list as-is — no silent
+// reverse here. A defensive client-side filter stays in case the
+// server ever ignores ?videoid=.
 export function useCommentsForVideo(
   videoid: string | undefined,
 ): CommentItem[] | undefined {
-  const { data } = useComments();
+  const { data } = useComments(videoid);
   return useMemo(() => {
     if (!data) return undefined;
-    // Copy before reversing — never mutate the cached array.
-    return data
-      .filter((c) => c.videoid === videoid)
-      .slice()
-      .reverse();
+    if (!videoid) return data;
+    return data.filter((c) => c.videoid === videoid);
   }, [data, videoid]);
 }
 
@@ -282,18 +304,24 @@ export function usePostComment() {
       userid: string | undefined;
       commentbody: string;
       usercommented: string | undefined;
-      /** Phase 5: reply target; omitted/null = top-level comment. */
-      parentId?: string | null;
+      /** Reply target; OMITTED for top-level comments — the server
+       * Zod schema rejects an explicit `parentId: null` (400
+       * VALIDATION_ERROR), which used to roll the optimistic comment
+       * straight back off the screen. Replies pass the real id. */
+      parentId?: string;
     }) => {
-      await api.postcomment(input);
+      // Strip parentId entirely for top-level posts; a reply keeps it.
+      const { parentId, ...rest } = input;
+      await api.postcomment(parentId ? { ...rest, parentId } : rest);
       return input;
     },
-    // Optimistic: append the comment to the cached list at once.
+    // Optimistic: append the comment to THIS video's cached list at
+    // once, so it is visible immediately — even before the refetch,
+    // and even if the server page would not contain it yet.
     onMutate: async (input) => {
+      const videoKey = [...queryKeys.comments, input.videoid ?? ""];
       await queryClient.cancelQueries({ queryKey: queryKeys.comments });
-      const previous = queryClient.getQueryData<CommentItem[]>(
-        queryKeys.comments,
-      );
+      const previous = queryClient.getQueryData<CommentItem[]>(videoKey);
       const optimistic: CommentItem = {
         _id: `temp-${Date.now()}`,
         videoid: input.videoid,
@@ -301,16 +329,20 @@ export function usePostComment() {
         commentbody: input.commentbody,
         usercommented: input.usercommented,
         parentId: input.parentId ?? null,
+        likes: 0,
+        dislikes: 0,
+        userReaction: null,
+        createdAt: new Date().toISOString(),
       };
-      queryClient.setQueryData<CommentItem[]>(queryKeys.comments, (old) => [
+      queryClient.setQueryData<CommentItem[]>(videoKey, (old) => [
         ...(old ?? []),
         optimistic,
       ]);
-      return { previous };
+      return { previous, videoKey };
     },
     onError: (_error, _input, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(queryKeys.comments, context.previous);
+        queryClient.setQueryData(context.videoKey, context.previous);
       }
     },
     onSettled: () => {
@@ -1060,6 +1092,124 @@ export function usePinComment() {
       void queryClient.invalidateQueries({ queryKey: ["studio", "comments"] });
     },
   });
+}
+
+// ------------------------------------------- Watch comments: reactions
+// Contract (backend worker, parallel): POST /comment/:id/like toggles
+// the like, POST /comment/:id/dislike toggles the dislike; both return
+// { likes, dislikes, userReaction: "like" | "dislike" | null }. The
+// counts shown are always the server's (or the optimistic toggle of
+// them) — never invented. This is NOT the Studio heart: that one is
+// session-local useState; Watch reactions persist server-side.
+
+/** One cached comment list, snapshotted for rollback. */
+interface CommentListSnapshot {
+  key: QueryKey;
+  data: CommentItem[] | undefined;
+}
+
+/** Pure toggle math: liking removes a dislike and vice versa, and
+ * pressing the active reaction again removes it. */
+function toggleCommentReaction(
+  comment: CommentItem,
+  reaction: CommentReaction,
+): CommentItem {
+  const likes = comment.likes ?? 0;
+  const dislikes = comment.dislikes ?? 0;
+  const current = comment.userReaction ?? null;
+  if (current === reaction) {
+    return {
+      ...comment,
+      likes: Math.max(0, likes - (reaction === "like" ? 1 : 0)),
+      dislikes: Math.max(0, dislikes - (reaction === "dislike" ? 1 : 0)),
+      userReaction: null,
+    };
+  }
+  if (current === null) {
+    return {
+      ...comment,
+      likes: likes + (reaction === "like" ? 1 : 0),
+      dislikes: dislikes + (reaction === "dislike" ? 1 : 0),
+      userReaction: reaction,
+    };
+  }
+  // Switching sides: +1 on the new side, -1 on the old one.
+  return {
+    ...comment,
+    likes: Math.max(0, likes + (reaction === "like" ? 1 : -1)),
+    dislikes: Math.max(0, dislikes + (reaction === "dislike" ? 1 : -1)),
+    userReaction: reaction,
+  };
+}
+
+/** Apply a function to one comment id in every cached ["comments", …]
+ * list (Watch fetches per video, so there can be several). */
+function patchCachedComment(
+  queryClient: ReturnType<typeof useQueryClient>,
+  id: string,
+  patch: (comment: CommentItem) => CommentItem,
+): CommentListSnapshot[] {
+  const snapshots = queryClient.getQueriesData<CommentItem[]>({
+    queryKey: queryKeys.comments,
+  });
+  const taken: CommentListSnapshot[] = [];
+  for (const [key, list] of snapshots) {
+    taken.push({ key, data: list });
+    if (!list) continue;
+    queryClient.setQueryData<CommentItem[]>(
+      key,
+      list.map((c) => (c._id === id ? patch(c) : c)),
+    );
+  }
+  return taken;
+}
+
+function useCommentReaction(reaction: CommentReaction) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<CommentReactionResult> => {
+      const { data } =
+        reaction === "like"
+          ? await api.likeComment(id)
+          : await api.dislikeComment(id);
+      return data as CommentReactionResult;
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.comments });
+      const snapshots = patchCachedComment(queryClient, id, (c) =>
+        toggleCommentReaction(c, reaction),
+      );
+      return { snapshots };
+    },
+    onError: (_error, _id, context) => {
+      for (const snapshot of context?.snapshots ?? []) {
+        queryClient.setQueryData(snapshot.key, snapshot.data);
+      }
+    },
+    // Authoritative server counts win over the optimistic guess.
+    onSuccess: (result, id) => {
+      patchCachedComment(queryClient, id, (c) => ({
+        ...c,
+        likes: result.likes,
+        dislikes: result.dislikes,
+        userReaction: result.userReaction,
+      }));
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.comments });
+      void queryClient.invalidateQueries({ queryKey: ["studio", "comments"] });
+    },
+  });
+}
+
+/** Toggle the like on a comment (POST /comment/:id/like). */
+export function useLikeComment() {
+  return useCommentReaction("like");
+}
+
+/** Toggle the dislike on a comment (POST /comment/:id/dislike). */
+export function useDislikeComment() {
+  return useCommentReaction("dislike");
 }
 
 /** Restore a soft-deleted video (POST /video/:id/restore). */

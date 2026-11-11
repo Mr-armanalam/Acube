@@ -58,6 +58,7 @@ import Playlist from "../Models/Playlist.js";
 import ViewEvent from "../Models/ViewEvent.js";
 import ChannelDailyStat from "../Models/ChannelDailyStat.js";
 import Likedvideo from "../Models/likevideo.js";
+import Subscription from "../Models/Subscription.js";
 
 export const DEMO_TOTALS = { views: 1503, likes: 113, days: 28, videos: 7 };
 
@@ -119,16 +120,53 @@ const CHANNELS = [
   },
 ];
 
-// The 7 public catalogue videos (channel n, title, tags, durationSec).
-// All owned by the single demo channel (n: 1, Code Streamer).
+// The 7 public catalogue videos (channel n, title, tags, durationSec,
+// chapters). Chapters are real section markers for each video's own
+// topic (titles match the video, startSec within its duration,
+// strictly ascending) — never invented content.
 const CATALOGUE = [
-  [1, "Getting Started with React Hooks", ["react", "javascript", "frontend"], 420],
-  [1, "TypeScript Generics, Explained", ["typescript", "javascript"], 360],
-  [1, "Build a REST API with Express", ["nodejs", "backend", "api"], 540],
-  [1, "CSS Grid in 10 Minutes", ["css", "frontend"], 300],
-  [1, "Figma to Code: A Practical Workflow", ["design", "frontend"], 480],
-  [1, "MongoDB Aggregations Deep Dive", ["mongodb", "database", "backend"], 600],
-  [1, "System Design: Caching Basics", ["system-design", "backend"], 420],
+  [1, "Getting Started with React Hooks", ["react", "javascript", "frontend"], 420, [
+    { title: "Intro to Hooks", startSec: 0 },
+    { title: "useState in Practice", startSec: 90 },
+    { title: "useEffect & Cleanup", startSec: 210 },
+    { title: "Custom Hooks", startSec: 330 },
+  ]],
+  [1, "TypeScript Generics, Explained", ["typescript", "javascript"], 360, [
+    { title: "Why Generics?", startSec: 0 },
+    { title: "Generic Functions", startSec: 100 },
+    { title: "Generic Types & Constraints", startSec: 200 },
+    { title: "Real-World Patterns", startSec: 300 },
+  ]],
+  [1, "Build a REST API with Express", ["nodejs", "backend", "api"], 540, [
+    { title: "Project Setup", startSec: 0 },
+    { title: "Routes & Middleware", startSec: 150 },
+    { title: "CRUD Endpoints", startSec: 300 },
+    { title: "Error Handling", startSec: 450 },
+  ]],
+  [1, "CSS Grid in 10 Minutes", ["css", "frontend"], 300, [
+    { title: "Grid Basics", startSec: 0 },
+    { title: "Rows & Columns", startSec: 90 },
+    { title: "Grid Areas", startSec: 180 },
+    { title: "Responsive Layout", startSec: 250 },
+  ]],
+  [1, "Figma to Code: A Practical Workflow", ["design", "frontend"], 480, [
+    { title: "Reading the Design", startSec: 0 },
+    { title: "Tokens & Layout", startSec: 140 },
+    { title: "Building Components", startSec: 280 },
+    { title: "Handoff Checklist", startSec: 420 },
+  ]],
+  [1, "MongoDB Aggregations Deep Dive", ["mongodb", "database", "backend"], 600, [
+    { title: "Pipeline Basics", startSec: 0 },
+    { title: "$match & $group", startSec: 150 },
+    { title: "$lookup Joins", startSec: 320 },
+    { title: "Performance Tips", startSec: 500 },
+  ]],
+  [1, "System Design: Caching Basics", ["system-design", "backend"], 420, [
+    { title: "Why Cache?", startSec: 0 },
+    { title: "Cache-Aside Pattern", startSec: 110 },
+    { title: "Eviction & TTL", startSec: 230 },
+    { title: "When Not to Cache", startSec: 340 },
+  ]],
 ];
 
 // Extra videos beyond the catalogue: one of each non-public state.
@@ -162,6 +200,7 @@ export async function seedDemoData() {
     ViewEvent.deleteMany({ demo: true }),
     ChannelDailyStat.deleteMany({ demo: true }),
     Likedvideo.deleteMany({ demo: true }),
+    Subscription.deleteMany({ demo: true }),
   ]);
 
   // 2. Never clobber a real account that happens to share an address.
@@ -251,7 +290,7 @@ export async function seedDemoData() {
 
   // 4. Videos: 7 public catalogue + draft/unlisted/private/deleted.
   const videoDocs = [];
-  CATALOGUE.forEach(([channelN, title, tags, durationSec], i) => {
+  CATALOGUE.forEach(([channelN, title, tags, durationSec, chapters], i) => {
     videoDocs.push({
       _id: oid(201 + i),
       videotitle: title,
@@ -271,6 +310,7 @@ export async function seedDemoData() {
       status: "ready",
       description: `Demo video — ${title}. (Seeded demo content, not real catalogue data.)`,
       tags,
+      chapters: chapters ?? [],
       deletedAt: null,
       demo: true,
     });
@@ -694,6 +734,10 @@ export async function seedDemoData() {
     viewers: VIEWER_COUNT,
     videos: videoDocs.length,
     publicVideos: publicVideos.length,
+    videosWithChapters: await Videofile.countDocuments({
+      demo: true,
+      "chapters.0": { $exists: true },
+    }),
     viewEvents: eventCount,
     likes: likeCount,
     dailyStatViews: statViews,
