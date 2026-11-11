@@ -17,9 +17,15 @@ export const errorHandler = (err, req, res, next) => {
   if (err && err.name === "MulterError") {
     // Settings polish: banner/avatar image uploads cap at 5 MB, not
     // the video 10 MB — the message must name the limit that
-    // actually applied to this route.
+    // actually applied to this route. The video-thumbnail route
+    // (POST /video/:id/thumbnail) caps at 5 MB too, as does the
+    // multipart PATCH /video/:id edit (its only multer is the same
+    // imageUpload instance — no other PATCH /video/* route uploads).
     const isImageUpload =
-      req.path === "/studio/banner" || req.path === "/studio/avatar";
+      req.path === "/studio/banner" ||
+      req.path === "/studio/avatar" ||
+      req.path.endsWith("/thumbnail") ||
+      (req.method === "PATCH" && req.path.startsWith("/video/"));
     // Auto-thumbnails: the upload endpoint's optional "thumbnail"
     // part caps at 5 MB (the video "file" part caps at 10 MB).
     // Multer reports the offending field name on LIMIT_FILE_SIZE.

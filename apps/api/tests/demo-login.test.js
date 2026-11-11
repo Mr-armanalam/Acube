@@ -110,16 +110,18 @@ describe("POST /auth/demo-login", () => {
     expect(res.status).toBe(400);
   });
 
-  it("seeds staggered comment timestamps (preview's 2h / 5h / 1d / 2d spread)", async () => {
+  it("seeds staggered comment timestamps (preview's 2h / 5h / 1d / 2d spread, plus 3 pagination extras)", async () => {
     await seedDemoData();
     const times = (
       await Comment.find({ demo: true }).select("commentedon").lean()
     )
       .map((c) => new Date(c.commentedon).getTime())
       .sort((a, b) => a - b);
-    expect(times).toHaveLength(8);
-    // Not all "just now": the oldest is ~2 days old, the newest <1h.
-    expect(times[0]).toBeLessThan(Date.now() - 24 * 60 * 60 * 1000);
+    // 11 seeded comments: the original 8 + 3 extras (6h / 30h / 72h)
+    // so Studio Comments has a page 2 at limit=10.
+    expect(times).toHaveLength(11);
+    // Not all "just now": the oldest is ~3 days old, the newest <1h.
+    expect(times[0]).toBeLessThan(Date.now() - 48 * 60 * 60 * 1000);
     expect(times[times.length - 1]).toBeGreaterThan(
       Date.now() - 60 * 60 * 1000,
     );

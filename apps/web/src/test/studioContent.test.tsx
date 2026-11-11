@@ -100,11 +100,15 @@ describe("Content cleanup", () => {
         body: expect.objectContaining({ title: "Python Basics Renamed" }),
       });
     });
-    expect(
-      screen.queryByRole("dialog", {
-        name: "Edit details for Python Basics Tutorial",
-      }),
-    ).not.toBeInTheDocument();
+    // The modal closes once the save lands (not before — a failed save
+    // stays open with the server's message).
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", {
+          name: "Edit details for Python Basics Tutorial",
+        }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("Edit details blocks an invalid thumbnail URL with an inline error and no PATCH", async () => {

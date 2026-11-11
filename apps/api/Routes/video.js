@@ -6,6 +6,7 @@ import {
   getallvideos,
   getVideoById,
   updateVideo,
+  updateVideoThumbnail,
   deleteVideo,
   restoreVideo,
 } from "../Controllers/video.js";
@@ -13,6 +14,7 @@ import { historycontroller, deletehistory, deletehistoryitem, getallhistorycontr
 import { watchlatercontroller, getallwatchlatervontroller, deletewatchlater } from "../Controllers/watchlater.js";
 import { likedvideocontroller, getalllikedvideo, deletelikedvideo } from "../Controllers/likedvideo.js";
 import { uploadVideoWithThumbnail } from "../Helper/filehelper.js";
+import imageUpload from "../Helper/imageFilehelper.js";
 import auth, { optionalAuth } from "../middleware/auth.js";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate.js";
 import {
@@ -105,12 +107,47 @@ routes.delete(
 // /like/:id or /view/:id (two segments), but they live here with the
 // GET for readability.
 routes.get("/:id", optionalAuth, validateParams(videoIdParamSchema), getVideoById);
+
+// Studio Content edit modal (multipart): FormData fields travel as
+// strings under multer, so `tags` arrives JSON-encoded (the web
+// client sends JSON.stringify(tags)); parse it back to an array
+// before Zod validation. JSON callers are untouched — this runs
+// only for multipart requests, and a value that is not a JSON array
+// is left alone so Zod still 400s it.
+function parseMultipartTags(req, _res, next) {
+  if (req.is("multipart/form-data") && typeof req.body?.tags === "string") {
+    try {
+      const parsed = JSON.parse(req.body.tags);
+      if (Array.isArray(parsed)) req.body.tags = parsed;
+    } catch {
+      // Leave the raw string: Zod rejects it with 400.
+    }
+  }
+  return next();
+}
 routes.patch(
   "/:id",
   auth,
   validateParams(videoIdParamSchema),
+  imageUpload.single("thumbnail"),
+  parseMultipartTags,
   validateBody(updateVideoSchema),
   updateVideo,
+);
+// Studio Content edit modal: thumbnail from a local file upload
+// (multipart part "thumbnail", JPG/PNG, 5 MB — Helper/imageFilehelper.js,
+// same as banner/avatar) or a pasted thumbnailUrl (JSON or multipart
+// text field, validated server-side as a reachable image). Separate
+// from PATCH /:id on purpose: that route is JSON-only under a strict
+// Zod schema, and must keep working unchanged for JSON callers.
+// Multer only acts on multipart requests — a JSON body passes through
+// with req.file undefined, so the URL-only call needs no FormData.
+routes.post(
+  "/:id/thumbnail",
+  auth,
+  validateParams(videoIdParamSchema),
+  imageUpload.single("thumbnail"),
+  updateVideoThumbnail,
 );
 routes.delete("/:id", auth, validateParams(videoIdParamSchema), deleteVideo);
 // Phase 5 fix: restore a soft-deleted video (owner only).

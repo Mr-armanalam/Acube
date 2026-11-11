@@ -568,6 +568,66 @@ describe("GET /studio/videos + /studio/comments", () => {
     expect(res.body.items[1].commentbody).toBe("Old comment");
   });
 
+  it("comments paginates across pages (page 1 = 10, page 2 = remainder), clamps limit, and returns empty items past the last page", async () => {
+    const owner = await createUser();
+    const mine = await ownVideo(owner);
+    for (let i = 0; i < 12; i += 1) {
+      await Comment.create({
+        videoid: String(mine._id),
+        userid: String(owner._id),
+        commentbody: `comment ${String(i).padStart(2, "0")}`,
+        commentedon: new Date(Date.UTC(2026, 10, 10 + i)),
+      });
+    }
+
+    const page1 = await api
+      .get("/studio/comments?page=1&limit=10")
+      .set(authHeader(owner));
+    expect(page1.status).toBe(200);
+    expect(page1.body).toMatchObject({
+      page: 1,
+      limit: 10,
+      total: 12,
+      totalPages: 2,
+    });
+    expect(page1.body.items).toHaveLength(10);
+    expect(page1.body.items[0].commentbody).toBe("comment 11");
+
+    const page2 = await api
+      .get("/studio/comments?page=2&limit=10")
+      .set(authHeader(owner));
+    expect(page2.body).toMatchObject({
+      page: 2,
+      limit: 10,
+      total: 12,
+      totalPages: 2,
+    });
+    expect(page2.body.items).toHaveLength(2);
+    expect(page2.body.items.map((c) => c.commentbody)).toEqual([
+      "comment 01",
+      "comment 00",
+    ]);
+
+    // limit clamps to MAX_PAGE_LIMIT (50) — see packages/shared.
+    const clamped = await api
+      .get("/studio/comments?limit=100")
+      .set(authHeader(owner));
+    expect(clamped.body.limit).toBe(50);
+    expect(clamped.body.items).toHaveLength(12);
+    expect(clamped.body.totalPages).toBe(1);
+
+    // Out-of-range page: empty items, totals intact.
+    const beyond = await api
+      .get("/studio/comments?page=99&limit=10")
+      .set(authHeader(owner));
+    expect(beyond.body).toMatchObject({
+      page: 99,
+      total: 12,
+      totalPages: 2,
+    });
+    expect(beyond.body.items).toHaveLength(0);
+  });
+
   it("studio videos/comments are 401 without a token", async () => {
     expect((await api.get("/studio/videos")).status).toBe(401);
     expect((await api.get("/studio/comments")).status).toBe(401);
