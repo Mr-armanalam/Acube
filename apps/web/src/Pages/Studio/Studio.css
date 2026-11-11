@@ -124,6 +124,8 @@
   margin: 0 auto;
   padding: 32px 24px;
   min-width: 0;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .studio-mobile-tabs {
   display: none;
