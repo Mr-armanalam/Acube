@@ -13,6 +13,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import { Link } from "react-router";
 import StudioShell from "./Studio";
 import VideoThumb, { deterministicThumbGradient } from "../../Component/VideoThumb";
+import { resolveApiMediaUrl } from "../../Api";
 import {
   StudioEmptyState,
   StudioErrorState,
@@ -25,6 +26,7 @@ import {
   useStudioVideos,
   useUpdateVideo,
 } from "../../query/hooks";
+import { extractApiErrorMessage } from "../../utils/apiError";
 import { isValidThumbnailUrl } from "../../utils/uploadLimits";
 import type { Video, VideoVisibility } from "../../types";
 
@@ -34,6 +36,23 @@ const VISIBILITIES: VideoVisibility[] = [
   "private",
   "draft",
 ];
+
+/** Thumbnail file gate (same limits as the server + Settings banner /
+ * avatar): JPG/PNG only, ≤ 5 MB. Mirrors Settings.validateImageFile. */
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+function validateImageFile(file: File): string | null {
+  if (file.type) {
+    if (file.type !== "image/jpeg" && file.type !== "image/png") {
+      return "Choose a JPG or PNG image.";
+    }
+  } else if (!/\.(jpe?g|png)$/i.test(file.name)) {
+    return "Choose a JPG or PNG image.";
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return "Image must be 5 MB or smaller.";
+  }
+  return null;
+}
 
 const formatDate = (v: Video): string => {
   // Drafts are unpublished: the preview shows "—", not a date.
@@ -76,9 +95,14 @@ export default function Content() {
   const [editDescription, setEditDescription] = useState("");
   const [editTags, setEditTags] = useState("");
   const [editThumbnailUrl, setEditThumbnailUrl] = useState("");
-  const [editThumbnailError, setEditThumbnailError] = useState<string | null>(
-    null,
-  );
+  // Local thumbnail upload: a chosen file wins over the pasted URL
+  // entirely (same precedence as the upload wizard). The preview is a
+  // blob URL for the file, else the pasted URL, else the saved thumb.
+  const [editThumbnailFile, setEditThumbnailFile] = useState<File | null>(null);
+  const [editThumbnailPreview, setEditThumbnailPreview] = useState<string | null>(null);
+  const thumbnailPreviewRef = useRef<string | null>(null);
+  const [editThumbnailError, setEditThumbnailError] = useState<string | null>(null);
+  const [editSaveError, setEditSaveError] = useState<string | null>(null);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
@@ -196,6 +220,19 @@ export default function Content() {
     return () => document.removeEventListener("keydown", onKey);
   }, [menuFor, editing]);
 
+  // Closing the modal discards the picked file and its blob URL.
+  useEffect(() => {
+    if (editing) return;
+    if (thumbnailPreviewRef.current) {
+      URL.revokeObjectURL(thumbnailPreviewRef.current);
+      thumbnailPreviewRef.current = null;
+    }
+    setEditThumbnailPreview(null);
+    setEditThumbnailFile(null);
+    setEditThumbnailError(null);
+    setEditSaveError(null);
+  }, [editing]);
+
   const openEdit = (v: Video) => {
     closeMenu();
     setEditing(v);
@@ -203,32 +240,91 @@ export default function Content() {
     setEditDescription(v.description ?? "");
     setEditTags((v.tags ?? []).join(", "));
     setEditThumbnailUrl(v.thumbnailUrl ?? v.thumbnail ?? "");
+    setEditThumbnailFile(null);
+    setEditThumbnailPreview(null);
+    setEditThumbnailError(null);
+    setEditSaveError(null);
   };
-  const saveEdit = () => {
-    if (!editing || !editTitle.trim()) return;
-    // Same URL rule as the upload wizard: an invalid URL is an inline
-    // error, never a request (the server's strict update schema would
-    // 400 it). A thumbnail FILE upload is not offered here yet — PATCH
-    // /video/:id is JSON-only, so a file part needs a backend change
-    // first (follow-up, not a half-wired input).
-    if (!isValidThumbnailUrl(editThumbnailUrl)) {
-      setEditThumbnailError(
-        "Enter a valid thumbnail URL starting with https://",
-      );
+  const onThumbnailFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset so picking the same file again still fires onChange.
+    e.target.value = "";
+    if (!file) return;
+    const problem = validateImageFile(file);
+    if (problem) {
+      setEditThumbnailError(problem);
       return;
     }
+    if (thumbnailPreviewRef.current) {
+      URL.revokeObjectURL(thumbnailPreviewRef.current);
+    }
+    const preview = URL.createObjectURL(file);
+    thumbnailPreviewRef.current = preview;
+    setEditThumbnailPreview(preview);
+    setEditThumbnailFile(file);
     setEditThumbnailError(null);
-    updateMutation.mutate({
-      id: editing._id,
-      title: editTitle.trim(),
-      description: editDescription.trim() || undefined,
-      tags: editTags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      thumbnailUrl: editThumbnailUrl.trim() || undefined,
-    });
-    setEditing(null);
+  };
+  const clearThumbnailFile = () => {
+    if (thumbnailPreviewRef.current) {
+      URL.revokeObjectURL(thumbnailPreviewRef.current);
+      thumbnailPreviewRef.current = null;
+    }
+    setEditThumbnailPreview(null);
+    setEditThumbnailFile(null);
+    setEditThumbnailError(null);
+  };
+  // Live preview: chosen file > pasted URL > saved thumbnail. The
+  // saved thumbnail may be an API-relative /uploads/ path (local
+  // fallback) — resolve it against the API base or the browser would
+  // request it from the web origin and 404.
+  const editThumbnailPreviewSrc = editing
+    ? (editThumbnailPreview ??
+      (editThumbnailUrl.trim() && isValidThumbnailUrl(editThumbnailUrl.trim())
+        ? editThumbnailUrl.trim()
+        : (resolveApiMediaUrl(editing.thumbnailUrl ?? editing.thumbnail ?? "") ?? "")))
+    : "";
+  const saveEdit = () => {
+    if (!editing || !editTitle.trim()) return;
+    // A chosen file wins — the pasted URL is never sent with it.
+    if (editThumbnailFile) {
+      const problem = validateImageFile(editThumbnailFile);
+      if (problem) {
+        setEditThumbnailError(problem);
+        return;
+      }
+    } else if (
+      editThumbnailUrl.trim() &&
+      !isValidThumbnailUrl(editThumbnailUrl.trim())
+    ) {
+      setEditThumbnailError("Enter a valid thumbnail URL starting with https://");
+      return;
+    }
+    setEditSaveError(null);
+    updateMutation.mutate(
+      {
+        id: editing._id,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        tags: editTags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        thumbnailUrl: editThumbnailFile
+          ? undefined
+          : editThumbnailUrl.trim() || undefined,
+        thumbnail: editThumbnailFile ?? undefined,
+      },
+      {
+        // Close only once the save lands — on failure the modal stays
+        // open with the server's message verbatim, so the user can fix
+        // the input instead of losing it. The row thumbnail updates
+        // from the page-query refetch on settle (useUpdateVideo).
+        onSuccess: () => setEditing(null),
+        onError: (err) => {
+          setEditSaveError(extractApiErrorMessage(err));
+        },
+      },
+    );
   };
 
   const softDelete = (id: string) => {
@@ -417,7 +513,9 @@ export default function Content() {
                       <div className="studio-video-cell">
                         <VideoThumb
                           className="studio-row-thumb"
-                          src={v.thumbnailUrl ?? v.thumbnail ?? ""}
+                          src={resolveApiMediaUrl(
+                            v.thumbnailUrl ?? v.thumbnail ?? "",
+                          )}
                           fallbackBackground={deterministicThumbGradient(
                             v._id,
                           )}
@@ -706,9 +804,77 @@ export default function Content() {
                   }}
                 />
               </label>
-              {editThumbnailError ? (
-                <p role="alert" style={{ color: "var(--danger)", margin: 0 }}>
-                  {editThumbnailError}
+              <div>
+                <span className="studio-field-label">Upload thumbnail</span>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 12,
+                    alignItems: "center",
+                    marginTop: 6,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {editThumbnailPreviewSrc ? (
+                    <VideoThumb
+                      className="studio-row-thumb"
+                      src={editThumbnailPreviewSrc}
+                    />
+                  ) : null}
+                  <label
+                    className="acube-btn-secondary"
+                    style={{ cursor: "pointer" }}
+                  >
+                    {editThumbnailFile ? "Change file" : "Choose file"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      aria-label="Upload thumbnail image"
+                      onChange={onThumbnailFileChange}
+                      style={{ display: "none" }}
+                    />
+                  </label>
+                  {editThumbnailFile ? (
+                    <button
+                      type="button"
+                      className="acube-btn-secondary"
+                      onClick={clearThumbnailFile}
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </div>
+                {editThumbnailFile ? (
+                  <p
+                    style={{
+                      margin: "6px 0 0",
+                      fontSize: 13,
+                      color: "var(--text-2)",
+                    }}
+                  >
+                    Using {editThumbnailFile.name} — the URL above is ignored.
+                  </p>
+                ) : (
+                  <p
+                    style={{
+                      margin: "6px 0 0",
+                      fontSize: 13,
+                      color: "var(--text-2)",
+                    }}
+                  >
+                    JPG or PNG, 5 MB or smaller. A chosen file replaces the
+                    URL above.
+                  </p>
+                )}
+                {editThumbnailError ? (
+                  <p role="alert" className="studio-field-error">
+                    {editThumbnailError}
+                  </p>
+                ) : null}
+              </div>
+              {editSaveError ? (
+                <p role="alert" className="studio-field-error">
+                  {editSaveError}
                 </p>
               ) : null}
               <div className="studio-modal-actions">
@@ -716,7 +882,7 @@ export default function Content() {
                   type="button"
                   className="acube-btn"
                   onClick={saveEdit}
-                  disabled={!editTitle.trim()}
+                  disabled={!editTitle.trim() || updateMutation.isPending}
                 >
                   Save
                 </button>

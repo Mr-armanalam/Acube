@@ -543,6 +543,38 @@ export async function seedDemoData() {
     parentId: null,
     demo: true,
   });
+  // Pagination: three more top-level comments so Studio Comments has
+  // a page 2 (11 total: page 1 = 10, page 2 = 1 at limit=10).
+  await Comment.create({
+    _id: oid(309),
+    videoid: v2,
+    userid: viewerIds[12],
+    commentbody: "The generics section deserves its own video — subscribed for part 2.",
+    usercommented: "demoviewer13",
+    commentedon: hoursAgo(6),
+    parentId: null,
+    demo: true,
+  });
+  await Comment.create({
+    _id: oid(310),
+    videoid: v4,
+    userid: viewerIds[14],
+    commentbody: "Tried the grid template on my own site — worked first try.",
+    usercommented: "demoviewer15",
+    commentedon: hoursAgo(30),
+    parentId: null,
+    demo: true,
+  });
+  await Comment.create({
+    _id: oid(311),
+    videoid: v6,
+    userid: viewerIds[16],
+    commentbody: "Clearest $lookup walkthrough I've seen. More MongoDB, please!",
+    usercommented: "demoviewer17",
+    commentedon: hoursAgo(72),
+    parentId: null,
+    demo: true,
+  });
 
   // 10. Playlists incl. a Learning Path with progress (progress lives
   // on the viewer's History rows — see step 12 — for these videos).

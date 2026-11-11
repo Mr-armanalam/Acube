@@ -315,6 +315,11 @@ export function usePostComment() {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.comments });
+      // Studio Comments reads queryKeys.studioComments (["studio",
+      // "comments", ...]), NOT ["comments"] — invalidating only the
+      // latter left a posted reply invisible in the Studio inbox until
+      // a manual refetch. Invalidate the studio prefix too.
+      void queryClient.invalidateQueries({ queryKey: ["studio", "comments"] });
     },
   });
 }
@@ -339,6 +344,11 @@ export function useDeleteComment() {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.comments });
+      // Studio Comments reads queryKeys.studioComments (["studio",
+      // "comments", ...]), NOT ["comments"] — invalidating only the
+      // latter left a deleted row on screen (server already gone)
+      // until a manual refetch. Invalidate the studio prefix too.
+      void queryClient.invalidateQueries({ queryKey: ["studio", "comments"] });
     },
   });
 }
@@ -935,6 +945,8 @@ export function useUpdateVideo() {
       description?: string;
       tags?: string[];
       thumbnailUrl?: string;
+      /** Local thumbnail file — sent as the `thumbnail` multipart part. */
+      thumbnail?: File;
     }) => {
       await api.patchVideo(input.id, {
         title: input.title,
@@ -942,6 +954,7 @@ export function useUpdateVideo() {
         description: input.description,
         tags: input.tags,
         thumbnailUrl: input.thumbnailUrl,
+        thumbnail: input.thumbnail,
       });
       return input;
     },

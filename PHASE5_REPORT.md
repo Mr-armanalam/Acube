@@ -1733,3 +1733,166 @@ dev + e2e-API servers, so this run served the fixed production build
 on :5173 (a CORS-allowed origin for the shared seeded `:5000` API)
 via a throwaway `/tmp` Playwright config reusing those servers; the
 other worker's servers were not touched.
+
+#### 8.9.16 Studio pagination + Comments actions + Edit-modal thumbnail upload (11 Nov 2026, branch `feat/acube-studio-pagination`)
+
+Numbering note: this section was §8.9.14 on the branch (PR #7's
+record already holds that number on main) and was renumbered to
+§8.9.16 when the branch was rebased onto main @ 6ce219ad (PR #7 + PR #8 merges).
+This branch was cut from `feat/acube-home-channel-account @ 52e6afe`
+(local `main` was stale at `ec16620` and was not used). It also
+carries the parallel backend worker's commits on this branch:
+`1173bd0` (seed 11 demo comments + `/studio/comments` pagination
+tests), `6563723` (`POST /video/:id/thumbnail`), `7b4dc05`
+(multipart `PATCH /video/:id`).
+
+**Scout verdict — stale build, no pagination bug.** A browser probe
+on a fresh build before this work (`/tmp/pagination-probe.log`)
+showed pagination working end to end in current code: Content page 1
+= 10 rows / "Page 1 of 2", Next → 1 row / "Page 2 of 2", Previous
+back to 10; Comments = 8 rows, 1 page, Next correctly disabled;
+search resets to page 1. Arman's symptom matches a build predating
+`4fb2a93` (which added the pager and the heart). No pagination code
+was changed in Content — the work below is the real remaining work:
+the three Comments actions, the Actions restyle, and the thumbnail
+upload in the Edit details modal.
+
+**Diagnosis (live seeded run, API `PHASE5_SEED=1` +
+`DEMO_LOGIN_ENABLED=1` on :5000, web dev on :4173, demo-login as
+`demo-channel-codestreamer@demo.acube.test`).**
+
+- DELETE — BROKEN, root cause confirmed in code and live:
+  `useDeleteComment` (`apps/web/src/query/hooks.ts:334`) invalidated
+  only `queryKeys.comments` (`["comments"]`), while the Studio page
+  reads `queryKeys.studioComments(page, filter, sort)`
+  (`["studio","comments",…]`). Live: `DELETE
+  /comment/delete/507f1f77bcf86cd799430308` → 200, server total 11 →
+  10, comment gone from the API list — but the row stayed on screen
+  after 1.5 s with a stale "Page 1 of 2" and no `/studio/comments`
+  refetch. The endpoint + ownership were fine (author or video owner
+  may delete; a parent with children soft-deletes to `"[deleted]"`,
+  a leaf is hard-deleted — `apps/api/Controllers/Comment.js`).
+- REPLY — BROKEN, same cache-key bug: `usePostComment`
+  (`hooks.ts:277`) optimistic-updates/invalidates only
+  `["comments"]`. Live: `POST /comment/post` → 200 "posted the
+  comment", the reply is on the server with the correct `parentId`
+  (`507f1f77bcf86cd799430307`), total 10 → 11 — but it never appeared
+  in the Studio list (no refetch, still absent after 2 s). The
+  composer itself opened/closed correctly; the endpoint accepts
+  `parentId` and validates it (live parent, same video).
+- HEART — WORKED in current code, no fix needed. Live: click toggles
+  `aria-pressed` false → true → false and text "♡ Heart" → "♥
+  Hearted", and the state survives a Next → Previous round-trip
+  (still pressed). Arman seeing it not work is the stale-build
+  explanation (heart arrived with the pager in `4fb2a93`). Session-
+  local by design — no backend, no persisted count (explicit open
+  cut).
+
+**Fixes (frontend only).**
+
+- `hooks.ts`: `usePostComment` and `useDeleteComment` `onSettled`
+  now also invalidate the `["studio", "comments"]` prefix, so the
+  Studio list refetches. (`useEditComment` has the same one-key
+  pattern but is not used by the Comments page — left alone, flagged
+  here.)
+- `Comments.tsx`: replies thread under their parent (depth-first,
+  within the loaded page; a reply whose parent is not on the page
+  renders as its own row); soft-deleted comments are hidden from the
+  inbox (a deleted parent's row disappears instead of lingering as
+  `"[deleted]"`); a page clamp (`useEffect` on `totalPages` + visible
+  rows) means deleting the last row of a page falls back to the
+  previous page — never an empty page while rows remain. Reply now
+  closes the composer only on success; on failure it stays open with
+  the text intact and the server's message verbatim
+  (`extractApiErrorMessage`); delete failures surface the same way.
+  No confirmation flow existed, so none was added.
+- Restyle: Actions are plain text on one row — "Reply · ♡ · Delete"
+  (underlined text buttons, dot separators, no pill backgrounds, no
+  red outline). Heart is the ♡/♥ glyph only, keeping `aria-pressed`
+  and its label. Table design unchanged (columns, rows, Pinned
+  badge). Desktop + mobile verified (mobile table scrolls
+  horizontally as before; the actions stay on one row in their
+  column).
+
+**Edit-modal thumbnail upload (follow-up scope).** The modal kept
+its URL input and gained a local file upload in the existing dark
+compact style: "Choose file" / "Change file" button + live preview
+thumbnail + Remove. Precedence local file > pasted URL > existing
+thumbnail (a chosen file means the URL is never sent). Validation
+JPG/PNG, 5 MB cap, same messages as Settings. Contract used (backend
+commits `6563723` + `7b4dc05`, built to this client's shape):
+`PATCH /video/:id` multipart, file part `thumbnail`, other fields as
+form fields, `tags` JSON-encoded (the server JSON-parses it before
+Zod); without a file the request stays JSON, unchanged. The backend
+also added a separate `POST /video/:id/thumbnail` (file or pasted
+URL, URL validated server-side as a reachable image); the modal uses
+the single-call `PATCH` so title + thumbnail save atomically. Server
+errors surface verbatim in the modal and the modal stays open; the
+modal now closes on success only. After save the row's thumbnail
+updates from the page-query refetch (no reload). Two supporting fixes
+the acceptance criterion required: (1) `VideoThumb`
+(`Component/VideoThumb.tsx`) never reset its `broken` flag when `src`
+changed, so a row whose thumbnail went from a broken placeholder URL
+to a fresh upload kept showing ▶ forever — it now resets on `src`
+change (same fix makes the modal preview work after picking a file);
+(2) the Content row and modal preview now resolve API-relative
+`/uploads/…` URLs via `resolveApiMediaUrl` (bare `/uploads/…` would
+404 against the web origin). Live API probe: multipart PATCH →
+thumbnailUrl `/uploads/2026-11-11T13-52-40.768Z-…-test-thumb.png`,
+served 200; JSON PATCH still works; unreachable pasted URL → 400
+`VALIDATION_ERROR` "Thumbnail URL could not be reached".
+
+**Seed / test counts.** Seed is now 11 demo comments (backend
+`1173bd0`: 3 more, oid 309–311) and 11 videos, so Comments
+pagination is exercised on the real seed (10 + 1), no fixture
+needed. Web unit: **16 new tests** (`studioCommentsActions.test.tsx`
+8: restyle, heart incl. page change, delete, last-row fallback,
+parent-with-replies delete, threaded reply, failed reply, pagination
+regression; `studioContentThumbnail.test.tsx` 8: modal picker +
+preview, URL preview, multipart save incl. precedence, Remove →
+JSON fallback, invalid/oversize rejection, verbatim server error,
+JSON unchanged, VideoThumb broken-state reset). Playwright e2e (Phase
+5 config, fresh build + fresh seed): **10/10** —
+`studio-comments-actions.spec.ts` 7 (Comments pagination 10 → 1 →
+10; Content pagination 10 → 1 → 10; heart incl. page change; delete
+of an API-created row; reply threaded under parent + cleanup;
+last-row-of-page-2 fallback; mobile actions) and
+`studio-content-thumbnail.spec.ts` 3 (modal UI + preview; upload →
+save → row shows `/uploads/` thumbnail; mobile modal). Existing
+suites re-run separately (fresh servers each): `phase5.spec.ts`
+10/10, `content-cleanup.spec.ts` 6/6.
+
+**Verification (uncached, real exit codes).** `pnpm typecheck
+--force` exit 0 (3/3 tasks); `pnpm lint --force` exit 0, **0 errors,
+7 warnings** (pre-existing baseline — two new warnings found in the
+first run were fixed: a `use*`-named test helper renamed, an unused
+destructure replaced by an explicit JSON allowlist);
+`pnpm test --force` exit 0 — web **208/208** (25 files), API
+**254/254** (18 files); `pnpm build --force` exit 0 (web ~14 s; API
+"no output files" note is pre-existing). One environment incident:
+a `phase5.spec.ts` run failed to start its API server with mongod
+`ECONNREFUSED` because orphaned `mongo-mem-*` dirs had filled the
+512 MB tmpfs (84% used, no mongod running) — cleared only the stale
+dirs, re-ran 10/10. One earlier full-suite flake (a 5 s timeout in
+`studioPreview.test.tsx` under 25-worker load) did not recur in the
+final run.
+
+**Screenshots** (desktop 1280×850 + mobile 390×844, seeded demo, no
+page errors) in `docs/screenshots/`, visually inspected:
+`phase5-comments-actions-desktop.png` (text actions + threaded
+replies visible), `phase5-comments-actions-mobile.png`,
+`phase5-studio-pagination-comments-p1.png` /
+`-p2.png`, `phase5-studio-pagination-content-p1.png` / `-p2.png`,
+`phase5-content-thumbnail-modal-desktop.png` (file chosen, live
+preview, "Using test-thumbnail.png — the URL above is ignored."),
+`phase5-content-thumbnail-modal-mobile.png`.
+
+**Open / flagged.** (1) The server total still counts soft-deleted
+comments in "all" mode, so after deleting a parent with replies the
+pager total does not drop by one even though the row is hidden —
+frontend hides the row; the count is backend-owned. (2) The
+`POST /video/:id/thumbnail` endpoint is unused by the modal (the
+single-call PATCH covers the flow); if Arman prefers the separate
+endpoint, the modal call is one function (`patchVideo` in
+`Api/index.ts`). (3) `useEditComment` still invalidates only
+`["comments"]` — same bug class, no caller on the Comments page.

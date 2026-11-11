@@ -20,6 +20,7 @@ import {
   SUPPORTED_VIDEO_MIMETYPES,
 } from "@acube/shared";
 import { paginate, paginationOf } from "../utils/pagination.js";
+import { checkReachableImageUrl } from "../utils/validateImageUrl.js";
 import { invalidateChannelCache } from "../utils/studioCache.js";
 
 // Phase 3b upload hardening:
@@ -364,8 +365,11 @@ export const updateVideo = async (req, res, next) => {
     }
     // Auto-thumbnails: a pasted thumbnailUrl is validated server-side
     // exactly as on upload (reachable image, else 400) — clearing it
-    // (null) needs no validation.
+    // (null) needs no validation. Skipped entirely when a thumbnail
+    // file is attached: the file wins and the pasted URL is ignored,
+    // not even validated (same precedence as upload).
     if (
+      !req.file &&
       req.body.thumbnailUrl !== undefined &&
       req.body.thumbnailUrl !== null
     ) {
@@ -391,9 +395,175 @@ export const updateVideo = async (req, res, next) => {
     if (req.body.durationSec !== undefined) {
       updates.durationSec = req.body.durationSec;
     }
+    // Multipart edit (Studio Content modal): a local thumbnail file
+    // wins over a pasted thumbnailUrl in the same request. A
+    // multipart call with NO usable file part is 400 — multer
+    // silently drops files its filter rejects, so "no file" here can
+    // mean "a non-JPG/PNG file was attached", which must never
+    // silently succeed as a no-op edit. (JSON PATCH callers are
+    // unaffected: req.file is undefined and the request is not
+    // multipart, so this branch never runs for them.)
+    if (req.file) {
+      const uploaded = await thumbnailUrlFromFile(req);
+      if (uploaded.error) {
+        return res.status(uploaded.error.status).json(uploaded.error.body);
+      }
+      updates.thumbnailUrl = uploaded.url;
+    } else if (req.is("multipart/form-data")) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message:
+            "An image file (JPG or PNG, max 5 MB) is required for a multipart edit",
+        },
+      });
+    }
     const updated = await videofile.findByIdAndUpdate(
       req.params.id,
       { $set: updates },
+      { returnDocument: "after" },
+    );
+    invalidateChannelCache(String(req.userid));
+    return res.status(200).json(updated);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// Shared by PATCH /video/:id (multipart) and POST /video/:id/thumbnail:
+// turn an attached "thumbnail" file (req.file, via
+// Helper/imageFilehelper.js) into a stored URL. Returns { url } on
+// success, { url: null } when no file was attached, or
+// { error: { status, body } } when the file is unusable (wrong MIME,
+// oversize, Cloudinary failure). Storage mirrors the video upload:
+// Cloudinary with resource_type "image" when configured, otherwise
+// the multer file is kept under uploads/ and served at /uploads/<file>.
+async function thumbnailUrlFromFile(req) {
+  if (!req.file) return { url: null };
+  // Defence in depth — multer's filter/limit are the first line.
+  if (!SUPPORTED_IMAGE_MIMETYPES.includes(req.file.mimetype)) {
+    return {
+      error: {
+        status: 400,
+        body: {
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Only JPG and PNG images are supported",
+          },
+        },
+      },
+    };
+  }
+  if (req.file.size > MAX_IMAGE_UPLOAD_BYTES) {
+    return {
+      error: {
+        status: 400,
+        body: {
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "File must be less than 5 MB",
+          },
+        },
+      },
+    };
+  }
+  if (isCloudinaryConfigured()) {
+    const uploaded = await uploadOnCloudinary(req.file.path, "image");
+    if (!uploaded) {
+      return {
+        error: {
+          status: 400,
+          body: {
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "Failed to upload image to cloudinary",
+            },
+          },
+        },
+      };
+    }
+    return { url: uploaded.secure_url ?? uploaded.url };
+  }
+  console.warn(
+    "[upload] Cloudinary is not configured — storing video thumbnail " +
+      "locally under uploads/ (set CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET " +
+      "to use Cloudinary instead).",
+  );
+  return { url: `/uploads/${req.file.filename}` };
+}
+
+// Studio Content edit modal: set a video's thumbnail from a local
+// image upload OR a pasted URL — POST /video/:id/thumbnail.
+// A separate endpoint (not multipart PATCH /:id) on purpose: PATCH
+// is JSON-only under a strict Zod schema (tags is an array, which
+// cannot arrive via FormData), and JSON PATCH callers must keep
+// working exactly as before.
+//
+// Precedence: local file > pasted URL > existing thumbnail.
+//   * File part "thumbnail" (multer, Helper/imageFilehelper.js —
+//     JPG/PNG, 5 MB cap, same as banner/avatar): Cloudinary with
+//     resource_type "image" when configured, otherwise the multer
+//     file is kept under uploads/ and served at /uploads/<file>.
+//   * Else a pasted thumbnailUrl (JSON body, or multipart text field):
+//     validated server-side as a reachable image (HEAD, ranged-GET
+//     fallback — see utils/validateImageUrl.js); unreachable or
+//     non-image URLs are 400 VALIDATION_ERROR, surfaced verbatim.
+//   * Else neither: a JSON call keeps the existing thumbnail (200
+//     no-op, same video back); a multipart call with no usable file
+//     part is 400, because multer silently drops files its filter
+//     rejects — a wrong-MIME attachment must never silently succeed.
+// Owner only (403 otherwise); missing or soft-deleted video is 404.
+// Response: the updated video, same shape as PATCH /video/:id.
+export const updateVideoThumbnail = async (req, res, next) => {
+  try {
+    const video = await videofile.findById(req.params.id);
+    if (!video || video.deletedAt != null) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "Video not found" },
+      });
+    }
+    if (String(video.videochanel) !== String(req.userid)) {
+      return res.status(403).json({
+        error: {
+          code: "FORBIDDEN",
+          message: "You can only edit your own videos",
+        },
+      });
+    }
+    const pastedUrl =
+      typeof req.body?.thumbnailUrl === "string"
+        ? req.body.thumbnailUrl.trim()
+        : "";
+    let url = null;
+    if (req.file) {
+      const uploaded = await thumbnailUrlFromFile(req);
+      if (uploaded.error) {
+        return res.status(uploaded.error.status).json(uploaded.error.body);
+      }
+      url = uploaded.url;
+    } else if (pastedUrl) {
+      const check = await checkReachableImageUrl(pastedUrl);
+      if (!check.ok) {
+        return res.status(400).json({
+          error: { code: "VALIDATION_ERROR", message: check.reason },
+        });
+      }
+      url = pastedUrl;
+    } else if (req.is("multipart/form-data")) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          message:
+            "An image file (JPG or PNG, max 5 MB) or thumbnail URL is required",
+        },
+      });
+    } else {
+      // Neither a file nor a URL: keep the existing thumbnail.
+      return res.status(200).json(video);
+    }
+    const updated = await videofile.findByIdAndUpdate(
+      req.params.id,
+      { $set: { thumbnailUrl: url } },
       { returnDocument: "after" },
     );
     invalidateChannelCache(String(req.userid));

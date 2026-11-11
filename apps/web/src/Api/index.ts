@@ -293,8 +293,41 @@ export const patchVideo = (
     description?: string;
     tags?: string[];
     thumbnailUrl?: string;
+    /**
+     * Local thumbnail file. When present the request is multipart
+     * (PATCH /video/:id, file part `thumbnail`, JPG/PNG ≤ 5 MB) and
+     * thumbnailUrl is NOT sent — a chosen file wins over a pasted URL
+     * entirely. Without a file the request stays JSON, as before.
+     * Form fields travel as strings under multer, so `tags` is
+     * JSON-encoded; the server parses it before Zod validation.
+     */
+    thumbnail?: File;
   },
-) => API.patch(`/video/${id}`, data);
+) => {
+  if (!data.thumbnail) {
+    // Explicit allowlist — the `thumbnail` File must never leak into
+    // the JSON body.
+    return API.patch(`/video/${id}`, {
+      title: data.title,
+      visibility: data.visibility,
+      description: data.description,
+      tags: data.tags,
+      thumbnailUrl: data.thumbnailUrl,
+    });
+  }
+  const filedata = new FormData();
+  if (data.title !== undefined) filedata.append("title", data.title);
+  if (data.visibility !== undefined)
+    filedata.append("visibility", data.visibility);
+  if (data.description !== undefined)
+    filedata.append("description", data.description);
+  if (data.tags !== undefined)
+    filedata.append("tags", JSON.stringify(data.tags));
+  filedata.append("thumbnail", data.thumbnail);
+  // Axios sets the multipart Content-Type (with boundary) itself for
+  // FormData — setting it manually would break the boundary.
+  return API.patch(`/video/${id}`, filedata);
+};
 export const deleteVideo = (id: string) => API.delete(`/video/${id}`);
 // Phase 5 fix contract: soft-delete restore (backend worker, parallel).
 export const restoreVideo = (id: string) =>

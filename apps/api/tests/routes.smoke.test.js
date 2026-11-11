@@ -52,7 +52,7 @@ vi.mock("stripe", () => ({
   },
 }));
 
-// Smoke test: every route in the API (56) plus GET / and GET /health (58
+// Smoke test: every route in the API (57) plus GET / and GET /health (59
 // endpoints total) is hit once with a valid-shaped request and must answer
 // with its expected status — never a 404 "route not found" and never a 500
 // crash. Auth-required routes are also hit without a token and must 401.
@@ -69,7 +69,7 @@ vi.mock("stripe", () => ({
 // seeded video's channel is "test-channel", so a second video owned by
 // userA is used), and the 14 /studio/* routes are covered —
 // GET /studio/playlists/:id is the one public studio route.
-describe("route smoke test — all 58 endpoints", () => {
+describe("route smoke test — all 59 endpoints", () => {
   it("every route responds with its expected status", async () => {
     const userA = await createUser();
     const userB = await createUser();
@@ -166,6 +166,8 @@ describe("route smoke test — all 58 endpoints", () => {
       ["DELETE", `/video/deletelikevideo/${vid}/${uid}`, headersA, null, 200],
       ["GET", `/video/${vid}`, null, null, 200],
       ["PATCH", `/video/${ownedVid}`, headersA, { title: "Smoke edit" }, 200],
+      // Thumbnail endpoint with neither file nor URL: JSON no-op, 200.
+      ["POST", `/video/${ownedVid}/thumbnail`, headersA, null, 200],
       ["GET", "/studio/overview", headersA, null, 200],
       ["GET", "/studio/analytics?range=7", headersA, null, 200],
       ["GET", "/studio/videos", headersA, null, 200],
@@ -184,8 +186,8 @@ describe("route smoke test — all 58 endpoints", () => {
       ["DELETE", `/video/${ownedVid}`, headersA, null, 200],
     ];
 
-    // 56 API routes + GET / + GET /health = 58 endpoints.
-    expect(table).toHaveLength(58);
+    // 57 API routes + GET / + GET /health = 59 endpoints.
+    expect(table).toHaveLength(59);
 
     for (const [method, path, headers, body, expected] of table) {
       let req = api[method.toLowerCase()](path);
@@ -246,6 +248,7 @@ describe("route smoke test — all 58 endpoints", () => {
       ["GET", "/video/getalllikevide", null],
       ["DELETE", `/video/deletelikevideo/${vid}/${uid}`, null],
       ["PATCH", `/video/${vid}`, { title: "x" }],
+      ["POST", `/video/${vid}/thumbnail`, null],
       ["DELETE", `/video/${vid}`, null],
       ["GET", "/studio/overview", null],
       ["GET", "/studio/analytics?range=7", null],
@@ -262,7 +265,7 @@ describe("route smoke test — all 58 endpoints", () => {
       ["DELETE", `/studio/library/saved/${vid}`, null],
     ];
 
-    expect(unauthenticated).toHaveLength(46);
+    expect(unauthenticated).toHaveLength(47);
 
     for (const [method, path, body] of unauthenticated) {
       let req = api[method.toLowerCase()](path);
