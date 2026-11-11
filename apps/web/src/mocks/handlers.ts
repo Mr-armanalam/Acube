@@ -136,6 +136,29 @@ export const fixtureStudioAnalytics = {
   // "not tracked yet" empty state instead of a faked split.
 };
 
+// Content "View analytics" target: GET /studio/videos/:id/analytics
+// (owner only). Daily likes are DELIBERATELY ABSENT — no honest
+// per-video like series exists — so the fixture carries views +
+// completions + watchMinutes only, like the real endpoint.
+export const fixtureStudioVideoAnalytics = {
+  video: {
+    _id: "vid1",
+    videotitle: "Python Basics Tutorial",
+    visibility: "public",
+    views: 120,
+    likes: 9,
+    createdAt: "2026-11-01T00:00:00.000Z",
+  },
+  range: 28,
+  days: [
+    { date: "2026-11-01", views: 8, completions: 1, watchMinutes: 4 },
+    { date: "2026-11-02", views: 20, completions: 3, watchMinutes: 12 },
+    { date: "2026-11-03", views: 12, completions: 2, watchMinutes: 8 },
+  ],
+  totals: { views: 40, completions: 6, watchMinutes: 24 },
+  bestDay: { date: "2026-11-02", views: 20 },
+};
+
 export const fixtureWatchSuggestions = {
   // Ranked suggestions for vid1 — the current video is excluded.
   items: [
@@ -281,6 +304,7 @@ export const captured = {
   historyProgress: [] as Array<{ videoid: string; progressSec: number }>,
   historyPausedPatches: [] as boolean[],
   videoSuggestionCalls: [] as string[],
+  videoAnalyticsCalls: [] as string[],
   // Phase 3a: bodies sent to POST /user/login, so tests can assert the
   // Google id_token (not a client-claimed email) is what gets sent.
   loginBodies: [] as unknown[],
@@ -464,6 +488,18 @@ export const handlers = [
     const url = new URL(request.url);
     const range = Number(url.searchParams.get("range") ?? 28);
     return json({ ...fixtureStudioAnalytics, range });
+  }),
+  // Content "View analytics" target: per-video daily series (owner
+  // only). Unknown ids 404, like the real endpoint for a missing or
+  // soft-deleted video.
+  http.get("*/studio/videos/:id/analytics", ({ params, request }) => {
+    captured.videoAnalyticsCalls.push(String(params.id));
+    if (params.id !== fixtureStudioVideoAnalytics.video._id) {
+      return new HttpResponse(null, { status: 404 });
+    }
+    const url = new URL(request.url);
+    const range = Number(url.searchParams.get("range") ?? 28);
+    return json({ ...fixtureStudioVideoAnalytics, range });
   }),
   // Phase 5 fix: search (q), visibility filter and real pagination.
   http.get("*/studio/videos", ({ request }) => {

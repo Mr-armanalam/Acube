@@ -163,6 +163,12 @@ export const verifyOtp = (authOtp: VerifyOtpInput) =>
 export const getStudioOverview = () => API.get("/studio/overview");
 export const getStudioAnalytics = (range: 7 | 28 | 90 = 28) =>
   API.get("/studio/analytics", { params: { range } });
+// Content "View analytics" target: per-video daily series (owner only).
+// Same range contract as the channel endpoint.
+export const getStudioVideoAnalytics = (
+  id: string,
+  range: 7 | 28 | 90 = 28,
+) => API.get(`/studio/videos/${id}/analytics`, { params: { range } });
 // Phase 5 fix: search + visibility filter + real pagination. The
 // backend worker is adding q/visibility to GET /studio/videos in
 // parallel; the client sends them and the MSW handlers answer them.

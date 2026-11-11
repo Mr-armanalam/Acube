@@ -137,15 +137,38 @@ test.describe("Acube Phase 5 click-through", () => {
     await page.goto("/studio/content");
     await expect(page.getByRole("heading", { name: "Content" })).toBeVisible();
     await expect(page.getByText(SEEDED_VIDEO_TITLE)).toBeVisible();
+    // Content cleanup (preview image 20): no per-row "Edit details"
+    // button and no per-row visibility dropdown — only a pencil and a
+    // "⋯" button per row, opening the row menu.
     await expect(
       page.getByLabel(`Visibility for ${SEEDED_VIDEO_TITLE}`),
-    ).toBeVisible();
-    // Preview screen C names the row action "Edit details" (it edits
-    // title + description + tags + thumbnail), not "Edit title" — the
-    // spec was stale after the frontend fix renamed the button.
+    ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Edit details" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", {
+        name: `Row actions for ${SEEDED_VIDEO_TITLE}`,
+      }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: `More actions for ${SEEDED_VIDEO_TITLE}`,
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: `Row actions for ${SEEDED_VIDEO_TITLE}` })
+      .click();
+    await expect(
+      page.getByRole("menuitem", { name: "Edit details" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "Change visibility" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "View analytics" }),
+    ).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
     expect(errors).toEqual([]);
     await page.screenshot({ path: shot("studio-content.png") });
   });
@@ -285,7 +308,12 @@ test.describe("Acube Phase 5 click-through", () => {
     await seedFakeSession(page);
     await page.goto("/studio/content");
     await expect(page.getByText(SEEDED_VIDEO_TITLE)).toBeVisible();
-    await page.getByRole("button", { name: "Edit details" }).click();
+    // Content cleanup: "Edit details" lives in the row menu now, and
+    // opens a modal (never inline row editing).
+    await page
+      .getByRole("button", { name: `Row actions for ${SEEDED_VIDEO_TITLE}` })
+      .click();
+    await page.getByRole("menuitem", { name: "Edit details" }).click();
     const input = page.getByLabel("Video title");
     await input.fill("E2E Smoke Video (Edited)");
     await page.getByRole("button", { name: "Save" }).click();

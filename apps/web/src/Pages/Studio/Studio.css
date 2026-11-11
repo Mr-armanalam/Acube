@@ -147,7 +147,14 @@
   .studio-shell { flex-direction: column; }
   .studio-nav { display: none; }
   .studio-mobile-tabs { display: flex; }
-  .studio-main { padding: 16px; }
+  /* margin: 0 — NOT the desktop `margin: 0 auto`: in a column flex
+   * container an auto cross-axis margin disables stretch, so main
+   * sized to its content instead of the viewport — the Content table's
+   * 680px min-width forced main to 714px at a 390px viewport
+   * (document-level horizontal overflow). With no auto margin the
+   * stretch applies, main is exactly the viewport wide, and the table
+   * scrolls inside .studio-table-wrap as intended. */
+  .studio-main { padding: 16px; margin: 0; }
 }
 
 /* --- KPI cards: exactly 4 across on desktop (preview) --- */
@@ -208,7 +215,9 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-.studio-row-thumb { width: 96px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; background: var(--surface-2); }
+.studio-row-thumb { width: 64px; flex-shrink: 0; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: var(--surface-2); }
+.studio-video-cell { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.studio-video-title { min-width: 0; overflow-wrap: anywhere; }
 .studio-actions-cell {
   display: flex;
   flex-direction: column;
@@ -219,6 +228,157 @@
 .studio-actions-cell .acube-btn-secondary,
 .studio-actions-cell .acube-btn-danger,
 .studio-actions-cell .acube-btn { white-space: nowrap; }
+
+/* --- Content cleanup (preview image 20): slim hover checkboxes,
+ * icon-only row actions, popup menu, edit-details modal --- */
+/* Row checkboxes appear on row hover / focus / when checked; the
+ * header select-all is always visible. */
+.studio-row-select { opacity: 0; transition: opacity 0.12s ease; }
+.studio-table tbody tr:hover .studio-row-select,
+.studio-row-select:focus-visible,
+.studio-table tbody tr:has(.studio-row-select:checked) .studio-row-select { opacity: 1; }
+.studio-bulk-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.studio-row-actions { display: flex; gap: 2px; position: relative; justify-content: flex-end; }
+.studio-icon-btn {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.studio-icon-btn:hover { background: var(--surface-2); }
+.studio-icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.studio-menu-backdrop { position: fixed; inset: 0; z-index: 30; background: transparent; }
+/* Fixed-positioned (anchored to the row button by Content.tsx) — it
+ * must NOT be absolute inside the row: the table wrapper's
+ * overflow-x: auto clips absolutely-positioned descendants, which cut
+ * the menu to a sliver. top/right come from the inline style. */
+.studio-menu {
+  position: fixed;
+  z-index: 31;
+  min-width: 200px;
+  background: #0c0b0a;
+  color: #f2eee6;
+  border: 1px solid #2e2a26;
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+.studio-menu-item {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 0;
+  color: #f2eee6;
+  font: 600 14px/20px "Manrope", sans-serif;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+}
+.studio-menu-item:hover { background: rgba(242, 238, 230, 0.08); text-decoration: none; }
+.studio-menu-item-danger { color: #ff8a7a; }
+.studio-menu-title {
+  padding: 8px 10px 2px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #a8a198;
+}
+.studio-menu-note { padding: 2px 10px 6px; margin: 0; font-size: 13px; color: #a8a198; }
+.studio-menu-check { margin-left: auto; color: #4ade80; }
+.studio-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(12, 11, 10, 0.72);
+}
+.studio-modal {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: #0c0b0a;
+  color: #f2eee6;
+  border: 1px solid #2e2a26;
+  border-radius: 16px;
+  padding: 20px 24px 24px;
+}
+.studio-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.studio-modal-header h2 {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", "Manrope", system-ui, sans-serif;
+  font-size: 20px;
+  line-height: 28px;
+  color: #f2eee6;
+}
+.studio-modal-close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #f2eee6;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.studio-modal-close:hover { background: rgba(242, 238, 230, 0.12); }
+.studio-modal-form { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.studio-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #a8a198;
+}
+.studio-field-label .acube-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 15px;
+  padding: 12px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+.studio-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
 .studio-note {
   background: var(--surface);
   border: 1px solid var(--border);

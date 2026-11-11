@@ -4,7 +4,6 @@
 // hand-built SVG with a visually-hidden text-table fallback for
 // screen readers (the preview shows no visible table under a chart).
 import React from "react";
-import type { StudioAnalyticsDay } from "../../types";
 import type { Video } from "../../types";
 
 export function StatCard({
@@ -121,17 +120,24 @@ export function TopVideosBars({ videos }: { videos: Video[] }) {
   );
 }
 
-/** Custom SVG line/area chart (no new dependency). `metric` picks the series. */
+/** Custom SVG line/area chart (no new dependency). `metric` picks the series.
+ * `likes` is optional: per-video days carry no likes series (likes are
+ * channel-level only), so a video-scoped chart passes days without it. */
 export function StudioChart({
   days,
   metric,
   label,
 }: {
-  days: StudioAnalyticsDay[];
+  days: Array<{
+    date: string;
+    views: number;
+    watchMinutes: number;
+    likes?: number;
+  }>;
   metric: "views" | "watchMinutes" | "likes";
   label: string;
 }) {
-  const values = days.map((d) => d[metric]);
+  const values = days.map((d) => d[metric] ?? 0);
   const max = Math.max(...values, 1);
   const w = 640;
   const h = 220;
