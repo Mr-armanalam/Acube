@@ -1554,3 +1554,136 @@ https://github.com/Mr-armanalam/Acube/pull/6, head
 `602d1e229cf7c3a0d254cc623d592e96db1f6369` (snapshot commit; local head
 `30c7bde`). Screenshots are not in the PR (binaries are excluded from
 snapshot pushes).
+
+#### 8.9.14 Auto-thumbnails + thumbnail field + hover preview (PR #7)
+
+Branch `feat/acube-auto-thumbnails` (base `52e6afe`, PR #6 head), PR #7 vs
+`main`. Reference screenshots (desktop 1280×850, seeded demo, no page
+errors): `phase5-upload-thumbnail-step2.png`,
+`phase5-home-thumbnail-grid.png`,
+`phase5-home-hover-preview-playing.png` in `docs/screenshots/`.
+
+**Auto-thumbnails (API).** Verified first: uploads stored no thumbnail at
+all — Home/Content fell back to gradients and the wizard had no thumbnail
+input beyond the legacy `thumbnail_url` string. Fixed: every video upload
+now produces three 1280×720 JPG stills at 5% / 50% / 90% of duration.
+Cloudinary path: `VIDEO_THUMBNAIL_EAGER_TRANSFORMATIONS` in
+`cloudinary.js:72-80` builds three eager transforms `{width: 1280, height:
+720, crop: "fill", format: "jpg", start_offset: "5%" | "50%" | "90%"}` from
+`AUTO_THUMBNAIL_FRACTIONS` (the `start_offset: "5%"` form serializes to
+`so_5p`, verified against the installed SDK typings + runtime
+`build_eager`); `extractEagerThumbnailUrls` (`cloudinary.js:82-89`) reads
+the `eager` array's `secure_url`s in order. Local path (no Cloudinary
+configured): `Helper/thumbnails.js` probes duration with `ffprobe-static`
+(`:135-142`) and extracts the same three frames with `ffmpeg-static`
+(`:161-230`, padded to exactly 1280×720) to
+`/uploads/<videoId>-thumb-<n>.jpg`; both packages are bundled binaries
+(`ffmpeg-static` 5.3.0, `ffprobe-static` 3.1.0 in `apps/api/package.json`),
+no system ffmpeg needed. Precedence (`Controllers/video.js:251`): uploaded
+file > pasted URL > middle auto frame (index 1, 50%) > first auto > legacy
+`thumbnail_url` > null; `autoThumbnails` is a string array on the video
+model (`Models/videofile.js:92`). Upload never fails on thumbnail failure:
+an eager failure retries the Cloudinary upload once without eager, a local
+extraction failure logs a warning and the upload still succeeds with no
+thumbnails (`Controllers/video.js:59-60`). Backfill:
+`pnpm --filter @acube/api seed:thumbnails`
+(`scripts/backfill-thumbnails.mjs`, `Helper/thumbnailBackfill.js`) backfills
+videos lacking `thumbnailUrl` — derived Cloudinary transformation URLs for
+hosted videos, real ffmpeg frames for local files; idempotent, `--dry-run`
+and `--limit` supported.
+
+**Thumbnail field fix (wizard + API).** Verified first: Step 2 had only the
+paste-a-URL field and the server stored the string unchecked. Fixed: the
+URL field is kept and a JPG/PNG file picker (5 MB, the Settings rule shared
+via `utils/thumbnail.ts`) is added; the upload endpoint now accepts an
+optional second multipart part `"thumbnail"` via `upload.fields()` (not
+`.single("file")`, `Routes/video.js:36-37`). A file wins over a URL, which
+is then ignored entirely (not validated). A pasted URL is validated
+server-side in `Helper/thumbnails.js:54,78-92` — HEAD with 5s timeout, a
+ranged-GET fallback for a single byte when the host rejects HEAD (405/501),
+`image/*` required, body never downloaded — and rejected with 400
+`VALIDATION_ERROR` "Thumbnail URL must point to a reachable image"
+(verbatim, asserted in the API tests); the same check runs on PATCH
+`/video/:id`. The client surfaces the server message verbatim.
+
+**Frame picker design (client-side extraction in Step 2).** The picker is
+client-side because the upload itself happens at Publish: the picked video
+is seeked to 5% / 50% / 90% and drawn to canvas in `utils/thumbnail.ts:53+`
+(middle frame marked Suggested), so the user sees the exact frames the
+server will generate. The default auto choice sends nothing extra; a
+clicked frame is sent as a JPEG `File` in the `thumbnail` part
+(`UploadWizard.tsx:269`), an uploaded file as `thumbnail`
+(`UploadWizard.tsx:258`), a URL as `thumbnailUrl`
+(`UploadWizard.tsx:272`). Review shows the effective choice; the done
+screen shows the server-stored thumbnail (`thumbnailUrl`, else first
+`autoThumbnails`).
+
+**Hover preview (Home).** New `HomeVideoCard.tsx` behaviour, grid-owned
+single preview via `previewId` (`Home.tsx:65,166`): 900 ms dwell
+(`HOVER_PREVIEW_DWELL_MS = 900`, `HomeVideoCard.tsx:33`), muted looping
+`<video>` starting at 10% in (`HomeVideoCard.tsx:34`), `preload="none"`
+(nothing fetched before the dwell), silent fallback to the thumbnail on
+error, stops on mouse-leave / tab-hide / scroll-out of view, off under
+`prefers-reduced-motion` (`HomeVideoCard.tsx:80`), touch unchanged. The
+card observes only while previewing, so the pagination sentinel observer is
+untouched (regression test pins zero card observers at rest).
+
+**`resolveApiMediaUrl` in VideoThumb.** Verified first: local `/uploads/...`
+thumbnails resolved against the web origin and 404'd in the browser. Fixed:
+`VideoThumb` itself resolves `src` through `resolveApiMediaUrl`
+(`Component/VideoThumb.tsx:14,47,74`) and resets its broken state when
+`src` changes, so local thumbnails display on Home, Content, Library,
+History and Playlist. The Content edit modal validates the thumbnail URL
+the same way; file upload there is a follow-up (see below).
+
+**Verification (uncached, real exit codes).** `pnpm typecheck --force`
+exit 0 (3/3 tasks); `pnpm lint --force` exit 0, 0 errors, 7 warnings
+(pre-existing); `pnpm test --force` exit 0 — API **271/271** (21 files),
+web **224/224** (25 files); `pnpm build --force` exit 0. Playwright Phase
+5 suite **29/29**, each spec in its own invocation (fresh seed per run):
+`auto-thumbnails-hover.spec.ts` **4/4** (frame picker + 3 stored auto
+frames; custom file replaces auto; pasted URL works; hover ~1s plays a
+real preview, leaving stops it), `upload-wizard.spec.ts` **3/3** +
+`home-pagination.spec.ts` **1/1**, `phase5.spec.ts` **10/10** +
+`settings-watch-polish.spec.ts` **4/4**, `content-cleanup.spec.ts`
+**6/6**, `upload-wizard-cloudinary.spec.ts` **1/1** (mock-SDK Cloudinary
+config). Verification found and fixed an environment defect, not a code
+one: the first `content-cleanup` run failed before any test — the e2e API
+server crashed seeding (`MongoBulkWriteError: read ECONNRESET` in
+`seedDemoData`) because `/tmp` (512 MB tmpfs) was 82% full with orphaned
+`mongo-mem-*` dirs (~201 MB each) from earlier e2e runs; freed ~402 MB of
+stale dirs (no mongod running) and the retry passed 6/6. The
+`upload-wizard-cloudinary` spec needs its own config
+(`playwright.phase5-cloudinary.config.ts`); running it under the plain
+Phase 5 config finds no tests. One self-inflicted false alarm while
+verifying: `pnpm --filter @acube/web test --force` fails because `--force`
+is passed through to vitest (unknown flag) — the root `pnpm test --force`
+(turbo) is the correct invocation and passed. Screenshots
+`phase5-upload-thumbnail-step2.png` (frame picker + URL + file field),
+`phase5-home-thumbnail-grid.png`, `phase5-home-hover-preview-playing.png`
+are desktop 1280×850 with no page errors; the hover screenshot shows a
+pre-existing sticky-header chips overlap when scrolled (not introduced
+here). Screenshots are not in the PR (binaries excluded from snapshot
+pushes).
+
+**Deferred / follow-ups.** Feed personalization stays deferred. Content
+edit modal file upload is a follow-up: PATCH `/video/:id` is JSON-only and
+needs backend multipart support. Pasted-URL server fetch has no SSRF
+allow/blocklist (known limitation). No `any`, no ts-ignore, no test
+excluded from typecheck.
+
+**PR #7 state.** PR #6 was merged before this push (merge commit
+`72a9d186434128ca6130ac58da12629e7092a885`, 2026-11-11T12:19:41Z), so the
+branch was created from current main @ `72a9d18` and this PR is based on
+merged PR #6, not stacked. Branch `feat/acube-auto-thumbnails` pushed via
+the GitHub connector snapshot push (39 UTF-8 files; 3 PNG screenshots
+excluded as binaries); PR #7 created with base `main`, title
+"Auto-thumbnails on upload + thumbnail file/URL field; Home: hover video
+preview" — https://github.com/Mr-armanalam/Acube/pull/7, head
+`6b47c518c38fcc3e042b153f5a25f998948acead` (snapshot commit; local head
+`7f6f089`). Git-state note: the two implementation workers disagreed — the
+backend worker reported commit `36eeb5b` while the frontend worker claimed
+the backend changes were still uncommitted. Verification found `36eeb5b`
+does exist and the tree was clean: `52e6afe → 36eeb5b → 34c2c3f →
+7f6f089`, nothing uncommitted, no duplication or conflict; the frontend
+worker's claim was stale and no commit was needed.

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, afterAll, beforeAll } from "vitest";
+import { describe, expect, it, vi, afterAll, beforeAll, beforeEach, afterEach } from "vitest";
 import mongoose from "mongoose";
 import fs from "node:fs";
 import path from "node:path";
@@ -10,6 +10,15 @@ import Videofile from "../Models/videofile.js";
 // files it creates there. isCloudinaryConfigured is mocked true here so
 // these tests exercise the Cloudinary path; the local fallback (env
 // unset) is covered separately in video-upload-fallback.test.js.
+// The mock mirrors the real ../cloudinary.js surface the controller
+// uses, including extractEagerThumbnailUrls (same rule: eager array's
+// secure_url/url entries, in order) and an eager array on the upload
+// response — the three auto-thumbnail candidates.
+const MOCK_EAGER_URLS = [
+  "https://res.cloudinary.com/test/video/upload/test-thumb-1.jpg",
+  "https://res.cloudinary.com/test/video/upload/test-thumb-2.jpg",
+  "https://res.cloudinary.com/test/video/upload/test-thumb-3.jpg",
+];
 vi.mock("../cloudinary.js", () => ({
   isCloudinaryConfigured: vi.fn(() => true),
   uploadOnCloudinary: vi.fn(async () => ({
@@ -17,8 +26,36 @@ vi.mock("../cloudinary.js", () => ({
     secure_url: "https://res.cloudinary.com/test/video/upload/test.mp4",
     duration: 42,
     thumbnail_url: "https://res.cloudinary.com/test/video/upload/test.jpg",
+    eager: MOCK_EAGER_URLS.map((secure_url) => ({ secure_url })),
   })),
+  extractEagerThumbnailUrls: (response) => {
+    const eager = response?.eager;
+    if (!Array.isArray(eager)) return [];
+    return eager
+      .map((entry) => entry?.secure_url ?? entry?.url)
+      .filter((url) => typeof url === "string" && /^https?:\/\//.test(url));
+  },
 }));
+
+// A pasted thumbnailUrl is validated server-side with a HEAD request
+// (see Controllers/video.js): the example.com URLs these tests paste
+// must answer as an image, so fetch is stubbed to an image response
+// for the whole file. URL-validation failures are covered with real
+// (mocked-fetch) cases in video-auto-thumbnails.test.js.
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => "image/jpeg" },
+    }),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 let beforeFiles = [];
@@ -222,6 +259,13 @@ describe("POST /video/uploadvideo", () => {
     // comes from the signed-in user, NOT the body's "tester".
     expect(saved.duration).toBe(42);
     expect(saved.thumbnail).toBe("https://res.cloudinary.com/test/video/upload/test.jpg");
+    // Auto-thumbnails: the mocked eager stills are stored in order,
+    // and with no file/URL supplied thumbnailUrl is the middle (50%)
+    // candidate.
+    expect(saved.autoThumbnails).toEqual(MOCK_EAGER_URLS);
+    expect(saved.thumbnailUrl).toBe(MOCK_EAGER_URLS[1]);
+    expect(res.body.video.autoThumbnails).toEqual(MOCK_EAGER_URLS);
+    expect(res.body.video.thumbnailUrl).toBe(MOCK_EAGER_URLS[1]);
     expect(saved.uploader).toBe(user.username);
     // The stored filename is sanitised — it never equals the raw
     // originalname and never contains a path separator.
@@ -249,12 +293,16 @@ describe("POST /video/uploadvideo", () => {
     expect(res.body.video.visibility).toBe("unlisted");
     expect(res.body.video.description).toBe("A detailed description");
     expect(res.body.video.tags).toEqual(["planning", "productivity", "routine"]);
+    // Precedence: the pasted URL wins over the auto candidates — the
+    // eager stills are still stored as candidates.
     expect(res.body.video.thumbnailUrl).toBe("https://example.com/thumb.jpg");
+    expect(res.body.video.autoThumbnails).toEqual(MOCK_EAGER_URLS);
     const saved = await Videofile.findById(res.body.video.id);
     expect(saved.description).toBe("A detailed description");
     expect(saved.tags).toEqual(["planning", "productivity", "routine"]);
     expect(saved.visibility).toBe("unlisted");
     expect(saved.thumbnailUrl).toBe("https://example.com/thumb.jpg");
+    expect(saved.autoThumbnails).toEqual(MOCK_EAGER_URLS);
   });
 
   it("upload without description/tags/visibility defaults to public with empty details", async () => {
@@ -273,12 +321,21 @@ describe("POST /video/uploadvideo", () => {
     expect(res.body.video.visibility).toBe("public");
     expect(res.body.video.description).toBe("");
     expect(res.body.video.tags).toEqual([]);
-    expect(res.body.video.thumbnailUrl).toBeNull();
+    // Behaviour change (auto-thumbnails): a plain upload no longer
+    // has a null thumbnailUrl — with no file/URL supplied it is the
+    // middle eager candidate, and the legacy Cloudinary thumbnail_url
+    // is the fallback when no eager stills come back. Previously
+    // this test asserted null here; the null case is now "no eager
+    // stills AND no legacy thumbnail_url", covered in
+    // video-auto-thumbnails.test.js.
+    expect(res.body.video.thumbnailUrl).toBe(MOCK_EAGER_URLS[1]);
+    expect(res.body.video.autoThumbnails).toEqual(MOCK_EAGER_URLS);
     const saved = await Videofile.findById(res.body.video.id);
     expect(saved.visibility).toBe("public");
     expect(saved.description).toBe("");
     expect(saved.tags).toEqual([]);
-    expect(saved.thumbnailUrl).toBeNull();
+    expect(saved.thumbnailUrl).toBe(MOCK_EAGER_URLS[1]);
+    expect(saved.autoThumbnails).toEqual(MOCK_EAGER_URLS);
     // A default-public upload DOES appear in the public feed.
     const feed = await api.get("/video/getvideos?page=1&limit=50");
     expect(feed.body.items.map((v) => String(v._id))).toContain(

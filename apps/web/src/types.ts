@@ -40,7 +40,11 @@ export interface SessionProfile {
 export type VideoVisibility = "public" | "unlisted" | "private" | "draft";
 
 /** POST /video/uploadvideo response (Phase 5 fix): the created video's
- * id + persisted details, so the wizard can link straight to it. */
+ * id + persisted details, so the wizard can link straight to it.
+ * Auto-thumbnails (backend contract, parallel worker): `thumbnailUrl`
+ * is the chosen frame; `autoThumbnails` lists the server-generated
+ * candidate frame URLs (possibly empty — e.g. local fallback before
+ * the backend lands frame generation). */
 export interface UploadVideoResponse {
   message: string;
   video: {
@@ -50,6 +54,7 @@ export interface UploadVideoResponse {
     description: string;
     tags: string[];
     thumbnailUrl: string | null;
+    autoThumbnails?: string[] | null;
   };
 }
 

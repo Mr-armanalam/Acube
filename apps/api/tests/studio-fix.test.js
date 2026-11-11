@@ -3,7 +3,7 @@
 // pinning, history pause + progress, suggestions, studio search/filter,
 // public playlist read, analytics traffic-source absence, and demo
 // seed idempotency. Nothing here touches apps/web.
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import mongoose from "mongoose";
 import { api, authHeader, createUser, createVideo } from "./helpers.js";
 import Videofile from "../Models/videofile.js";
@@ -28,6 +28,23 @@ async function ownVideo(user, overrides = {}) {
 
 beforeEach(() => {
   clearStudioCache();
+  // PATCH /video/:id validates a pasted thumbnailUrl server-side
+  // with a HEAD request (see Controllers/video.js): the example.com
+  // URLs this file PATCHes must answer as an image, so fetch is
+  // stubbed to an image response. URL-validation failures are
+  // covered with mocked fetch in video-auto-thumbnails.test.js.
+  vi.stubGlobal(
+    "fetch",
+    async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => "image/jpeg" },
+    }),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("GET / PATCH /studio/settings (full shape)", () => {

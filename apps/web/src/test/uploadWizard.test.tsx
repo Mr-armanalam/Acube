@@ -13,6 +13,23 @@ import { InternetStatusProvider } from "../utils/internetStatusContext";
 import Allroutes from "../Allroutes";
 import { MAX_VIDEO_BYTES } from "../utils/uploadLimits";
 
+// Frame extraction needs real media decoding (jsdom has none), so the
+// picker tests stub it with three small data-URL frames; everything
+// else in the module (validateImageFile, precedence) stays real.
+vi.mock("../utils/thumbnail", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("../utils/thumbnail")>();
+  return {
+    ...orig,
+    extractVideoFrames: vi.fn(() =>
+      Promise.resolve([
+        "data:image/jpeg;base64,AAA",
+        "data:image/jpeg;base64,BBB",
+        "data:image/jpeg;base64,CCC",
+      ]),
+    ),
+  };
+});
+
 const createObjectURLMock = vi.fn(() => "blob:mock-video-url");
 const revokeObjectURLMock = vi.fn();
 
@@ -261,5 +278,178 @@ describe("Upload wizard — Steps 2 and 3", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("thumbnailUrl: must be a valid URL");
     expect(alert).not.toHaveTextContent("Request failed with status code 400");
+  });
+});
+
+describe("Upload wizard — thumbnail field (file + URL + auto frames)", () => {
+  function imageFile(name: string, size: number, type: string): File {
+    return new File([new ArrayBuffer(size)], name, { type });
+  }
+
+  async function goToReviewWithTitle() {
+    await userEvent.type(screen.getByLabelText("Title"), "Thumb test video");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Continue to review" }),
+    );
+    await screen.findByText(/Step 3 of 3/);
+  }
+
+  it("rejects a wrong-type thumbnail image and an oversize one, inline", async () => {
+    await goToStep2();
+    const input = screen.getByLabelText("Upload thumbnail image");
+    fireEvent.change(input, {
+      target: { files: [imageFile("thumb.gif", 1024, "image/gif")] },
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Choose a JPG or PNG image.",
+    );
+    fireEvent.change(input, {
+      target: {
+        files: [imageFile("big.png", 5 * 1024 * 1024 + 1, "image/png")],
+      },
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Image must be 5 MB or smaller.",
+    );
+    expect(
+      screen.queryByAltText("Preview of the chosen thumbnail image"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("a valid thumbnail image shows a live preview", async () => {
+    await goToStep2();
+    const input = screen.getByLabelText("Upload thumbnail image");
+    fireEvent.change(input, {
+      target: { files: [imageFile("thumb.png", 2048, "image/png")] },
+    });
+    const preview = await screen.findByAltText(
+      "Preview of the chosen thumbnail image",
+    );
+    expect(preview).toHaveAttribute("src", "blob:mock-video-url");
+    expect(screen.getByText(/thumb\.png/)).toBeInTheDocument();
+  });
+
+  it("a chosen file wins over the pasted URL on publish", async () => {
+    await goToStep2();
+    await userEvent.type(
+      screen.getByLabelText("Thumbnail URL"),
+      "https://example.com/thumb.jpg",
+    );
+    fireEvent.change(screen.getByLabelText("Upload thumbnail image"), {
+      target: { files: [imageFile("thumb.png", 2048, "image/png")] },
+    });
+    await goToReviewWithTitle();
+    expect(screen.getByText("Image file: thumb.png")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Publish" }));
+    expect(await screen.findByText("Your video was uploaded.")).toBeInTheDocument();
+    expect(captured.uploads).toHaveLength(1);
+    expect(captured.uploads[0].hasThumbnailFile).toBe(true);
+    expect(captured.uploads[0].thumbnailFileType).toBe("image/png");
+    expect(captured.uploads[0].thumbnailUrl).toBeNull();
+  });
+
+  it("a pasted URL still works when no file is chosen", async () => {
+    await goToStep2();
+    await userEvent.type(
+      screen.getByLabelText("Thumbnail URL"),
+      "https://example.com/thumb.jpg",
+    );
+    await goToReviewWithTitle();
+    expect(screen.getByText("https://example.com/thumb.jpg")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Publish" }));
+    expect(await screen.findByText("Your video was uploaded.")).toBeInTheDocument();
+    expect(captured.uploads).toHaveLength(1);
+    expect(captured.uploads[0].thumbnailUrl).toBe("https://example.com/thumb.jpg");
+    expect(captured.uploads[0].hasThumbnailFile).toBe(false);
+  });
+
+  it("frame picker: middle frame is Suggested; clicking one selects it and publish sends it as the thumbnail file", async () => {
+    await goToStep2();
+    const frame1 = await screen.findByRole("button", {
+      name: "Use auto-generated frame 1",
+    });
+    expect(
+      screen.getByRole("button", { name: "Use auto-generated frame 2" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Use auto-generated frame 3" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Suggested")).toBeInTheDocument();
+    // Nothing chosen yet: no frame is pressed.
+    expect(frame1).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(frame1);
+    expect(frame1).toHaveAttribute("aria-pressed", "true");
+    expect(
+      await screen.findByAltText("Preview of auto-generated thumbnail frame 1"),
+    ).toBeInTheDocument();
+    await goToReviewWithTitle();
+    expect(screen.getByText("Auto-generated frame 1 of 3")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Publish" }));
+    expect(await screen.findByText("Your video was uploaded.")).toBeInTheDocument();
+    expect(captured.uploads).toHaveLength(1);
+    expect(captured.uploads[0].hasThumbnailFile).toBe(true);
+    expect(captured.uploads[0].thumbnailFileType).toBe("image/jpeg");
+    expect(captured.uploads[0].thumbnailUrl).toBeNull();
+  });
+
+  it("with nothing chosen the review says server-generated and no thumbnail part is sent (auto-default)", async () => {
+    await goToStep3();
+    expect(screen.getByText("Auto-generated by the server")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Publish" }));
+    expect(await screen.findByText("Your video was uploaded.")).toBeInTheDocument();
+    expect(captured.uploads).toHaveLength(1);
+    expect(captured.uploads[0].hasThumbnailFile).toBe(false);
+    expect(captured.uploads[0].thumbnailFileType).toBeNull();
+    expect(captured.uploads[0].thumbnailUrl).toBeNull();
+  });
+
+  it("surfaces a server 400 for a bad thumbnail verbatim", async () => {
+    server.use(
+      http.post("*/video/uploadvideo", () =>
+        HttpResponse.json(
+          { message: "Thumbnail URL is unreachable" },
+          { status: 400 },
+        ),
+      ),
+    );
+    await goToStep2();
+    await userEvent.type(
+      screen.getByLabelText("Thumbnail URL"),
+      "https://example.com/thumb.jpg",
+    );
+    await goToReviewWithTitle();
+    await userEvent.click(screen.getByRole("button", { name: "Publish" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Thumbnail URL is unreachable");
+    expect(alert).not.toHaveTextContent("Request failed with status code 400");
+  });
+
+  it("a done screen shows the thumbnail the server stored", async () => {
+    server.use(
+      http.post("*/video/uploadvideo", () =>
+        HttpResponse.json({
+          message: "File uploaded successfully",
+          video: {
+            id: "vid-uploaded",
+            videotitle: "Thumb test video",
+            visibility: "public",
+            description: "",
+            tags: [],
+            thumbnailUrl: "https://cdn.example.com/frames/frame-2.jpg",
+            autoThumbnails: [
+              "https://cdn.example.com/frames/frame-1.jpg",
+              "https://cdn.example.com/frames/frame-2.jpg",
+            ],
+          },
+        }),
+      ),
+    );
+    await goToStep3();
+    await userEvent.click(screen.getByRole("button", { name: "Publish" }));
+    expect(await screen.findByText("Your video was uploaded.")).toBeInTheDocument();
+    const thumb = document.querySelector(".acube-empty img");
+    expect(thumb?.getAttribute("src")).toBe(
+      "https://cdn.example.com/frames/frame-2.jpg",
+    );
   });
 });

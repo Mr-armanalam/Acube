@@ -3,7 +3,15 @@
 // placeholders), render a neutral 16:9 block with a play glyph instead
 // of the browser's broken-image icon. Used by Studio Content, Playlist
 // and the UploadWizard preview.
-import React, { useState } from "react";
+//
+// The src is resolved through resolveApiMediaUrl: a locally stored
+// "/uploads/…" thumbnail is API-relative, so a bare "/uploads/…" would
+// resolve against the WEB origin (:3000/:4173) and 404 — every render
+// path (Home, Content, Library, History, Playlist, wizard preview)
+// goes through this one component, so the fix lives here, not at six
+// call sites. Absolute / blob: / data: URLs pass through untouched.
+import React, { useEffect, useState } from "react";
+import { resolveApiMediaUrl } from "../Api";
 
 /**
  * Deterministic gradient for a thumbnail placeholder, derived from a
@@ -33,7 +41,14 @@ export default function VideoThumb({
   fallbackBackground?: string;
 }) {
   const [broken, setBroken] = useState(false);
-  if (!src || broken) {
+  // A new src gets a fresh chance: without this, a failed URL (e.g.
+  // a mistyped thumbnail URL in the wizard) would stick the ▶
+  // placeholder even after the user fixed the URL.
+  const resolvedSrc = resolveApiMediaUrl(src);
+  useEffect(() => {
+    setBroken(false);
+  }, [resolvedSrc]);
+  if (!resolvedSrc || broken) {
     return (
       <span
         className={className}
@@ -56,7 +71,7 @@ export default function VideoThumb({
   return (
     <img
       className={className}
-      src={src}
+      src={resolvedSrc}
       alt=""
       style={style}
       onError={() => setBroken(true)}

@@ -107,6 +107,31 @@ describe("Content cleanup", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("Edit details blocks an invalid thumbnail URL with an inline error and no PATCH", async () => {
+    const user = userEvent.setup();
+    renderContent();
+    expect(await screen.findByText("Python Basics Tutorial")).toBeInTheDocument();
+    await openMenu(user, "Python Basics Tutorial");
+    await user.click(screen.getByRole("menuitem", { name: "Edit details" }));
+    const dialog = screen.getByRole("dialog", {
+      name: "Edit details for Python Basics Tutorial",
+    });
+    const thumbInput = within(dialog).getByLabelText("Thumbnail URL");
+    await user.clear(thumbInput);
+    await user.type(thumbInput, "not-a-url");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Enter a valid thumbnail URL",
+    );
+    expect(captured.videoPatches).toHaveLength(0);
+    // Still open — the failure is recoverable.
+    expect(
+      screen.getByRole("dialog", {
+        name: "Edit details for Python Basics Tutorial",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("Edit details modal closes on Escape, X, and Cancel", async () => {
     const user = userEvent.setup();
     renderContent();

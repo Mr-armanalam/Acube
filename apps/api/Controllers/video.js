@@ -1,9 +1,24 @@
-import { uploadOnCloudinary, isCloudinaryConfigured } from "../cloudinary.js";
+import path from "node:path";
+import {
+  extractEagerThumbnailUrls,
+  uploadOnCloudinary,
+  isCloudinaryConfigured,
+} from "../cloudinary.js";
+import {
+  extractLocalThumbnails,
+  validateThumbnailUrl,
+} from "../Helper/thumbnails.js";
 import videofile from "../Models/videofile.js";
 import User from "../Models/Auth.js";
 import Likedvideo from "../Models/likevideo.js";
 import ViewEvent from "../Models/ViewEvent.js";
-import { MAX_UPLOAD_BYTES, SUPPORTED_VIDEO_MIMETYPES } from "@acube/shared";
+import {
+  AUTO_THUMBNAIL_DEFAULT_INDEX,
+  MAX_IMAGE_UPLOAD_BYTES,
+  MAX_UPLOAD_BYTES,
+  SUPPORTED_IMAGE_MIMETYPES,
+  SUPPORTED_VIDEO_MIMETYPES,
+} from "@acube/shared";
 import { paginate, paginationOf } from "../utils/pagination.js";
 import { invalidateChannelCache } from "../utils/studioCache.js";
 
@@ -23,26 +38,93 @@ import { invalidateChannelCache } from "../utils/studioCache.js";
 //    `chanel` is ignored, so a request can never file a video under
 //    someone else's channel (owner checks elsewhere compare
 //    videochanel === req.userid).
+//  * auto-thumbnails (see Helper/thumbnails.js + cloudinary.js):
+//    thumbnailUrl precedence is FILE > URL > AUTO > LEGACY:
+//      1. an uploaded thumbnail file part ("thumbnail", JPG/PNG,
+//         5 MB — same rule as banner/avatar) wins. When a file is
+//         present a pasted thumbnailUrl is ignored entirely — not
+//         even validated — and if storing the file fails the upload
+//         falls back to the auto candidates, never to the
+//         unvalidated URL.
+//      2. a pasted thumbnailUrl, validated server-side (reachable
+//         http(s) URL answering image/* — anything else is 400
+//         VALIDATION_ERROR, so the wizard can show the message
+//         verbatim). The Zod format check is only the floor.
+//      3. the middle auto-generated frame (5% / 50% / 90%): the
+//         Cloudinary eager stills on the Cloudinary path, or three
+//         ffmpeg frames under /uploads/ on the local fallback path.
+//         autoThumbnails stores all three candidates, in order.
+//      4. the legacy Cloudinary thumbnail_url when no eager stills
+//         came back; else null (never invented).
+//    Thumbnail generation NEVER fails the upload: an eager failure
+//    retries the Cloudinary upload without eager, a failed local
+//    ffmpeg extraction logs a warning and continues with no frames,
+//    and a failed thumbnail-file upload falls back to the auto
+//    candidates (never to an unvalidated pasted URL).
 export const uploadvideo = async (req, res) => {
-  if (req.file === undefined) {
+  // The route uses upload.fields() (see Helper/filehelper.js):
+  // req.files.file[0] is the video, req.files.thumbnail[0] is the
+  // optional thumbnail image. req.file (upload.single) is accepted
+  // too, so direct controller callers keep working.
+  const videoFile = req.file ?? req.files?.file?.[0];
+  const thumbnailFile = req.files?.thumbnail?.[0] ?? null;
+  if (videoFile === undefined) {
     res.status(404).json({ message: "plz upload a mp.4 video file only" });
   } else {
     try {
-      if (!SUPPORTED_VIDEO_MIMETYPES.includes(req.file.mimetype)) {
+      if (!SUPPORTED_VIDEO_MIMETYPES.includes(videoFile.mimetype)) {
         res.status(400).json({ message: "Only mp4 video files are supported" });
         return;
       }
-      if (req.file.size > MAX_UPLOAD_BYTES) {
+      if (videoFile.size > MAX_UPLOAD_BYTES) {
         res.status(400).json({ message: "File must be less than 10 MB" });
         return;
+      }
+      // Thumbnail file: same JPG/PNG + 5 MB rule as banner/avatar
+      // (multer's filter/limit are the first line, this is defence
+      // in depth — never trust the client).
+      if (thumbnailFile) {
+        if (!SUPPORTED_IMAGE_MIMETYPES.includes(thumbnailFile.mimetype)) {
+          res.status(400).json({
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "Only JPG and PNG images are supported",
+            },
+          });
+          return;
+        }
+        if (thumbnailFile.size > MAX_IMAGE_UPLOAD_BYTES) {
+          res.status(400).json({
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "File must be less than 5 MB",
+            },
+          });
+          return;
+        }
       }
       const uploader = await User.findById(req.userid).lean();
       if (!uploader) {
         res.status(404).json({ message: "Uploader not found" });
         return;
       }
-      //  console.log(req.file);
-      const videoLocalPath = req.file?.path;
+      // console.log(req.file);
+      const videoLocalPath = videoFile?.path;
+      // A pasted thumbnailUrl is validated BEFORE the video upload
+      // (fail fast — no point uploading a video for a request that
+      // will 400), and only when no thumbnail file was supplied: a
+      // file wins over a URL, so the URL is ignored entirely then.
+      let urlThumbnailUrl = null;
+      if (!thumbnailFile && req.body.thumbnailUrl) {
+        const check = await validateThumbnailUrl(req.body.thumbnailUrl);
+        if (!check.ok) {
+          res.status(400).json({
+            error: { code: "VALIDATION_ERROR", message: check.message },
+          });
+          return;
+        }
+        urlThumbnailUrl = req.body.thumbnailUrl;
+      }
       // Upload-wizard fix (400 root cause): uploadOnCloudinary returns
       // null when Cloudinary is not configured (the SDK throws "Must
       // supply api_key"), and the old code turned that into a 400 for
@@ -58,6 +140,8 @@ export const uploadvideo = async (req, res) => {
       let filepath;
       let duration = null;
       let thumbnail = null;
+      let autoThumbnails = [];
+      let fileThumbnailUrl = null;
       if (isCloudinaryConfigured()) {
         const video = await uploadOnCloudinary(videoLocalPath);
         //console.log(video);
@@ -70,20 +154,54 @@ export const uploadvideo = async (req, res) => {
         filepath = video.secure_url ?? video.url;
         duration = video.duration ?? null;
         thumbnail = video.thumbnail_url ?? null;
+        // Eager stills come back on the upload response (see
+        // cloudinary.js extractEagerThumbnailUrls); an upload whose
+        // eager step failed (retried without eager) simply has none.
+        autoThumbnails = extractEagerThumbnailUrls(video);
+        if (thumbnailFile) {
+          // A failed thumbnail-image upload must NOT fail the video
+          // upload — it falls back to the auto candidates below.
+          // (uploadOnCloudinary returns null on failure, it does not
+          // throw; the try/catch is defence in depth only.)
+          try {
+            const uploadedThumb = await uploadOnCloudinary(
+              thumbnailFile.path,
+              "image",
+            );
+            fileThumbnailUrl =
+              uploadedThumb?.secure_url ?? uploadedThumb?.url ?? null;
+            if (!fileThumbnailUrl) {
+              console.warn(
+                "[upload] Thumbnail image upload to Cloudinary failed " +
+                  "— falling back to auto thumbnail.",
+              );
+            }
+          } catch (error) {
+            console.warn(
+              "[upload] Thumbnail image upload to Cloudinary failed " +
+                `(${error.message}) — falling back to auto thumbnail.`,
+            );
+            fileThumbnailUrl = null;
+          }
+        }
       } else {
         console.warn(
           "[upload] Cloudinary is not configured — storing video locally " +
             "under uploads/ (set CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET " +
             "to use Cloudinary instead).",
         );
-        filepath = `/uploads/${req.file.filename}`;
+        filepath = `/uploads/${videoFile.filename}`;
+        if (thumbnailFile) {
+          // Multer already wrote the image under uploads/.
+          fileThumbnailUrl = `/uploads/${thumbnailFile.filename}`;
+        }
       }
       const file = new videofile({
         videotitle: req.body.title,
-        filename: req.file.filename,
+        filename: videoFile.filename,
         filepath,
-        filetype: req.file.mimetype,
-        filesize: req.file.size,
+        filetype: videoFile.mimetype,
+        filesize: videoFile.size,
         videochanel: req.userid,
         uploader: uploader.username ?? uploader.name ?? uploader.email,
         duration,
@@ -98,9 +216,47 @@ export const uploadvideo = async (req, res) => {
         description: req.body.description ?? "",
         tags: req.body.tags ?? [],
         visibility: req.body.visibility ?? "public",
-        thumbnailUrl: req.body.thumbnailUrl ?? null,
+        thumbnailUrl: null,
+        autoThumbnails,
         durationSec: duration,
       });
+      // Local fallback only, and only when nothing was supplied:
+      // extract three ffmpeg frames from the stored file. (On the
+      // Cloudinary path the eager stills above already ran inside
+      // the upload, so there is nothing to extract; with a file or
+      // URL override there is nothing to fall back to.) A failure
+      // here logs a warning and the upload still succeeds — with
+      // the probed duration stored when extraction DID succeed.
+      if (
+        !isCloudinaryConfigured() &&
+        !thumbnailFile &&
+        !urlThumbnailUrl
+      ) {
+        try {
+          const extracted = await extractLocalThumbnails({
+            videoPath: videoLocalPath,
+            videoId: String(file._id),
+            uploadsDir: path.dirname(videoLocalPath),
+          });
+          file.autoThumbnails = extracted.urls;
+          file.duration = extracted.durationSeconds;
+          file.durationSec = extracted.durationSeconds;
+        } catch (error) {
+          console.warn(
+            "[upload] Local thumbnail extraction failed " +
+              `(${error.message}) — continuing without thumbnails.`,
+          );
+        }
+      }
+      // Precedence: file > pasted URL > middle auto frame > first
+      // auto frame > legacy Cloudinary thumbnail_url > null.
+      file.thumbnailUrl =
+        fileThumbnailUrl ??
+        urlThumbnailUrl ??
+        file.autoThumbnails[AUTO_THUMBNAIL_DEFAULT_INDEX] ??
+        file.autoThumbnails[0] ??
+        thumbnail ??
+        null;
       // console.log(file)
       await file.save();
       // Phase 5: a new upload changes the creator's Studio totals.
@@ -116,6 +272,7 @@ export const uploadvideo = async (req, res) => {
           description: file.description,
           tags: file.tags,
           thumbnailUrl: file.thumbnailUrl,
+          autoThumbnails: file.autoThumbnails,
         },
       });
     } catch (error) {
@@ -204,6 +361,20 @@ export const updateVideo = async (req, res, next) => {
           message: "You can only edit your own videos",
         },
       });
+    }
+    // Auto-thumbnails: a pasted thumbnailUrl is validated server-side
+    // exactly as on upload (reachable image, else 400) — clearing it
+    // (null) needs no validation.
+    if (
+      req.body.thumbnailUrl !== undefined &&
+      req.body.thumbnailUrl !== null
+    ) {
+      const check = await validateThumbnailUrl(req.body.thumbnailUrl);
+      if (!check.ok) {
+        return res.status(400).json({
+          error: { code: "VALIDATION_ERROR", message: check.message },
+        });
+      }
     }
     const updates = {};
     if (req.body.title !== undefined) updates.videotitle = req.body.title;

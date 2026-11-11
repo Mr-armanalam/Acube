@@ -6,10 +6,17 @@
 //                    10 MiB (the server limit), with a real <video>
 //                    preview once a file is picked.
 //   Step 2 Details — title (required) / description / tags /
-//                    thumbnail URL (validated client-side) / visibility.
-//                    The thumbnail area shows a frame of the picked
-//                    video, or the pasted thumbnail URL, or the shared
-//                    VideoThumb placeholder — never a broken image.
+//                    thumbnail (three ways, in precedence order:
+//                    a local JPG/PNG file ≤ 5 MB wins; else a pasted
+//                    image URL; else one of 3 auto-generated frames
+//                    extracted client-side from the picked video at
+//                    5%/50%/90% of its duration; else nothing — the
+//                    server generates a thumbnail after upload) /
+//                    visibility. The thumbnail area shows the
+//                    effective choice (file preview, URL, chosen
+//                    frame, or a frame of the picked video), or the
+//                    shared VideoThumb placeholder — never a broken
+//                    image, never a fake frame.
 //   Step 3 Review  — the video preview + entered details summary,
 //                    then Publish / Save as draft.
 //
@@ -32,6 +39,15 @@ import {
   isMp4File,
   isValidThumbnailUrl,
 } from "../../utils/uploadLimits";
+import {
+  SUGGESTED_FRAME_INDEX,
+  dataUrlToFile,
+  describeThumbnailChoice,
+  extractVideoFrames,
+  resolveThumbnailChoice,
+  validateImageFile,
+  type ThumbnailChoice,
+} from "../../utils/thumbnail";
 import { extractApiErrorMessage } from "../../utils/apiError";
 import type { VideoVisibility } from "../../types";
 
@@ -51,6 +67,25 @@ export default function UploadWizard() {
   const [tags, setTags] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
+  // Local thumbnail image (JPG/PNG ≤ 5 MB) — wins over the pasted URL.
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailFilePreviewUrl, setThumbnailFilePreviewUrl] = useState<
+    string | null
+  >(null);
+  const [thumbnailFileError, setThumbnailFileError] = useState<string | null>(
+    null,
+  );
+  // Auto-generated frames, extracted client-side from the picked video
+  // (5%/50%/90% of duration). null selection = "auto" — the server
+  // generates the thumbnail after upload; the middle frame is only
+  // badged "Suggested", never silently treated as chosen.
+  const [frames, setFrames] = useState<string[]>([]);
+  const [framesStatus, setFramesStatus] = useState<
+    "idle" | "loading" | "ready" | "failed"
+  >("idle");
+  const [selectedFrameIndex, setSelectedFrameIndex] = useState<number | null>(
+    null,
+  );
   const [visibility, setVisibility] = useState<VideoVisibility>("public");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -75,6 +110,46 @@ export default function UploadWizard() {
       URL.revokeObjectURL(url);
     };
   }, [file]);
+
+  // Live preview of the chosen thumbnail image — same revoke pattern.
+  useEffect(() => {
+    if (!thumbnailFile) {
+      setThumbnailFilePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(thumbnailFile);
+    setThumbnailFilePreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [thumbnailFile]);
+
+  // Auto frames: extracted once the wizard reaches Step 2 (the video
+  // file is picked in Step 1, so nothing exists to sample before).
+  // A failure is silent-by-design here — the note below the picker
+  // says the server will generate the thumbnail; no fake frames are
+  // ever shown.
+  useEffect(() => {
+    if (step !== 2 || !file) return;
+    let cancelled = false;
+    setFrames([]);
+    setSelectedFrameIndex(null);
+    setFramesStatus("loading");
+    void extractVideoFrames(file)
+      .then((extracted) => {
+        if (cancelled) return;
+        setFrames(extracted);
+        setFramesStatus("ready");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setFrames([]);
+        setFramesStatus("failed");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step, file]);
 
   // Step 1 modal: Escape closes it (same as the X and the backdrop).
   useEffect(() => {
@@ -106,12 +181,38 @@ export default function UploadWizard() {
     pickFile(e.dataTransfer.files?.[0]);
   };
 
+  const pickThumbnailFile = (picked: File | undefined) => {
+    setThumbnailFileError(null);
+    if (!picked) return;
+    const problem = validateImageFile(picked);
+    if (problem) {
+      setThumbnailFileError(problem);
+      return;
+    }
+    setThumbnailFile(picked);
+  };
+
+  // Effective thumbnail, in precedence order (utils/thumbnail.ts):
+  // file > URL > clicked auto frame > server-generated.
+  const thumbnailChoice: ThumbnailChoice = resolveThumbnailChoice({
+    file: thumbnailFile,
+    url: thumbnailUrl,
+    frameDataUrls: frames,
+    selectedFrameIndex,
+  });
+
   const closeModal = () => navigate("/studio/content");
 
   const canNextFromFile = file !== null;
   const canPublish = title.trim().length > 0 && file !== null;
 
   const thumbnailValid = (): boolean => {
+    // A chosen file wins over the URL, so a (possibly invalid) URL
+    // alongside a file never blocks the wizard — it is simply ignored.
+    if (thumbnailFile) {
+      setThumbnailError(null);
+      return true;
+    }
     if (!isValidThumbnailUrl(thumbnailUrl)) {
       setThumbnailError("Enter a valid thumbnail URL starting with https://");
       return false;
@@ -147,7 +248,29 @@ export default function UploadWizard() {
     filedata.append("uploader", currentuser?.result.name ?? "");
     filedata.append("description", description.trim());
     filedata.append("tags", tags);
-    if (thumbnailUrl.trim()) filedata.append("thumbnailUrl", thumbnailUrl.trim());
+    // Thumbnail, in precedence order. A file part is sent ONLY for an
+    // explicit choice (picked image, or a clicked auto frame converted
+    // to a JPEG file) — the default "auto" state sends nothing extra.
+    // Field name "thumbnail" is the landed backend contract
+    // (upload.fields() in Routes/video.js); a pasted URL is appended
+    // only when no file part was sent.
+    if (thumbnailChoice.kind === "file") {
+      filedata.append("thumbnail", thumbnailChoice.file);
+    } else if (thumbnailChoice.kind === "frame") {
+      const frameFile = dataUrlToFile(
+        thumbnailChoice.dataUrl,
+        "thumbnail.jpg",
+      );
+      if (frameFile) {
+        // The frame IMAGE is the choice — the backend stores the
+        // uploaded file as the thumbnail, so no frame index needs to
+        // be sent (the backend does not consume one; its own
+        // candidates use the same 5%/50%/90% fractions).
+        filedata.append("thumbnail", frameFile);
+      }
+    } else if (thumbnailChoice.kind === "url") {
+      filedata.append("thumbnailUrl", thumbnailChoice.url);
+    }
     filedata.append("visibility", asDraft ? "draft" : visibility);
     uploadMutation.mutate(
       { filedata },
@@ -163,8 +286,15 @@ export default function UploadWizard() {
 
   if (done) {
     // The upload response carries the created video id — link straight
-    // to the new video (Watch), not just to Content.
+    // to the new video (Watch), not just to Content. It also carries
+    // the thumbnail the server stored (thumbnailUrl, else the first
+    // auto-generated candidate) — show that, never the pre-publish
+    // guess: if the server stored nothing, show no thumbnail at all.
     const uploadedId = uploadMutation.data?.video?.id;
+    const uploadedThumbnail =
+      uploadMutation.data?.video?.thumbnailUrl ??
+      uploadMutation.data?.video?.autoThumbnails?.[0] ??
+      null;
     return (
       <StudioShell>
         <h1>Upload video</h1>
@@ -173,6 +303,14 @@ export default function UploadWizard() {
             Your video was uploaded.
           </p>
           <p>{title}</p>
+          {uploadedThumbnail ? (
+            <div style={{ maxWidth: 320, margin: "0 auto 12px" }}>
+              <VideoThumb
+                src={uploadedThumbnail}
+                style={{ width: "100%", aspectRatio: "16 / 9" }}
+              />
+            </div>
+          ) : null}
           {uploadedId ? (
             <Link to={`/watch/${uploadedId}`} className="acube-btn">
               Watch video
@@ -379,13 +517,153 @@ export default function UploadWizard() {
                   {thumbnailError}
                 </p>
               ) : null}
+              <div>
+                <label htmlFor="thumbnail-file-input">
+                  Or upload a thumbnail image (JPG/PNG, max 5 MB)
+                </label>
+                <input
+                  id="thumbnail-file-input"
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  aria-label="Upload thumbnail image"
+                  onChange={(e) => {
+                    pickThumbnailFile(e.target.files?.[0]);
+                    // Allow picking the same file again after an error.
+                    e.target.value = "";
+                  }}
+                />
+                {thumbnailFile ? (
+                  <p style={{ margin: "4px 0 0" }}>
+                    {thumbnailFile.name} ·{" "}
+                    <button
+                      type="button"
+                      className="acube-btn-secondary"
+                      onClick={() => setThumbnailFile(null)}
+                    >
+                      Remove image
+                    </button>
+                  </p>
+                ) : null}
+                {thumbnailFileError ? (
+                  <p role="alert" style={{ color: "var(--danger)", margin: 0 }}>
+                    {thumbnailFileError}
+                  </p>
+                ) : null}
+              </div>
+              <p style={{ color: "var(--text-2)", margin: 0 }}>
+                A chosen image wins over the pasted URL; the URL wins over
+                an auto-generated frame. With nothing chosen, the server
+                generates a thumbnail after upload.
+              </p>
+              <fieldset
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <legend>Auto-generated thumbnails</legend>
+                {framesStatus === "loading" ? (
+                  <p role="status" style={{ margin: 0 }}>
+                    Extracting thumbnails from your video…
+                  </p>
+                ) : framesStatus === "failed" ? (
+                  <p style={{ margin: 0 }}>
+                    Could not extract thumbnails from this video — the
+                    server will generate one after upload.
+                  </p>
+                ) : frames.length > 0 ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {frames.map((frame, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        aria-pressed={selectedFrameIndex === i}
+                        aria-label={`Use auto-generated frame ${i + 1}`}
+                        onClick={() =>
+                          setSelectedFrameIndex(
+                            selectedFrameIndex === i ? null : i,
+                          )
+                        }
+                        style={{
+                          padding: 0,
+                          border:
+                            selectedFrameIndex === i
+                              ? "2px solid var(--accent)"
+                              : "2px solid transparent",
+                          borderRadius: 8,
+                          cursor: "pointer",
+                          background: "none",
+                          position: "relative",
+                        }}
+                      >
+                        <img
+                          src={frame}
+                          alt={`Auto-generated thumbnail frame ${i + 1}`}
+                          style={{
+                            display: "block",
+                            width: 120,
+                            aspectRatio: "16 / 9",
+                            objectFit: "cover",
+                            borderRadius: 6,
+                          }}
+                        />
+                        {i === SUGGESTED_FRAME_INDEX ? (
+                          <span
+                            style={{
+                              position: "absolute",
+                              top: 4,
+                              left: 4,
+                              background: "rgba(0,0,0,0.8)",
+                              color: "#fff",
+                              fontSize: 11,
+                              padding: "1px 6px",
+                              borderRadius: 6,
+                            }}
+                          >
+                            Suggested
+                          </span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {selectedFrameIndex !== null ? (
+                  <button
+                    type="button"
+                    className="acube-btn-secondary"
+                    style={{ marginTop: 8 }}
+                    onClick={() => setSelectedFrameIndex(null)}
+                  >
+                    Use auto-generated thumbnail instead
+                  </button>
+                ) : null}
+              </fieldset>
             </div>
             <div>
               <div className="studio-thumb-preview" aria-label="Thumbnail preview">
-                {thumbnailUrl && isValidThumbnailUrl(thumbnailUrl) ? (
+                {thumbnailChoice.kind === "file" && thumbnailFilePreviewUrl ? (
+                  <img
+                    src={thumbnailFilePreviewUrl}
+                    alt="Preview of the chosen thumbnail image"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : thumbnailChoice.kind === "url" ? (
                   <VideoThumb
-                    src={thumbnailUrl}
+                    src={thumbnailChoice.url}
                     style={{ width: "100%", height: "100%", aspectRatio: "16 / 9" }}
+                  />
+                ) : thumbnailChoice.kind === "frame" ? (
+                  <img
+                    src={thumbnailChoice.dataUrl}
+                    alt={`Preview of auto-generated thumbnail frame ${thumbnailChoice.frameIndex + 1}`}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 ) : previewUrl ? (
                   <video
@@ -520,8 +798,8 @@ export default function UploadWizard() {
                 <dd>{visibility.charAt(0).toUpperCase() + visibility.slice(1)}</dd>
               </div>
               <div>
-                <dt>Thumbnail URL</dt>
-                <dd>{thumbnailUrl.trim() ? thumbnailUrl.trim() : "—"}</dd>
+                <dt>Thumbnail</dt>
+                <dd>{describeThumbnailChoice(thumbnailChoice)}</dd>
               </div>
             </dl>
           </div>

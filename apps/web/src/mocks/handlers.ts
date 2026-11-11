@@ -289,6 +289,9 @@ export const captured = {
     description: string | null;
     tags: string | null;
     visibility: string | null;
+    thumbnailUrl: string | null;
+    hasThumbnailFile: boolean;
+    thumbnailFileType: string | null;
   }>,
   paymentStatus: [] as unknown[],
   paymentRequests: [] as unknown[],
@@ -361,16 +364,29 @@ export const handlers = [
       null;
     const titleMatch = /name="title"\r?\n\r?\n([^\r\n]+)/.exec(text);
     const fileMatch = /filename="([^"]+)"/.exec(text);
+    // The thumbnail file part is identified by its PART NAME, not its
+    // filename: undici re-serialises jsdom's FormData and replaces
+    // every File name with "blob" (so filename is useless here), but
+    // the part name ("thumbnail") and its Content-Type survive.
+    const thumbnailPart =
+      /name="thumbnail"; filename="[^"]*"\r?\nContent-Type: ([^\r\n]+)/.exec(
+        text,
+      );
     captured.uploads.push({
       title: titleMatch?.[1] ?? null,
       fileName: fileMatch?.[1] ?? null,
       description: field("description"),
       tags: field("tags"),
       visibility: field("visibility"),
+      thumbnailUrl: field("thumbnailUrl"),
+      hasThumbnailFile: thumbnailPart !== null,
+      thumbnailFileType: thumbnailPart?.[1] ?? null,
     });
     // Phase 5 fix: the real endpoint returns the created video id +
     // persisted details — the mock mirrors that shape so the wizard's
-    // "Watch video" link is exercised.
+    // "Watch video" link is exercised. autoThumbnails mirrors the
+    // backend contract (candidate frame URLs, possibly empty); the
+    // mock generates none, so it is [].
     return json({
       message: "File uploaded successfully",
       video: {
@@ -383,6 +399,7 @@ export const handlers = [
           .map((t) => t.trim())
           .filter((t) => t.length > 0),
         thumbnailUrl: field("thumbnailUrl"),
+        autoThumbnails: [],
       },
     });
   }),

@@ -36,7 +36,7 @@ const EXTENSION_BY_MIMETYPE = {
   "image/png": ".png",
 };
 
-function sanitiseImageFilename(originalname, mimetype) {
+export function sanitiseImageFilename(originalname, mimetype) {
   const base = path.basename(String(originalname ?? "image"));
   const stem = base.replace(/\.[^.]*$/, "");
   const clean = stem.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^\.+/, "");

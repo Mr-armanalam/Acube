@@ -7,7 +7,7 @@
 // multer file under uploads/ and serves it at /uploads/<filename>.
 // Multer still writes the received file to apps/api/uploads, so the
 // suite cleans up any files it creates there.
-import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
+import { describe, expect, it, vi, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { api, authHeader, createUser } from "./helpers.js";
@@ -46,6 +46,26 @@ afterAll(() => {
       fs.unlinkSync(path.join(uploadsDir, file));
     }
   }
+});
+
+// A pasted thumbnailUrl is validated server-side with a HEAD request
+// (see Controllers/video.js): the example.com URL the tests below
+// paste must answer as an image, so fetch is stubbed to an image
+// response. URL-validation failures are covered with mocked fetch in
+// video-auto-thumbnails.test.js.
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => "image/jpeg" },
+    }),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 function uploadMp4(user, fields) {
@@ -89,6 +109,12 @@ describe("POST /video/uploadvideo — local fallback (no Cloudinary)", () => {
     expect(saved.tags).toEqual(["local", "fallback"]);
     expect(saved.visibility).toBe("public");
     expect(saved.thumbnailUrl).toBe("https://example.com/thumb.jpg");
+    // The pasted URL wins over auto generation, and these tests
+    // upload fake bytes (not a real video), so ffmpeg extraction
+    // cannot run — autoThumbnails stays empty and the upload still
+    // succeeds. Real local extraction is covered in
+    // video-auto-thumbnails.test.js with a generated fixture video.
+    expect(saved.autoThumbnails).toEqual([]);
     // Duration is unknown without Cloudinary — left null, never invented.
     expect(saved.duration).toBeNull();
     expect(saved.durationSec).toBeNull();

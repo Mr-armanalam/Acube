@@ -1,5 +1,10 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
+import {
+  AUTO_THUMBNAIL_FRACTIONS,
+  AUTO_THUMBNAIL_HEIGHT,
+  AUTO_THUMBNAIL_WIDTH,
+} from "@acube/shared";
 
 // Upload-wizard fix: Cloudinary is optional now. When none of the three
 // credentials is configured the upload endpoint stores the file locally
@@ -41,6 +46,48 @@ function configureCloudinary() {
   });
 }
 
+// Auto-thumbnails: every video upload asks Cloudinary to eagerly
+// generate three JPG stills at 5% / 50% / 90% of the video (see
+// AUTO_THUMBNAIL_FRACTIONS in @acube/shared). Shape verified against
+// the installed SDK, not guessed:
+//   * typings (node_modules/cloudinary/types/index.d.ts:513, 592-599):
+//     UploadApiOptions.eager?: TransformationOptions, where
+//     TransformationOptions includes Array<VideoTransformationOptions>.
+//   * runtime (node_modules/cloudinary/lib/utils/index.js build_eager):
+//     an array is joined with "|" and each entry's `format` is appended
+//     as "/<format>", so the three objects below become one eager
+//     parameter like
+//     "c_fill,h_720,so_5p,w_1280/jpg|c_fill,h_720,so_50p,w_1280/jpg|
+//      c_fill,h_720,so_90p,w_1280/jpg".
+//   * `start_offset: "5%"` serializes to `so_5p` (percent of duration —
+//     verified with cloudinary.url() against the installed SDK; a plain
+//     number would mean seconds instead, e.g. so_5 = 5 seconds in).
+//   * the upload response carries the generated stills in an `eager`
+//     array of { secure_url, url, ... } — `eager` is NOT in the typed
+//     UploadApiResponse (it only has [futureKey: string]: any at
+//     :640-669), so extractEagerThumbnailUrls() reads it defensively
+//     and returns only http(s) strings, in eager order (5/50/90).
+// Image uploads (banner/avatar) never get eager: the transforms are
+// video-frame stills and would fail on an image upload.
+export const VIDEO_THUMBNAIL_EAGER_TRANSFORMATIONS =
+  AUTO_THUMBNAIL_FRACTIONS.map((fraction) => ({
+    width: AUTO_THUMBNAIL_WIDTH,
+    height: AUTO_THUMBNAIL_HEIGHT,
+    crop: "fill",
+    format: "jpg",
+    start_offset: `${Math.round(fraction * 100)}%`,
+  }));
+
+export function extractEagerThumbnailUrls(response) {
+  const eager = response?.eager;
+  if (!Array.isArray(eager)) return [];
+  return eager
+    .map((entry) => entry?.secure_url ?? entry?.url)
+    .filter(
+      (url) => typeof url === "string" && /^https?:\/\//.test(url),
+    );
+}
+
 function removeLocalFile(localFilePath) {
   try {
     if (localFilePath) fs.unlinkSync(localFilePath);
@@ -50,7 +97,11 @@ function removeLocalFile(localFilePath) {
   }
 }
 
-const uploadOnCloudinary = async (localFilePath, resourceType = "video") => {
+const uploadOnCloudinary = async (
+  localFilePath,
+  resourceType = "video",
+  options = {},
+) => {
   try {
     if (!localFilePath) return null;
     // Lazy config (see above): the SDK must be configured with the
@@ -60,9 +111,35 @@ const uploadOnCloudinary = async (localFilePath, resourceType = "video") => {
     // this endpoint only ever uploaded videos). Image uploads
     // (banner/avatar) pass "image": uploading a PNG as "video"
     // fails on Cloudinary, and "auto" would mis-detect.
-    const response = await cloudinary.uploader.upload(localFilePath, {
-      resource_type: resourceType,
-    });
+    //
+    // Eager thumbnails (video only, unless options.eagerThumbnails
+    // is explicitly false): the upload itself must NEVER fail
+    // because eager generation failed, so a failed eager attempt is
+    // retried once WITHOUT eager. A retry that also fails is a real
+    // upload failure and returns null exactly as before.
+    const eagerThumbnails =
+      options.eagerThumbnails ?? resourceType === "video";
+    const uploadOptions = { resource_type: resourceType };
+    if (eagerThumbnails) {
+      uploadOptions.eager = VIDEO_THUMBNAIL_EAGER_TRANSFORMATIONS;
+    }
+    let response;
+    try {
+      response = await cloudinary.uploader.upload(
+        localFilePath,
+        uploadOptions,
+      );
+    } catch (error) {
+      if (!eagerThumbnails) throw error;
+      console.warn(
+        "[upload] Cloudinary eager thumbnail generation failed " +
+          `(${error.message}) — retrying upload without eager so the ` +
+          "upload itself still succeeds.",
+      );
+      response = await cloudinary.uploader.upload(localFilePath, {
+        resource_type: resourceType,
+      });
+    }
     // console.log("file is uploaded on cloudinary");
     // console.log(response.url);
     removeLocalFile(localFilePath);
