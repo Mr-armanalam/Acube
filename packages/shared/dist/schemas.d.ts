@@ -128,6 +128,10 @@ export declare const studioAnalyticsQuerySchema: z.ZodObject<{
         90: "90";
     }>>;
 }, z.core.$strip>;
+export declare const handleFormatRegex: RegExp;
+export declare const handleAvailabilityQuerySchema: z.ZodObject<{
+    handle: z.ZodString;
+}, z.core.$strip>;
 export declare const studioSettingsSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     desc: z.ZodOptional<z.ZodString>;
@@ -258,6 +262,7 @@ export type PostCommentInput = z.infer<typeof postCommentSchema>;
 export type UpdateVideoInput = z.infer<typeof updateVideoSchema>;
 export type StudioAnalyticsQueryInput = z.infer<typeof studioAnalyticsQuerySchema>;
 export type StudioSettingsInput = z.infer<typeof studioSettingsSchema>;
+export type HandleAvailabilityQueryInput = z.infer<typeof handleAvailabilityQuerySchema>;
 export type StudioVideosQueryInput = z.infer<typeof studioVideosQuerySchema>;
 export type StudioCommentsQueryInput = z.infer<typeof studioCommentsQuerySchema>;
 export type VideoProgressInput = z.infer<typeof videoProgressSchema>;

@@ -82,10 +82,22 @@ app.use(express.urlencoded({ limit: "30mb", extended: true }));
 // against this file, never against process.cwd() — the e2e server runs
 // from apps/web under Playwright, where a relative "uploads" points
 // at a directory that does not exist (see Helper/filehelper.js).
+// Settings polish fix: Helmet sets Cross-Origin-Resource-Policy:
+// same-origin globally, which makes the browser REFUSE to load these
+// files from the web origin (a different origin by design — the API
+// is :5000, the web is :3000/:4173), so an uploaded banner/avatar
+// 404'd in the browser as ERR_BLOCKED_BY_RESPONSE.NotSameOrigin even
+// though the upload succeeded. Uploads are public, unauthenticated
+// media (like a CDN), so this mount answers cross-origin.
 app.use(
   "/uploads",
   express.static(
     path.join(path.dirname(fileURLToPath(import.meta.url)), "uploads"),
+    {
+      setHeaders(res) {
+        res.set("Cross-Origin-Resource-Policy", "cross-origin");
+      },
+    },
   ),
 );
 app.use(express.static("public"));

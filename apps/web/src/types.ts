@@ -100,6 +100,10 @@ export interface Channel {
   username?: string;
   email?: string;
   picture?: string;
+  // Settings polish fix: the uploaded avatar/banner, rendered by the
+  // channel header (avatarUrl falls back to the Google photo).
+  avatarUrl?: string;
+  bannerUrl?: string;
   desc?: string;
   reputation?: number;
   downloadsToday?: number;
@@ -157,6 +161,9 @@ export interface StudioOverview {
     email?: string;
     desc?: string;
     picture?: string;
+    // Settings polish fix: the uploaded avatar, preferred by the
+    // Studio identity header over the Google login photo (picture).
+    avatarUrl?: string;
     username?: string;
   };
   totals: {
@@ -222,6 +229,14 @@ export interface StudioVideoAnalytics {
 export interface StudioChannelLink {
   label: string;
   url: string;
+}
+
+/** Settings polish contract — GET /studio/handle/available?handle=…
+ * returns exactly this shape. `reason` is set when available is
+ * false (e.g. "Handle is already taken"). */
+export interface HandleAvailability {
+  available: boolean;
+  reason?: string;
 }
 
 /** Phase 5 fix contract — GET/PATCH /studio/settings, full shape.

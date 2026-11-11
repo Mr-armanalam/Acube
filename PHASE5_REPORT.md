@@ -1074,7 +1074,6 @@ held another. The first e2e runs failed with 401s because the spec
 copied the displayed placeholder. Rule: never copy a secret from
 rendered tool output; read the file bytes (`od`/hexdump) or the
 minting code.
-
 #### 8.9.11 Content cleanup (11 Nov 2026, branch `feat/acube-content-cleanup`)
 
 Studio Content rebuilt to the preview image-20 layout, on the
@@ -1249,3 +1248,163 @@ and menu are, on the single seeded row. `phase5-home.png`,
 `studio-content.png`, `library.png`, `watch.png` were regenerated
 by the e2e runs (the suite screenshots on every run); the new
 content shots are the 6 files listed above.
+
+#### 8.9.12 Settings + Watch polish — verification + close-out (11 Nov 2026, branch `feat/acube-settings-watch-polish`)
+
+Verification + close-out pass over the Settings polish branch
+(`ba359c2` API: live handle check + banner/avatar endpoints;
+`aadbb1f` web: Settings preview match, live handle check, uploads,
+Watch Autoplay). History verified first with `git log`:
+`f3354e9 → ba359c2 → aadbb1f`, clean tree. Three further fix
+commits were needed before this branch was shippable — all found by
+this pass, all verified below, none of them a redesign:
+`b6477fd` (identity/channel header), `836f3ae` (media-URL
+resolution), `b6db941` (cross-origin serving + e2e spec). Main moved
+while this branch was in flight (PR #4 merged as `4def719`), so
+main @ `4def719` was merged into this branch before push — the
+connector's `create_branch` only branches from a branch head, not
+an arbitrary commit, so a branch at `385d5d3d` was not creatable
+and the GitHub branch sits on current main instead. Push + PR #5
+pending (see end of this section).
+
+**Per-item verification — was each item really missing?**
+
+| Item | Was it really missing? | Evidence |
+|---|---|---|
+| Live handle check | No — present and correct | `GET /studio/handle/available` + debounced client check; e2e: `codestreamer` → "✗ taken", `zxqv-free-99` → "✓ available", own `e2euser` → "✓ available" |
+| Banner/avatar upload endpoints | No — present and correct | `POST /studio/banner`, `/studio/avatar`, `/remove` variants; 200 + file on disk + served, in API tests and e2e |
+| Settings preview match (image-22) | Yes, matches | Fresh desktop screenshot vs image-22: banner gradient, profile-picture row, 2-column grid, handle with ✓/✗, Channel URL, Contact email, Links, Country/Language — all present (see screenshots) |
+| Watch Autoplay toggle | No — present and correct | Toggle renders "Autoplay ON/OFF", persists in `localStorage` key `acube:watch:autoplay`; e2e proves the behaviour (below) |
+| Uploaded avatar in Studio identity header | **Yes — really missing** | Identity rendered `overview.channel.picture` (Google photo) only; the overview endpoint did not return `avatarUrl` at all. Fixed in `b6477fd` |
+| Uploaded avatar/banner in channel header | **Yes — really missing** | `Describechannel` rendered only a first-letter initial; no avatar image, no banner; the channel-list projection dropped `picture`/`avatarUrl`/`bannerUrl`. Fixed in `b6477fd` |
+| Uploaded banner/avatar visible in a real browser (local fallback) | **Yes — really missing, two layers** | (1) The API returns a relative `/uploads/…` path and the client used it verbatim, so it resolved against the web origin (:4173) and 404'd — fixed in `836f3ae` with `resolveApiMediaUrl()` (absolute/blob/data URLs pass through; relative URLs prefixed with `VITE_BACKEND_URL`). (2) Even absolute, Helmet's global `Cross-Origin-Resource-Policy: same-origin` made the browser refuse the cross-origin load (`ERR_BLOCKED_BY_RESPONSE.NotSameOrigin`) — the upload returned 200 while the `<img>` never rendered. Fixed in `b6db941`: the `/uploads/` static mount now answers `Cross-Origin-Resource-Policy: cross-origin` (public, unauthenticated media, like a CDN). Both defects were invisible to unit tests (mock URLs are absolute `cdn.example` + no Helmet) and only showed in e2e — which is why this pass e2e'd them |
+
+**What changed (the three fix commits).** `b6477fd` — API:
+overview channel now carries `avatarUrl` (`avatar ?? picture`);
+`getallchanels` projection adds `picture`/`avatarUrl`/`bannerUrl`.
+Web: Studio identity prefers `avatarUrl` over `picture`; channel
+header renders the banner strip (gradient fallback) and the avatar
+image (initials fallback, broken-image guard); MSW overview reflects
+the mock avatar; the unit test that asserted "identity never
+changes" now asserts it does, and clears on remove. `836f3ae` —
+`resolveApiMediaUrl()` in `Api/index.ts`, applied at the three
+render sites (Settings banner/avatar, Studio identity, channel
+header banner/avatar); the stored value stays origin-independent
+(`/uploads/…`). `b6db941` — the CORP fix above + the new
+Playwright spec. No `any`, no ts-ignore, no tests excluded from
+typecheck. The stale "by design" comments in `Api/index.ts`,
+`query/hooks.ts`, and `mocks/handlers.ts` were updated to the new
+behaviour.
+
+**Fresh counts (all exit 0, uncached — each command's output to a
+file, exit code echoed separately, never piped).**
+
+| Check | Command | Result |
+|---|---|---|
+| Typecheck | `pnpm typecheck --force` | exit 0, 3/3 tasks |
+| API tests | `pnpm test` (turbo) | **217/217 (15 files)** |
+| Web tests | `pnpm test` (turbo) | **144/144 (19 files)** — up from 141: +3 new `resolveApiMediaUrl.test.ts` (absolute/blob/data passthrough, relative → API origin) |
+| Lint | `pnpm lint` | exit 0, **0 errors, 6 warnings** (pre-existing, same as §8.9.2/§8.9.10) |
+| Build | `pnpm build` | exit 0 |
+| Playwright e2e (new spec) | `playwright test -c playwright.phase5.config.ts settings-watch-polish.spec.ts` | **4/4** (see below) |
+| Playwright e2e (full Phase 5 suite, pre-merge tree) | `pnpm test:e2e:phase5` | **17/17** — 10 phase5 + 4 new polish + 3 upload-wizard, no regressions |
+
+**Post-merge re-verification (main @ `4def719` merged in — see the
+merge note in the intro).** Fresh uncached counts on the merged
+tree, same method: typecheck exit 0 (3/3 tasks); API tests
+**225/225 (16 files)** — +8 from PR #4's `studio-content.test.js`;
+web tests **158/158 (20 files)** — +14 from PR #4's content tests;
+lint exit 0, 0 errors, 6 warnings (pre-existing); build exit 0.
+E2E on the merged tree, each spec alone (fresh servers per run):
+polish **4/4**, phase5 **10/10**, content-cleanup **6/6**,
+upload-wizard **3/3**. Run all four together in one invocation the
+suite is 20/23: phase5 tests 2 (dashboard totals: 8 views, not 7),
+4 (analytics: same +1 view), and 8 (history Remove button not
+found) fail — that is the documented cross-spec interference, not
+a merge breakage: `content-cleanup.spec.ts` says in its own header
+to run separately, because it visits `/watch/<seeded video>` (each
+visit records a view event, 7 → 8) and renames the seeded video to
+"E2E Smoke Video (Cleanup Edit)" (the history test looks for a
+"Remove E2E Smoke Video from history" button, which no longer
+exists under that name). The polish spec was also changed in the
+merge pass to read the e2e JWT secret from `e2e-server.mjs` at
+runtime (same pattern as `content-cleanup.spec.ts`) instead of
+carrying a copied value — the redaction trap from §8.9.10, fixed
+properly this time; spec still 4/4 alone after the change.
+
+**E2E results** (`apps/web/e2e-phase5/settings-watch-polish.spec.ts`,
+real API on in-memory MongoDB, `PHASE5_SEED=1`, production build,
+Cloudinary unconfigured — the local `/uploads/` fallback is what is
+exercised; the Cloudinary-configured path is verified only via the
+mocked API tests, as before). (1) Handle check: own handle
+`e2euser` → "✓ available", `codestreamer` → "✗ taken",
+`zxqv-free-99` → "✓ available". (2) Banner/avatar upload: banner
+preview updates without reload and the image behind it really loads
+(`fetch` of the resolved URL → 200 `image/*`); avatar preview img
+loads (`naturalWidth > 0`); the Studio identity header shows the
+uploaded avatar without reload; the channel header
+(`/channel/<id>`) shows the same banner + avatar; Remove restores
+the gradient banner, initials avatar, and initials identity. (3)
+Autoplay: on the first Learning Path video ("Getting Started with
+React Hooks"), dispatching `ended` with Autoplay ON navigates to
+the next playlist video ("TypeScript Generics, Explained"); with
+Autoplay OFF the URL stays and "Up next" stays visible; the
+preference survives reload in both directions
+(`localStorage acube:watch:autoplay` "false" then "true"). Video
+end is simulated by dispatching `ended` on the `<video>` element —
+the seeded video files do not exist, so real playback to the end
+is not verified (same caveat as the Phase 5 specs). No page errors
+in any test.
+
+**Fresh screenshots** (`docs/screenshots/`, desktop 1280×800 +
+mobile 390×844; local-only — PNGs are binary and the snapshot push
+carries UTF-8 files only, so they are NOT in PR #5):
+`settings-polish-settings-desktop.png`,
+`settings-polish-handle-available.png` (✓ available),
+`settings-polish-handle-taken.png` (✗ taken),
+`settings-polish-settings-uploaded.png` (uploaded banner gradient
++ teal avatar in Settings AND in the Studio identity header),
+`settings-polish-watch-autoplay-on.png` (Learning Path showcase,
+"1 / 4 watched · Playing 1 of 4", Autoplay ON),
+`settings-polish-settings-mobile.png`,
+`settings-polish-watch-mobile.png`. Visually inspected against
+image-22: the Settings page matches field for field. Remaining
+deviations, all expected: Channel URL shows the local origin
+(`http://localhost:4173/@…` vs the preview's `acube.app/@…`); the
+player area is black at 0:00/0:00 (no playable file in e2e); the
+uploaded banner/avatar in the shots are synthetic test gradients,
+not real photos; the mobile Settings shot caught the handle field
+mid-debounce ("Checking…"). Note: the suite re-took
+`studio-settings.png` and `watch.png` in the same runs (they are
+regenerated every e2e run); those files are left modified locally,
+not committed.
+
+**Environment notes (this pass).** (a) The first e2e runs failed
+with 401s for the same reason as §8.9.10: tool output redacts the
+e2e JWT secret, and the spec had copied the displayed placeholder.
+Recovered the same way — SHA-256 hash comparison showed the
+server's secret and the spec's secret match each other but not the
+assumed value; the correct literal was copied programmatically
+from `phase5.spec.ts` into the new spec without ever displaying it.
+(b) `/tmp` is a 512 MB tmpfs and each e2e run leaves a ~201 MB
+`mongo-mem-*` dir behind when the run ends; two stale runs filled
+it and mongod failed to start with `ENOSPC`. Cleaned the stale
+dirs and ran e2e with `TMPDIR=$HOME/workspace/.tmp-mongo` (as the
+cloudinary script already does) from then on.
+
+**Not verified / open.** Real Cloudinary credentials were never
+available, so the Cloudinary-configured image path is verified
+only with the mocked upload — the local fallback is what is proven
+end to end. The channel header's banner/avatar were fixed and
+e2e-verified for the owner's channel page; other surfaces that
+render channel pictures (video cards, comments, search) still use
+their existing rendering and were not part of this task.
+
+**PR #5 state.** Branch `feat/acube-settings-watch-polish` to be
+pushed via the GitHub connector snapshot push (see §8.9.9 for the
+procedure) from main @ `4def719` (PR #4 merged while this branch
+was in flight; see the merge note in the intro above); PR #5 to be
+created with base `main`, title "Settings: live handle check,
+working banner/avatar upload, preview match; Watch: Autoplay
+toggle". Head at push time: the merge commit `7406d40` plus the
+spec-secret commit and this docs commit.

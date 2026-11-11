@@ -83,6 +83,13 @@ export const fixtureSession: SessionProfile = {
   token: "test-token",
 };
 
+/** Settings polish: mutable mock media state — the banner/avatar
+ * upload + remove handlers update this, and GET /studio/settings
+ * (and the overview's channel.avatarUrl) read it back, so a Settings
+ * upload visibly persists across the refetch the hooks trigger.
+ * resetCaptured() clears it between tests. */
+export const mockStudioMedia = { bannerUrl: "", avatarUrl: "" };
+
 export const fixtureStudioOverview = {
   channel: {
     _id: "user1",
@@ -295,6 +302,10 @@ export const captured = {
   playlistPatches: [] as Array<{ id: string; body: unknown }>,
   playlistDeletes: [] as string[],
   studioSettingsPatches: [] as unknown[],
+  // Settings polish: banner/avatar upload filenames + removes.
+  studioBannerUploads: [] as string[],
+  studioAvatarUploads: [] as string[],
+  studioImageRemoves: [] as string[],
   deleteHistoryItem: [] as Array<{ videoid: string; viewer: string }>,
   // Phase 5 fix: new contract calls.
   commentPins: [] as string[],
@@ -314,6 +325,8 @@ export function resetCaptured() {
   for (const key of Object.keys(captured) as Array<keyof typeof captured>) {
     (captured[key] as unknown[]).length = 0;
   }
+  mockStudioMedia.bannerUrl = "";
+  mockStudioMedia.avatarUrl = "";
 }
 
 const json = (body: unknown, status = 200) =>
@@ -483,7 +496,18 @@ export const handlers = [
     json({ filteredUsers: [], currentMessages: [] }),
   ),
   // Phase 5 — Creator Studio contract (PHASE5_PLAN.md Reconciliation).
-  http.get("*/studio/overview", () => json(fixtureStudioOverview)),
+  // The overview carries the mock avatar, like the real endpoint
+  // (GET /studio/overview returns avatarUrl falling back to picture),
+  // so an avatar upload visibly reaches the Studio identity header.
+  http.get("*/studio/overview", () =>
+    json({
+      ...fixtureStudioOverview,
+      channel: {
+        ...fixtureStudioOverview.channel,
+        avatarUrl: mockStudioMedia.avatarUrl || undefined,
+      },
+    }),
+  ),
   http.get("*/studio/analytics", ({ request }) => {
     const url = new URL(request.url);
     const range = Number(url.searchParams.get("range") ?? 28);
@@ -557,8 +581,8 @@ export const handlers = [
         contactEmail: "hello@test.example",
         country: "India",
         language: "English",
-        bannerUrl: "",
-        avatarUrl: "",
+        bannerUrl: mockStudioMedia.bannerUrl,
+        avatarUrl: mockStudioMedia.avatarUrl,
         channelPublic: true,
         keepSubscriptionsPrivate: false,
         uploadDefaultVisibility: "public",
@@ -583,6 +607,59 @@ export const handlers = [
       desc: body.desc ?? "Test channel",
       handle: body.handle ?? "testuser",
     });
+  }),
+  // Settings polish contract — live handle availability. Any handle
+  // except "taken" is free (the PATCH mock above is the same rule, so
+  // the inline check and the save-time 409 agree). The caller's own
+  // handle is available by definition.
+  http.get("*/studio/handle/available", ({ request }) => {
+    const handle = new URL(request.url).searchParams.get("handle") ?? "";
+    const taken = handle === "taken";
+    return json({
+      available: !taken,
+      ...(taken ? { reason: "taken" } : {}),
+    });
+  }),
+  // Settings polish contract — banner/avatar upload + remove. Like
+  // the video-upload handler above, do NOT call request.formData():
+  // axios sends jsdom's FormData, which undici's multipart parser
+  // rejects. Read the raw multipart body and check the "file" field
+  // is present. (Axios-in-node also rewrites a jsdom File's name to
+  // "blob", so the filename is not asserted — a real browser sends
+  // the real name; the field name is the contract.)
+  http.post("*/studio/banner", async ({ request }) => {
+    const text = await request.text();
+    if (!/name="file"/.test(text)) {
+      return json(
+        { error: { message: "Image file is required" } },
+        400,
+      );
+    }
+    captured.studioBannerUploads.push("file");
+    mockStudioMedia.bannerUrl = "https://cdn.example/banner.jpg";
+    return json({ bannerUrl: mockStudioMedia.bannerUrl });
+  }),
+  http.post("*/studio/avatar", async ({ request }) => {
+    const text = await request.text();
+    if (!/name="file"/.test(text)) {
+      return json(
+        { error: { message: "Image file is required" } },
+        400,
+      );
+    }
+    captured.studioAvatarUploads.push("file");
+    mockStudioMedia.avatarUrl = "https://cdn.example/avatar.jpg";
+    return json({ avatarUrl: mockStudioMedia.avatarUrl });
+  }),
+  http.post("*/studio/banner/remove", () => {
+    captured.studioImageRemoves.push("banner");
+    mockStudioMedia.bannerUrl = "";
+    return json({ bannerUrl: "" });
+  }),
+  http.post("*/studio/avatar/remove", () => {
+    captured.studioImageRemoves.push("avatar");
+    mockStudioMedia.avatarUrl = "";
+    return json({ avatarUrl: "" });
   }),
   http.get("*/studio/playlists", () => json(fixturePlaylists)),
   // Public playlist read (visibility rules are server-side in the real

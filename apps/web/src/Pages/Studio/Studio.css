@@ -598,6 +598,134 @@
   margin: 0;
 }
 
+/* --- Settings polish (preview image 22): handle box, link chips,
+ * display boxes with editors, inline field errors --- */
+.studio-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.studio-handle-box {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  padding: 0 12px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.studio-handle-box:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.studio-handle-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  padding: 12px 0;
+  font: 400 15px/20px "Manrope", sans-serif;
+}
+.studio-handle-input:focus { outline: none; }
+.studio-handle-status-checking {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.studio-handle-status-available {
+  color: #4ade80;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.studio-handle-status-taken {
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.studio-field-error {
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 6px 0 0;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.studio-link-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.studio-link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 6px 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.studio-link-chip-label {
+  background: none;
+  border: none;
+  color: var(--text);
+  font: 600 14px/20px "Manrope", sans-serif;
+  cursor: pointer;
+  padding: 0;
+}
+.studio-link-chip-remove {
+  background: none;
+  border: none;
+  color: var(--text-2);
+  font: 600 14px/1 "Manrope", sans-serif;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 50%;
+}
+.studio-link-chip-remove:hover { color: var(--danger); }
+.studio-display-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  padding: 12px;
+  font: 400 15px/20px "Manrope", sans-serif;
+  cursor: pointer;
+  text-align: left;
+}
+.studio-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.studio-editor .acube-btn-secondary { align-self: flex-start; }
+
 /* --- Upload wizard: file card + thumbnail preview --- */
 .studio-file-card {
   border: 1px dashed var(--border);

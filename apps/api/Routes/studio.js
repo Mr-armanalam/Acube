@@ -5,6 +5,7 @@
 // without signing in.
 import express from "express";
 import auth, { optionalAuth } from "../middleware/auth.js";
+import imageUpload from "../Helper/imageFilehelper.js";
 import {
   validateBody,
   validateParams,
@@ -12,6 +13,7 @@ import {
 } from "../middleware/validate.js";
 import {
   createPlaylistSchema,
+  handleAvailabilityQuerySchema,
   libraryEntryParamSchema,
   libraryEntrySchema,
   paginationQuerySchema,
@@ -25,6 +27,7 @@ import {
 } from "@acube/shared";
 import {
   addLibraryEntry,
+  checkHandleAvailable,
   createPlaylist,
   deletePlaylist,
   getAnalytics,
@@ -36,9 +39,13 @@ import {
   getStudioVideos,
   getVideoAnalytics,
   listPlaylists,
+  removeAvatar,
+  removeBanner,
   removeLibraryEntry,
   updatePlaylist,
   updateSettings,
+  uploadAvatar,
+  uploadBanner,
 } from "../Controllers/studio.js";
 
 const router = express.Router();
@@ -77,6 +84,26 @@ router.patch(
   validateBody(studioSettingsSchema),
   updateSettings,
 );
+// Settings polish: live handle check — same format rule as the save
+// handler (handleAvailabilityQuerySchema), owner-exempt + 200
+// { available, reason? } in the controller.
+router.get(
+  "/handle/available",
+  auth,
+  validateQuery(handleAvailabilityQuerySchema),
+  checkHandleAvailable,
+);
+// Settings polish: banner / avatar image uploads (multipart, field
+// name "file", JPG/PNG only, 5 MB cap — see Helper/imageFilehelper.js)
+// and removal (POST .../remove resets the URL to null; the client
+// renders its gradient-banner / initials-avatar default then).
+// Removal is a POST, not DELETE, so it stays a plain JSON call with
+// no multipart body. Uploads are owner-only by construction: the
+// caller uploads for their own channel (req.userid), never another's.
+router.post("/banner", auth, imageUpload.single("file"), uploadBanner);
+router.post("/banner/remove", auth, removeBanner);
+router.post("/avatar", auth, imageUpload.single("file"), uploadAvatar);
+router.post("/avatar/remove", auth, removeAvatar);
 router.get(
   "/playlists",
   auth,

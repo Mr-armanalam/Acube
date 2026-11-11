@@ -56,7 +56,13 @@ export const getallchanels=async(req,res)=>{
             _id:channel._id,
             name:channel.name,
             email:channel.email,
-            desc:channel.desc
+            desc:channel.desc,
+            // Settings polish fix: the channel header renders the
+            // uploaded avatar/banner — the projection used to drop
+            // them, so an upload never reached the channel page.
+            picture:channel.picture,
+            avatarUrl:channel.avatarUrl ?? channel.picture ?? null,
+            bannerUrl:channel.bannerUrl ?? null,
         }));
         res.status(200).json({ ...page, items: allchaneldata })
     } catch (error) {

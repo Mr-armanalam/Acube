@@ -102,6 +102,9 @@ describe("GET /studio/overview", () => {
     expect(res.body.latestComments[0].commentbody).toBe("Second!");
     expect(res.body.latestComments[0].videotitle).toBe(v2.videotitle);
     expect(res.body.channel.email).toBe(owner.email);
+    // Identity fix: the overview carries avatarUrl, falling back to
+    // the Google login photo when no avatar was uploaded.
+    expect(res.body.channel.avatarUrl).toBe("https://example.com/pic.png");
   });
 
   it("a channel with no events shows 0s and statsSince null", async () => {

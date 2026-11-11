@@ -217,14 +217,23 @@ export const studioAnalyticsQuerySchema = z.object({
 // is enforced in the controller (409 HANDLE_TAKEN). links: at most 10
 // { label, url } pairs. At least one field is required. There is no
 // subscribe/follower field anywhere — no follow system exists.
+//
+// The handle format lives here so the live-availability check
+// (GET /studio/handle/available) validates exactly the same rule as
+// the save handler — the two must never drift apart.
+export const handleFormatRegex = /^[a-zA-Z0-9._-]{3,30}$/;
+const handleFormatMessage = "handle must be 3–30 characters: letters, digits, dot, underscore or hyphen";
+// GET /studio/handle/available?handle=... — live handle check. Same
+// format rule as the save handler; the controller adds the
+// owner-exempt + case-insensitive uniqueness check.
+export const handleAvailabilityQuerySchema = z.object({
+    handle: z.string().regex(handleFormatRegex, handleFormatMessage),
+});
 export const studioSettingsSchema = z
     .object({
     name: z.string().min(1, "must not be empty").max(100).optional(),
     desc: z.string().max(500).optional(),
-    handle: z
-        .string()
-        .regex(/^[a-zA-Z0-9._-]{3,30}$/, "handle must be 3–30 characters: letters, digits, dot, underscore or hyphen")
-        .optional(),
+    handle: z.string().regex(handleFormatRegex, handleFormatMessage).optional(),
     links: z
         .array(z.object({
         label: z.string().min(1, "must not be empty").max(50),

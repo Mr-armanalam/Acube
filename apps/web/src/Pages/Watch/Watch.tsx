@@ -13,7 +13,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./Watch.css";
 import { formatDistanceToNow } from "date-fns";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useAppSelector } from "../../store";
 import {
   useAddToHistory,
@@ -40,8 +40,24 @@ function formatDuration(sec: number | undefined): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+/** Watch Autoplay — per-user preference, persisted in localStorage
+ * under "acube:watch:autoplay" ("true" / "false"). There is NO
+ * server field for it: the preview shows "Autoplay ON" and the
+ * default is ON unless the user already saved a preference. */
+const AUTOPLAY_STORAGE_KEY = "acube:watch:autoplay";
+
+function readAutoplayPreference(): boolean {
+  try {
+    const raw = window.localStorage.getItem(AUTOPLAY_STORAGE_KEY);
+    return raw === null ? true : raw === "true";
+  } catch {
+    return true;
+  }
+}
+
 const Watch = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const videoQuery = useVideo(id);
   const suggestionsQuery = useWatchSuggestions(id);
@@ -57,11 +73,24 @@ const Watch = () => {
   const vv = videoQuery.data;
   const [loop, setLoop] = useState(false);
   const [shuffled, setShuffled] = useState(false);
+  const [autoplay, setAutoplay] = useState(readAutoplayPreference);
   const [shareCopied, setShareCopied] = useState(false);
   const [descOpen, setDescOpen] = useState(false);
   const lastProgressSent = useRef(0);
 
   const viewerId = currentuser?.result?._id;
+  // Persist the Autoplay preference whenever it changes.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        AUTOPLAY_STORAGE_KEY,
+        autoplay ? "true" : "false",
+      );
+    } catch {
+      // Private mode / blocked storage: the toggle still works for
+      // this session, it just does not persist.
+    }
+  }, [autoplay]);
   useEffect(() => {
     if (id) viewMutation.mutate(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,7 +132,12 @@ const Watch = () => {
     [id, viewerId, progressMutation],
   );
 
-  const suggestions = suggestionsQuery.data ?? [];
+  // Memoised (not `?? []` inline): a fresh [] every render would
+  // change the nextAutoplayId useMemo's dependencies every render.
+  const suggestions = useMemo(
+    () => suggestionsQuery.data ?? [],
+    [suggestionsQuery.data],
+  );
   // Phase 5 fix: GET /watch/:id/playlists already returns only the
   // public playlists containing THIS video (with their videos), for
   // any viewer — the first one is the showcase. The old lookup ran
@@ -131,6 +165,33 @@ const Watch = () => {
     if (!shuffled) return playlistVideos;
     return [...playlistVideos].sort(() => Math.random() - 0.5);
   }, [playlistVideos, shuffled]);
+
+  // Autoplay target at video end: the next playlist video (in
+  // playlist order — never past the last one), or, when no playlist
+  // is active, the first Up Next suggestion. Null = stop at the end
+  // (Up Next stays visible, nothing auto-plays).
+  const nextAutoplayId = useMemo(() => {
+    if (!vv) return null;
+    if (playlist) {
+      const idx = playlist.videoIds.indexOf(vv._id);
+      if (idx >= 0 && idx + 1 < playlist.videoIds.length) {
+        return playlist.videoIds[idx + 1];
+      }
+      return null;
+    }
+    return suggestions[0]?.video._id ?? null;
+  }, [playlist, vv, suggestions]);
+
+  const handleEnded = useCallback(() => {
+    if (currentuser && id) {
+      void watchCompleteMutation.mutateAsync(id);
+    }
+    // Loop replays the same video natively (the player never fires
+    // onEnded while loop is on), and Autoplay OFF means stop: Up Next
+    // stays on screen and nothing auto-plays.
+    if (!autoplay) return;
+    if (nextAutoplayId) navigate(`/watch/${nextAutoplayId}`);
+  }, [currentuser, id, watchCompleteMutation, autoplay, nextAutoplayId, navigate]);
 
   const share = useCallback(() => {
     const url = window.location.href;
@@ -179,11 +240,7 @@ const Watch = () => {
           onProgressSec={handleProgress}
           chapters={vv.chapters}
           loop={loop}
-          onEnded={() => {
-            if (currentuser && id) {
-              void watchCompleteMutation.mutateAsync(id);
-            }
-          }}
+          onEnded={handleEnded}
         />
         <h1 style={{ fontSize: 20, margin: "16px 0 8px" }}>{vv.videotitle}</h1>
         <div style={{ color: "var(--text-2)", marginBottom: 12 }}>
@@ -294,6 +351,14 @@ const Watch = () => {
                 onClick={() => setLoop((v) => !v)}
               >
                 Loop {loop ? "on" : "off"}
+              </button>
+              <button
+                type="button"
+                className="acube-btn-secondary"
+                aria-pressed={autoplay}
+                onClick={() => setAutoplay((v) => !v)}
+              >
+                Autoplay {autoplay ? "ON" : "OFF"}
               </button>
               <button
                 type="button"

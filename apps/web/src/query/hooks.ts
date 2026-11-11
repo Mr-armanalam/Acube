@@ -16,6 +16,7 @@ import { queryKeys } from "./keys";
 import type {
   Channel,
   CommentItem,
+  HandleAvailability,
   LibraryData,
   PagedResult,
   Playlist,
@@ -683,7 +684,120 @@ export function useUpdateStudioSettings() {
         queryKey: queryKeys.studioSettings,
       });
       void queryClient.invalidateQueries({ queryKey: queryKeys.channels });
+      // Settings polish: the Studio identity header reads
+      // GET /studio/overview, not /studio/settings — a saved name
+      // change must reach it too.
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.studioOverview,
+      });
     },
+  });
+}
+
+// ------------------------------------------- Settings polish: handle check
+// Debounced as-you-type availability (the component debounces the
+// input; this hook only fires when `enabled` and the handle is set).
+// Save is never blocked on it — the server still enforces uniqueness
+// on PATCH (409/HANDLE_TAKEN).
+export function useHandleAvailable(handle: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.handleAvailable(handle),
+    queryFn: async (): Promise<HandleAvailability> => {
+      const { data } = await api.getHandleAvailable(handle);
+      return data as HandleAvailability;
+    },
+    enabled,
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+// ----------------------------------- Settings polish: banner/avatar images
+// The upload/remove responses carry the new URL either top-level
+// ({ bannerUrl } / { avatarUrl }) or nested under `channel` — read
+// either, so the Settings preview can update from the response
+// without waiting on the refetch.
+export type StudioImageKind = "banner" | "avatar";
+
+export function imageUrlFromUploadResponse(
+  data: unknown,
+  kind: StudioImageKind,
+): string | undefined {
+  if (typeof data !== "object" || data === null) return undefined;
+  const field = kind === "banner" ? "bannerUrl" : "avatarUrl";
+  const record = data as Record<string, unknown>;
+  const direct = record[field];
+  if (typeof direct === "string" && direct) return direct;
+  const channel = record.channel;
+  if (typeof channel === "object" && channel !== null) {
+    const nested = (channel as Record<string, unknown>)[field];
+    if (typeof nested === "string" && nested) return nested;
+    // The overview/channel shape carries the avatar as `picture`.
+    if (kind === "avatar") {
+      const picture = (channel as Record<string, unknown>).picture;
+      if (typeof picture === "string" && picture) return picture;
+    }
+  }
+  return undefined;
+}
+
+// A banner/avatar change must show everywhere the channel appears:
+// Settings (studioSettings), the Studio identity header
+// (studioOverview — it prefers channel.avatarUrl over picture), and
+// the channel header (channels — Describechannel reads
+// useChannelById). Invalidate all three; nothing else refetches.
+function useInvalidateStudioImages() {
+  const queryClient = useQueryClient();
+  return () => {
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.studioSettings,
+    });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.studioOverview,
+    });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.channels });
+  };
+}
+
+export function useUploadStudioBanner() {
+  const invalidate = useInvalidateStudioImages();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const { data } = await api.uploadStudioBanner(file);
+      return imageUrlFromUploadResponse(data, "banner");
+    },
+    onSettled: () => invalidate(),
+  });
+}
+
+export function useUploadStudioAvatar() {
+  const invalidate = useInvalidateStudioImages();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const { data } = await api.uploadStudioAvatar(file);
+      return imageUrlFromUploadResponse(data, "avatar");
+    },
+    onSettled: () => invalidate(),
+  });
+}
+
+export function useRemoveStudioBanner() {
+  const invalidate = useInvalidateStudioImages();
+  return useMutation({
+    mutationFn: async () => {
+      await api.removeStudioBanner();
+    },
+    onSettled: () => invalidate(),
+  });
+}
+
+export function useRemoveStudioAvatar() {
+  const invalidate = useInvalidateStudioImages();
+  return useMutation({
+    mutationFn: async () => {
+      await api.removeStudioAvatar();
+    },
+    onSettled: () => invalidate(),
   });
 }
 
