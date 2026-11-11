@@ -1687,3 +1687,49 @@ the backend changes were still uncommitted. Verification found `36eeb5b`
 does exist and the tree was clean: `52e6afe → 36eeb5b → 34c2c3f →
 7f6f089`, nothing uncommitted, no duplication or conflict; the frontend
 worker's claim was stale and no commit was needed.
+
+#### 8.9.15 Account-menu hover overflow (11 Nov 2026, branch `feat/acube-account-menu-hover-fix`)
+
+Arman's screenshot showed the account dropdown's hovered item ("Your
+account") painting its hover background outside the menu container on
+the right. Root cause, measured in Chromium, not guessed: the app has
+no global `box-sizing: border-box` reset (nothing in `index.css` /
+`App.css`), so `.topbar-menu a` in `TopBar.css:104-115` used the
+default `content-box`: `width: 100%` (= the menu's 180px content
+width, from `.topbar-menu` `min-width: 180px` + `padding: 6px`) plus
+the 24px horizontal item padding (`10px 12px`) made each link 204px
+wide — 17px past the menu's 194px outer right edge (item starts 7px
+in: 1px border + 6px padding). Measured pre-fix: desktop 1280px,
+"Your account" right 1280 vs menu right 1264 (hover), 1281 (focus);
+mobile 390px, right 390 vs 378 (hover), 395 (focus). The two
+`<button>` items ("Create channel", "Sign out") never overflowed —
+Chromium's UA stylesheet already gives `<button>` `border-box`
+(180px, right edge 7px inside) — which is why only the links showed
+it. Fix (`TopBar.css`, one rule, no look/layout/behaviour change):
+`box-sizing: border-box` on `.topbar-menu a, .topbar-menu button`, so
+`width: 100%` now includes the padding and every item sits 6px inside
+the container; the hover rule additionally covers `:focus-visible`
+with the same background, so keyboard focus gets the same contained
+highlight. No other TopBar dropdown exists — `.topbar-menu` is used
+only in `TopBar.tsx:146` — and the nearest sibling menu, Studio
+Content's `.studio-menu-item` (`Studio.css:288-291`), already has
+`box-sizing: border-box`, so no same defect there and nothing else
+was touched. Verification (real exit codes, unpiped): new Playwright
+spec `apps/web/e2e-phase5/account-menu-hover.spec.ts` asserts every
+item's border box stays inside the menu's for all four items, hover
+and keyboard focus, at 1280px and 390px — **4/4 pass** post-fix, and
+the same spec **fails 4/4 pre-fix** (stash-reverted CSS, rebuilt,
+same numbers as above), so the fix, not the harness, is what changed
+the result. Screenshot `docs/screenshots/phase5-account-menu-hover-fixed.png`
+(desktop, "Your account" hovered, background contained) verified by
+eye. Web checks: targeted vitest (TopBar-touching files
+`home` / `phase5fix` / `studioPreview` /
+`accountHistoryLibrary`) **61/61**, exit 0; `pnpm typecheck` exit 0;
+`pnpm lint` exit 0, 0 errors, 7 warnings (pre-existing); `pnpm
+build` exit 0. No `any`, no ts-ignore, nothing committed — changes
+left uncommitted for the coordinator's push/PR. Verification note:
+ports 4173/5000 were held by the parallel pagination-branch worker's
+dev + e2e-API servers, so this run served the fixed production build
+on :5173 (a CORS-allowed origin for the shared seeded `:5000` API)
+via a throwaway `/tmp` Playwright config reusing those servers; the
+other worker's servers were not touched.
