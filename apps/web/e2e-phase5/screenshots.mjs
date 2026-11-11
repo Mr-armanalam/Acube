@@ -189,7 +189,7 @@ for (const [name, route, session, [waitKind, waitText]] of SCREENS) {
     await page.getByLabel("Tags").fill("planning, routine");
     await page.screenshot({ path: shot("phase5-upload-step2-full.png"), fullPage: true });
     console.log("upload step2: ok");
-    await page.getByRole("button", { name: "Continue to publish" }).click();
+    await page.getByRole("button", { name: "Continue to review" }).click();
     await page.getByText("Step 3 of 3").waitFor({ timeout: 10000 });
     await page.screenshot({ path: shot("phase5-upload-step3-full.png"), fullPage: true });
     console.log("upload step3: ok");

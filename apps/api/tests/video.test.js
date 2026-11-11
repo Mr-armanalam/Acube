@@ -7,8 +7,11 @@ import Videofile from "../Models/videofile.js";
 
 // Cloudinary is mocked: no real account or upload is needed. Multer still
 // writes the received file to apps/api/uploads, so the suite cleans up any
-// files it creates there.
+// files it creates there. isCloudinaryConfigured is mocked true here so
+// these tests exercise the Cloudinary path; the local fallback (env
+// unset) is covered separately in video-upload-fallback.test.js.
 vi.mock("../cloudinary.js", () => ({
+  isCloudinaryConfigured: vi.fn(() => true),
   uploadOnCloudinary: vi.fn(async () => ({
     url: "https://res.cloudinary.com/test/video/upload/test.mp4",
     secure_url: "https://res.cloudinary.com/test/video/upload/test.mp4",

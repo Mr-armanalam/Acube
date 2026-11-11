@@ -217,7 +217,7 @@ describe("D — Analytics", () => {
 });
 
 describe("E — Upload wizard", () => {
-  it("walks file → details (publish on the same screen) and publishes via the upload endpoint", async () => {
+  it("walks file → details → review and publishes via the upload endpoint", async () => {
     const user = userEvent.setup();
     renderRoutes("/studio/upload", testSession);
     expect(await screen.findByText(/Step 1 of 3/)).toBeInTheDocument();
@@ -228,14 +228,21 @@ describe("E — Upload wizard", () => {
     await user.upload(input, file);
     expect(screen.getByText(/morning-routine.mp4/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue to details" }));
-    // Preview (image 12): step 2 IS the details screen — Title /
-    // Description / Tags, thumbnail preview, Visibility, Publish +
-    // Save as draft all on this screen (no separate step 3).
+    // Upload-wizard fix: the wizard is genuinely 3 steps now — step 2
+    // is Details only (Title / Description / Tags, thumbnail preview,
+    // Visibility); Publish + Save as draft live on the step 3 Review
+    // screen, not on Details.
     expect(await screen.findByText(/Step 2 of 3/)).toBeInTheDocument();
     expect(screen.getByText("PREVIEW")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Publish" }),
+    ).not.toBeInTheDocument();
     await user.type(screen.getByLabelText("Title"), "How I plan my week");
     await user.type(screen.getByLabelText("Description"), "Sunday routine");
     await user.type(screen.getByLabelText("Tags"), "planning, routine");
+    await user.click(screen.getByRole("button", { name: "Continue to review" }));
+    expect(await screen.findByText(/Step 3 of 3/)).toBeInTheDocument();
+    expect(screen.getByText("How I plan my week")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Publish" }));
     await waitFor(() => {
       // NOTE: jsdom/undici serialises the File part as filename "blob"
@@ -257,7 +264,7 @@ describe("E — Upload wizard", () => {
     expect(watchLink.getAttribute("href")).toBe("/watch/vid-uploaded");
   });
 
-  it("Save as draft is offered and title is required", async () => {
+  it("Save as draft is offered on the review step and title is required", async () => {
     const user = userEvent.setup();
     renderRoutes("/studio/upload", testSession);
     expect(await screen.findByText(/Step 1 of 3/)).toBeInTheDocument();
@@ -265,11 +272,23 @@ describe("E — Upload wizard", () => {
     await user.upload(screen.getByLabelText("Choose video file"), file);
     await user.click(screen.getByRole("button", { name: "Continue to details" }));
     expect(await screen.findByText(/Step 2 of 3/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Save as draft" })).toBeDisabled();
+    // Upload-wizard fix: Publish / Save as draft live on step 3, not
+    // step 2 — and "Continue to review" is disabled until a title is set.
+    expect(
+      screen.queryByRole("button", { name: "Publish" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save as draft" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Continue to review" }),
+    ).toBeDisabled();
     await user.type(screen.getByLabelText("Title"), "Draft title");
-    expect(screen.getByRole("button", { name: "Save as draft" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Draft" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue to review" }));
+    expect(await screen.findByText(/Step 3 of 3/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save as draft" })).toBeEnabled();
     // Phase 5 fix: Save as draft actually submits visibility=draft
     // (before the backend fix the field was dropped and the upload
     // became a public video).
@@ -286,7 +305,10 @@ describe("E — Upload wizard", () => {
     const user = userEvent.setup();
     renderRoutes("/studio/upload", testSession);
     expect(await screen.findByText(/Step 1 of 3/)).toBeInTheDocument();
-    const big = new File([new ArrayBuffer(10_000_001)], "big.mp4", {
+    // Upload-wizard fix: the client limit is the server's 10 MiB
+    // (10,485,760 bytes), not the old round 10,000,000 — the oversize
+    // probe must be over the real limit.
+    const big = new File([new ArrayBuffer(10 * 1024 * 1024 + 1)], "big.mp4", {
       type: "video/mp4",
     });
     await user.upload(screen.getByLabelText("Choose video file"), big);

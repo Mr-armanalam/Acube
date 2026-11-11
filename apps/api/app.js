@@ -8,6 +8,7 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "path";
+import { fileURLToPath } from "node:url";
 import videoroutes from "./Routes/video.js";
 import watchroutes from "./Routes/watch.js";
 import studioroutes from "./Routes/studio.js";
@@ -67,7 +68,16 @@ app.post(
 );
 app.use(express.json({ limit: "30mb" }));
 app.use(express.urlencoded({ limit: "30mb", extended: true }));
-app.use("/uploads", express.static(path.join("uploads")));
+// Upload-wizard fix: serve uploads from apps/api/uploads resolved
+// against this file, never against process.cwd() — the e2e server runs
+// from apps/web under Playwright, where a relative "uploads" points
+// at a directory that does not exist (see Helper/filehelper.js).
+app.use(
+  "/uploads",
+  express.static(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "uploads"),
+  ),
+);
 app.use(express.static("public"));
 
 app.get("/", (req, res) => {

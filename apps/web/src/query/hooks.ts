@@ -11,6 +11,7 @@ import {
   setUploadStatus,
 } from "../store/slices/uploadSlice";
 import * as api from "../Api";
+import { extractApiErrorMessage } from "../utils/apiError";
 import { queryKeys } from "./keys";
 import type {
   Channel,
@@ -190,11 +191,11 @@ export function useUploadVideo() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.videos });
     },
     onError: (error) => {
-      dispatch(
-        setUploadError(
-          error instanceof Error ? error.message : "Upload failed",
-        ),
-      );
+      // Upload-wizard fix: store the SERVER's message (e.g. "Failed to
+      // upload video to cloudinary" or the VALIDATION_ERROR field
+      // details), not axios's generic "Request failed with status
+      // code 400".
+      dispatch(setUploadError(extractApiErrorMessage(error)));
     },
   });
 }

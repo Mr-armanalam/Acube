@@ -7,6 +7,19 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Upload-wizard fix: Cloudinary is optional now. When none of the three
+// credentials is configured the upload endpoint stores the file locally
+// instead of failing with "Failed to upload video to cloudinary"
+// (see Controllers/video.js). This is checked at request time, not
+// import time, so tests can toggle env vars per case.
+export function isCloudinaryConfigured() {
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET,
+  );
+}
+
 function removeLocalFile(localFilePath) {
   try {
     if (localFilePath) fs.unlinkSync(localFilePath);

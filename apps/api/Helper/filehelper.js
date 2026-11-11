@@ -1,8 +1,18 @@
 "use strict";
 import crypto from "node:crypto";
+import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import multer from "multer";
 import { MAX_UPLOAD_BYTES, SUPPORTED_VIDEO_MIMETYPES } from "@acube/shared";
+
+// Upload-wizard fix: the uploads directory is resolved against THIS
+// file (apps/api/uploads), never against process.cwd(). The e2e server
+// runs from apps/web under Playwright, so the old relative "uploads"
+// destination made multer fail with ENOENT (apps/web/uploads does not
+// exist) — and the /uploads static route in app.js served from the
+// wrong directory too. The directory is created on import so the first
+// upload after a fresh checkout cannot fail on a missing folder.
 
 // Phase 3b: filenames are sanitised — the raw originalname is never
 // used as a stored filename (it could contain path traversal like
@@ -17,9 +27,16 @@ function sanitiseFilename(originalname) {
   return `${new Date().toISOString().replace(/:/g, "-")}-${crypto.randomBytes(8).toString("hex")}-${clean || "video"}.mp4`;
 }
 
+const uploadsDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "uploads",
+);
+fs.mkdirSync(uploadsDir, { recursive: true });
+
 const storage = multer.diskStorage({
     destination: (req, res, cb) => {
-        cb(null, "uploads");
+        cb(null, uploadsDir);
     },
     filename: (req, file, cb) => {
         cb(null, sanitiseFilename(file.originalname));

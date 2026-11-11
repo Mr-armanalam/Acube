@@ -944,3 +944,133 @@ branch after the push.** Only a real `git push` from a full local
 clone (Arman's machine) can remove them; the app does not import
 them, so they are dead weight, not live code. Arman merges PRs
 himself; do not merge #2 as part of this pass.
+
+#### 8.9.10 Upload wizard fix (11 Nov 2026, branch `feat/acube-upload-wizard-fix`)
+
+Arman reported three upload-wizard bugs with screenshots: Step 1
+looks generic, Step 2 fails with HTTP 400, and the preview does not
+work. Fixed on a NEW branch off `1d8fddb`
+(`feat/acube-upload-wizard-fix`); `feat/acube-phase5-studio` and
+PR #2 are untouched. Commits: `7da4877` (API), `bec2a7a` (web),
+`9335e14` (e2e + cwd fix). No merge; no push (GitHub connector
+still blocked 403 — same as §8.9.9).
+
+**Step 1/2/3 vs image-16.png (target) + image-17.png (before).**
+image-16 is the YouTube-Studio modal to match; image-17 is the old
+wizard's Step 1 (plain file input, "Step 1 of 3 — File · resumable
+upload, server-validated · max 10 MB", "demo.mp4 · 2.0 MB",
+"Continue to details"). The new Step 1 IS the image-16 modal:
+centred dark panel (`#0C0B0A`, `#F2EEE6` text, `#E8482F` accent),
+"Upload videos" title, close X top-right, large grey circle with
+upload-arrow icon, "Drag and drop video files to upload", white pill
+"Select files" (`phase5-upload-step1-modal-full/mobile.png`). Drag-
+and-drop really works (drop → validated → preview); X / backdrop /
+Escape close the modal back to Content. Step 2 is Details
+(title/description/tags/thumbnail URL/visibility). Step 3 is a real
+Review & Publish screen (video preview + entered-details summary +
+Publish / Save as draft). The wizard is genuinely 3 steps now — the
+old one claimed "Step {n} of 3" with only 2 steps and published from
+Details. All false copy is gone ("resumable upload", "upload
+continues in background", "server-validated", the fake 84 MB
+example); the only claims left are true ones (mp4, max 10 MB).
+
+**The Step 2/3 400 — root cause was Cloudinary, not the payload**
+(diagnosis confirmed, not re-litigated). The multipart POST was
+exactly right and Zod validation passed; the controller then called
+`uploadOnCloudinary()`, which returns null when
+`CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` are unset (SDK throws
+"Must supply api_key"), and the controller turned that into
+`400 {"message":"Failed to upload video to cloudinary"}` for every
+upload. Before: any upload without Cloudinary credentials → 400.
+After: the upload succeeds without Cloudinary — see the fallback
+below. The Cloudinary-configured path is unchanged (mocked-Cloudinary
+tests still assert the Cloudinary URL, duration 42, thumbnail URL).
+
+**Local-storage fallback (the fix, at the API layer).** When no
+Cloudinary credentials are configured (`isCloudinaryConfigured()` in
+`apps/api/cloudinary.js`, checked per request), the multer file is
+kept under `apps/api/uploads/` and stored as
+`filepath: /uploads/<sanitised-filename>`, served by the existing
+`/uploads` static route. It is explicit and logged — `console.warn`
+on every fallback upload, naming the three env vars that would switch
+to Cloudinary — never silent; the DB row is distinguishable by its
+local filepath. `duration`/`durationSec`/`thumbnail` stay `null`
+(never invented). Zod validation is untouched (still strict).
+Two more defects fixed with it: (f) the server now uses `req.userid`
+as the channel owner and ignores the client-supplied `chanel`
+(a request could previously file a video under someone else's
+channel); (g) the client validates the thumbnail URL before submit
+(invalid → inline error, no request sent).
+
+**Second 400 found by the e2e run (not in the diagnosis).** Multer's
+destination (`"uploads"`) and the `/uploads` static route both
+resolved against `process.cwd()`. Under Playwright the API starts
+from `apps/web`, where `uploads/` does not exist, so the upload
+failed with `ENOENT: no such file or directory, open
+'uploads/2026-…-demo.mp4'` — surfaced verbatim by the new error
+handling, which is how it was caught. Both paths now resolve against
+the API app root (`apps/api/uploads`, created on import), so uploads
+work from any cwd. The API vitest suite runs with cwd `apps/api`,
+so this only ever bit e2e/manual runs from another directory.
+
+**Preview (was never implemented).** Real `<video>` with
+`URL.createObjectURL(file)` in Step 1 once a file is picked and on
+the Step 3 review screen (revoked on file-change/unmount, never
+while displayed); Step 2 shows a frame of the picked video, else the
+pasted thumbnail URL, else the shared `VideoThumb` ▶ placeholder.
+The orange-gradient "preview" is gone, as is the broken-image risk.
+
+**Error surfacing.** New `extractApiErrorMessage`
+(`apps/web/src/utils/apiError.ts`) pulls `response.data.error.message`
++ field details or `response.data.message` out of axios errors;
+`useUploadVideo`'s `onError` and the wizard submit both use it, so
+the user sees e.g. "Failed to upload video to cloudinary" or
+"thumbnailUrl: must be a valid URL" — never axios's generic
+"Request failed with status code 400".
+
+**Size alignment (defect (e)).** Client `MAX_VIDEO_BYTES` is now
+`10 * 1024 * 1024` — the server limit — not the round `10_000_000`.
+A file between 10,000,000 and 10,485,760 bytes used to be rejected
+client-side while the server would have accepted it.
+
+**Fresh counts (all exit 0, uncached).**
+
+| Check | Command | Result |
+|---|---|---|
+| API tests | `pnpm --filter @acube/api test` (vitest run) | **198/198 (13 files)** — incl. 7 new local-fallback tests (`video-upload-fallback.test.js`: fallback success + local filepath + file on disk + details saved, `chanel` override to `req.userid`, `/uploads` serving, draft hidden from feed, validation still 400 with field details; `isCloudinaryConfigured` false/true matrix) |
+| Web tests | `pnpm --filter @acube/web test` (vitest run) | **129/129 (17 files)** — incl. 13 new `uploadWizard.test.tsx` (modal, drag-drop select, non-mp4 + oversize inline errors, 10 MiB edge at `MAX_VIDEO_BYTES - 1`, modal close, Step 2 video frame, thumbnail-URL block with zero requests sent, Step 3 review, Publish, draft, both server error shapes). `phase5fix` + `studioPreview` stale specs updated to the 3-step flow and the aligned 10 MiB limit |
+| Typecheck | `tsc --noEmit` (app + node configs) | exit 0 |
+| Lint | `pnpm lint` (both apps) | exit 0, **0 errors, 6 warnings** (pre-existing, same as §8.9.2) |
+| Playwright e2e | `playwright test -c playwright.phase5.config.ts e2e-phase5/upload-wizard.spec.ts` | **3/3** — full flow Step 1 → 2 → 3 → Publish against the real API with NO Cloudinary credentials (video in Content with details saved, local `/uploads` filepath serves `video/mp4`, `videochanel` is the authed user); drag-and-drop select + non-mp4 rejection; X closes to Content. Existing `phase5.spec.ts` still **10/10** in the same runs |
+| Screenshots | `node e2e-phase5/upload-wizard-screenshots.mjs` | exit 0, **7 shots, no page errors** (socket.io polling 404s excluded — the e2e server does not mount socket.io) |
+
+**Fresh screenshots** (`docs/screenshots/`, desktop 1280×800 +
+mobile 390×844, real 1-second ffmpeg mp4 so the previews show a
+frame): `phase5-upload-step1-modal-full/mobile.png`,
+`phase5-upload-step2-full/mobile.png`,
+`phase5-upload-step3-full/mobile.png`,
+`phase5-upload-published-full.png` (Content shows "How I plan my
+week", Public, 11 Nov 2026). The Step 1 shot matches image-16
+field for field; the Step 3 shot shows the video actually playing
+(0:00/0:01 with controls) next to the entered details. The
+screenshots script is new (`apps/web/e2e-phase5/
+upload-wizard-screenshots.mjs`, same pattern as `screenshots.mjs`,
+whose stale upload block — it clicked a "Continue to publish"
+button that never existed — was fixed to "Continue to review").
+
+**Not verified / open.** Real Cloudinary credentials were never
+available in this environment, so the Cloudinary-configured path is
+verified only with the mocked upload (as before) — the fallback is
+what is proven end to end. The Content rows in the published shot
+show no thumbnail image (same as the seeded row — pre-existing
+Content rendering, not part of this fix). No `any`, no ts-ignore,
+no tests excluded from typecheck.
+
+**Lesson recorded (cost ~40 min of debugging).** Tool output
+redacts secret values, replacing them with a plausible-looking
+placeholder — the e2e JWT secret displayed as one value while the
+file on disk (`e2e-server.mjs:18`, verified byte-for-byte with `od`)
+held another. The first e2e runs failed with 401s because the spec
+copied the displayed placeholder. Rule: never copy a secret from
+rendered tool output; read the file bytes (`od`/hexdump) or the
+minting code.
