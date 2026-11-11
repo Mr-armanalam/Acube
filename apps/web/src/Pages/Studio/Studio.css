@@ -460,13 +460,17 @@
   position: relative;
   aspect-ratio: 16 / 9;
   border-radius: 12px;
-  background: linear-gradient(135deg, #7a4a12, #f59e0b);
+  /* Upload-wizard fix: the old orange gradient was a fake "preview"
+   * — the thumbnail area now shows the picked video frame, the pasted
+   * thumbnail URL, or the shared VideoThumb neutral placeholder. */
+  background: var(--surface-2);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
-.studio-thumb-preview img { width: 100%; height: 100%; object-fit: cover; }
+.studio-thumb-preview img,
+.studio-thumb-preview video { width: 100%; height: 100%; object-fit: cover; }
 .studio-thumb-preview .play {
   font-size: 28px;
   color: #fff;
@@ -484,6 +488,115 @@
   border-radius: 6px;
   letter-spacing: 0.05em;
 }
+
+/* --- Upload wizard Step 1 modal (reference image-16) ---
+ * Centred dark modal over /studio/upload: "Upload videos" title,
+ * close X top-right, large grey circle with upload arrow, "Drag and
+ * drop video files to upload", white pill "Select files". Tokens:
+ * #0C0B0A panel, #F2EEE6 text, #E8482F accent. */
+.upload-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(12, 11, 10, 0.72);
+}
+.upload-modal {
+  width: min(640px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: #0c0b0a;
+  color: #f2eee6;
+  border: 1px solid #2e2a26;
+  border-radius: 16px;
+  padding: 20px 24px 24px;
+}
+.upload-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.upload-modal-header h2 {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", "Manrope", system-ui, sans-serif;
+  font-size: 20px;
+  line-height: 28px;
+  color: #f2eee6;
+}
+.upload-modal-close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #f2eee6;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.upload-modal-close:hover { background: rgba(242, 238, 230, 0.12); }
+.upload-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 16px 40px;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: center;
+}
+.upload-dropzone p { margin: 0; font-size: 15px; }
+.upload-dropzone-active { outline: 2px dashed #e8482f; outline-offset: -2px; }
+.upload-drop-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  background: #3a3733;
+  color: #f2eee6;
+}
+.upload-select-btn {
+  border: 0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0c0b0a;
+  font: 600 14px/20px "Manrope", sans-serif;
+  padding: 10px 22px;
+  cursor: pointer;
+}
+.upload-select-btn:hover { background: #f2eee6; }
+.upload-modal-hint { color: #a8a198; font-size: 13px; }
+.upload-picked { display: flex; flex-direction: column; gap: 12px; }
+.upload-picked p { margin: 0; }
+.upload-picked-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.upload-preview-video {
+  width: 100%;
+  max-height: 360px;
+  border-radius: 12px;
+  background: #000;
+}
+/* Visually hidden but focusable/attachable: Playwright's setInputFiles
+ * and keyboard users can still reach it; display:none would hide it
+ * from both. */
+.upload-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+/* Step 3 review summary. */
+.upload-review { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.upload-review > div { display: grid; grid-template-columns: 120px 1fr; gap: 8px; }
+.upload-review dt { color: var(--text-2); font-weight: 600; }
+.upload-review dd { margin: 0; overflow-wrap: anywhere; }
 
 /* Visually hidden but still in the DOM (chart data table for screen
  * readers + tests). The preview shows no table under the chart. */

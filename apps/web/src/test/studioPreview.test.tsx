@@ -280,7 +280,10 @@ describe("Preview — Upload (image 12)", () => {
   it("rejects a file over 10 MB on step 1", async () => {
     const user = userEvent.setup();
     renderRoutes("/studio/upload", testSession);
-    const big = new File([new ArrayBuffer(10_000_001)], "big.mp4", {
+    // Upload-wizard fix: the client limit is the server's 10 MiB
+    // (10,485,760 bytes), not the old round 10,000,000 — the oversize
+    // probe must be over the real limit.
+    const big = new File([new ArrayBuffer(10 * 1024 * 1024 + 1)], "big.mp4", {
       type: "video/mp4",
     });
     await user.upload(screen.getByLabelText("Choose video file"), big);

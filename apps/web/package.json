@@ -50,7 +50,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "eslint .",
     "test:e2e": "VITE_BACKEND_URL=http://localhost:5000 VITE_CLIENT_ID=e2e-test.apps.googleusercontent.com VITE_ENCRYPTED_KEY=e2e-test-key vite build && playwright test",
-    "test:e2e:phase5": "VITE_BACKEND_URL=http://localhost:5000 VITE_CLIENT_ID=e2e-test.apps.googleusercontent.com VITE_ENCRYPTED_KEY=e2e-test-key vite build && playwright test -c playwright.phase5.config.ts"
+    "test:e2e:phase5": "VITE_BACKEND_URL=http://localhost:5000 VITE_CLIENT_ID=e2e-test.apps.googleusercontent.com VITE_ENCRYPTED_KEY=e2e-test-key vite build && playwright test -c playwright.phase5.config.ts",
+    "test:e2e:phase5:cloudinary": "VITE_BACKEND_URL=http://localhost:5000 VITE_CLIENT_ID=e2e-test.apps.googleusercontent.com VITE_ENCRYPTED_KEY=e2e-test-key vite build && TMPDIR=$HOME/workspace/.tmp-mongo playwright test -c playwright.phase5-cloudinary.config.ts"
   },
   "type": "module",
   "version": "0.1.0"

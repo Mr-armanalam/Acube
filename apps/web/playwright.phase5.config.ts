@@ -11,6 +11,12 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e-phase5",
+  // upload-wizard-cloudinary.spec.ts needs its own config
+  // (playwright.phase5-cloudinary.config.ts): that server sets
+  // CLOUDINARY_* and redirects the SDK to a mock. Under this config
+  // the API has no Cloudinary credentials, so that spec's Cloudinary
+  // assertions would fail on the (correct) local fallback.
+  testIgnore: "upload-wizard-cloudinary.spec.ts",
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,

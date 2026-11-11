@@ -1,4 +1,4 @@
-import { uploadOnCloudinary } from "../cloudinary.js";
+import { uploadOnCloudinary, isCloudinaryConfigured } from "../cloudinary.js";
 import videofile from "../Models/videofile.js";
 import User from "../Models/Auth.js";
 import Likedvideo from "../Models/likevideo.js";
@@ -14,8 +14,15 @@ import { invalidateChannelCache } from "../utils/studioCache.js";
 //    (a body value could impersonate another channel);
 //  * the stored filename is multer's sanitised name (see
 //    Helper/filehelper.js), never the raw originalname;
-//  * the filepath is Cloudinary's secure_url, and duration/thumbnail are
-//    stored when Cloudinary returns them.
+//  * the filepath is Cloudinary's secure_url when Cloudinary is
+//    configured; otherwise the file is stored locally under uploads/
+//    and served at /uploads/<filename> (see the local-fallback block
+//    below) — duration/thumbnail are stored when Cloudinary returns
+//    them, and left null when it does not (never invented).
+//  * the channel owner is ALWAYS req.userid — a client-supplied
+//    `chanel` is ignored, so a request can never file a video under
+//    someone else's channel (owner checks elsewhere compare
+//    videochanel === req.userid).
 export const uploadvideo = async (req, res) => {
   if (req.file === undefined) {
     res.status(404).json({ message: "plz upload a mp.4 video file only" });
@@ -36,24 +43,51 @@ export const uploadvideo = async (req, res) => {
       }
       //  console.log(req.file);
       const videoLocalPath = req.file?.path;
-      const video = await uploadOnCloudinary(videoLocalPath);
-      //console.log(video);
-      if (!video) {
-        res
-          .status(400)
-          .json({ message: "Failed to upload video to cloudinary" });
-        return;
+      // Upload-wizard fix (400 root cause): uploadOnCloudinary returns
+      // null when Cloudinary is not configured (the SDK throws "Must
+      // supply api_key"), and the old code turned that into a 400 for
+      // every upload — including perfectly valid ones. The upload must
+      // succeed WITHOUT Cloudinary credentials configured, so when no
+      // credentials are present the multer file is kept on disk under
+      // uploads/ and served by the existing /uploads static route
+      // (app.js). This is an explicit, logged fallback, never silent:
+      // it warns on every fallback upload, and the stored filepath is
+      // a local /uploads/... URL (not a Cloudinary URL), so the two
+      // modes are distinguishable in the DB. When Cloudinary IS
+      // configured the original path below runs unchanged.
+      let filepath;
+      let duration = null;
+      let thumbnail = null;
+      if (isCloudinaryConfigured()) {
+        const video = await uploadOnCloudinary(videoLocalPath);
+        //console.log(video);
+        if (!video) {
+          res
+            .status(400)
+            .json({ message: "Failed to upload video to cloudinary" });
+          return;
+        }
+        filepath = video.secure_url ?? video.url;
+        duration = video.duration ?? null;
+        thumbnail = video.thumbnail_url ?? null;
+      } else {
+        console.warn(
+          "[upload] Cloudinary is not configured — storing video locally " +
+            "under uploads/ (set CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET " +
+            "to use Cloudinary instead).",
+        );
+        filepath = `/uploads/${req.file.filename}`;
       }
       const file = new videofile({
         videotitle: req.body.title,
         filename: req.file.filename,
-        filepath: video.secure_url ?? video.url,
+        filepath,
         filetype: req.file.mimetype,
         filesize: req.file.size,
-        videochanel: req.body.chanel,
+        videochanel: req.userid,
         uploader: uploader.username ?? uploader.name ?? uploader.email,
-        duration: video.duration ?? null,
-        thumbnail: video.thumbnail_url ?? null,
+        duration,
+        thumbnail,
         // Phase 5 fix: persist the wizard's details on the created
         // video. These arrive validated by uploadVideoBodySchema
         // (validateBody runs before this controller); before this fix
@@ -65,12 +99,12 @@ export const uploadvideo = async (req, res) => {
         tags: req.body.tags ?? [],
         visibility: req.body.visibility ?? "public",
         thumbnailUrl: req.body.thumbnailUrl ?? null,
-        durationSec: video.duration ?? null,
+        durationSec: duration,
       });
       // console.log(file)
       await file.save();
       // Phase 5: a new upload changes the creator's Studio totals.
-      invalidateChannelCache(String(req.body.chanel));
+      invalidateChannelCache(String(req.userid));
       // Phase 5 fix: return the created video id (JSON, not bare text)
       // so the upload wizard can link to the new video and PATCH it.
       res.status(200).json({

@@ -1,6 +1,16 @@
 // Express app factory (no listen / no DB connect here — see index.js).
 // Split out of index.js so Supertest can import the app without starting
 // a server or opening a database connection.
+//
+// dotenv MUST load as the first import (not the dotenv.config() call
+// further down): ES imports are hoisted, so the route imports below
+// (Routes/video.js → Controllers/video.js → cloudinary.js) are evaluated
+// BEFORE any body statement runs. Loading dotenv here means .env is
+// read before any imported module's body executes. This is defence in
+// depth only — cloudinary.js configures the SDK lazily at upload time
+// and must stand on its own, because tests import app.js directly and
+// dotenv may legitimately be absent there.
+import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -8,6 +18,7 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "path";
+import { fileURLToPath } from "node:url";
 import videoroutes from "./Routes/video.js";
 import watchroutes from "./Routes/watch.js";
 import studioroutes from "./Routes/studio.js";
@@ -67,7 +78,16 @@ app.post(
 );
 app.use(express.json({ limit: "30mb" }));
 app.use(express.urlencoded({ limit: "30mb", extended: true }));
-app.use("/uploads", express.static(path.join("uploads")));
+// Upload-wizard fix: serve uploads from apps/api/uploads resolved
+// against this file, never against process.cwd() — the e2e server runs
+// from apps/web under Playwright, where a relative "uploads" points
+// at a directory that does not exist (see Helper/filehelper.js).
+app.use(
+  "/uploads",
+  express.static(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "uploads"),
+  ),
+);
 app.use(express.static("public"));
 
 app.get("/", (req, res) => {
