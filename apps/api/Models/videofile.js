@@ -80,6 +80,19 @@ const videofileschema=new mongoose.Schema(
             type:String,
             default:null,
         },
+        // Auto-thumbnails: the three candidate frame URLs (5% / 50% /
+        // 90% of the duration, in that order) — Cloudinary eager
+        // stills on the Cloudinary path, /uploads/<videoId>-thumb-<n>
+        // .jpg files on the local fallback path. thumbnailUrl is the
+        // CHOSEN frame: an uploaded thumbnail file wins, then a pasted
+        // thumbnailUrl, then the middle candidate (index 1), then the
+        // legacy Cloudinary thumbnail_url, else null. Empty when no
+        // frames could be generated (never invented, never fatal to
+        // the upload — see Controllers/video.js).
+        autoThumbnails:{
+            type:[String],
+            default:[],
+        },
         durationSec:{
             type:Number,
             default:null,

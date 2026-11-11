@@ -5,6 +5,7 @@ allowBuilds:
   core-js: true
   core-js-pure: true
   esbuild: true
+  ffmpeg-static: true
   mongodb-memory-server: true
   msw: true
 minimumReleaseAgeExclude:
@@ -18,6 +19,9 @@ minimumReleaseAgeExclude:
 # - mongodb-memory-server: postinstall downloads the mongod binary used by
 #   the API test suite (apps/api/tests). Without it, tests must download
 #   the binary on first run instead.
+# - ffmpeg-static: postinstall downloads the platform ffmpeg binary used
+#   by the API's local thumbnail extraction (apps/api/Helper/thumbnails.js).
+#   ffprobe-static needs no postinstall — its binaries ship in the package.
 
 # Workspace-wide TypeScript pin (kept after the CRA removal in Phase 2a:
 # nothing here needs TS 7, and the pin keeps every workspace on one

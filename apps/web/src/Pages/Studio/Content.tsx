@@ -25,6 +25,7 @@ import {
   useStudioVideos,
   useUpdateVideo,
 } from "../../query/hooks";
+import { isValidThumbnailUrl } from "../../utils/uploadLimits";
 import type { Video, VideoVisibility } from "../../types";
 
 const VISIBILITIES: VideoVisibility[] = [
@@ -75,6 +76,9 @@ export default function Content() {
   const [editDescription, setEditDescription] = useState("");
   const [editTags, setEditTags] = useState("");
   const [editThumbnailUrl, setEditThumbnailUrl] = useState("");
+  const [editThumbnailError, setEditThumbnailError] = useState<string | null>(
+    null,
+  );
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
@@ -202,6 +206,18 @@ export default function Content() {
   };
   const saveEdit = () => {
     if (!editing || !editTitle.trim()) return;
+    // Same URL rule as the upload wizard: an invalid URL is an inline
+    // error, never a request (the server's strict update schema would
+    // 400 it). A thumbnail FILE upload is not offered here yet — PATCH
+    // /video/:id is JSON-only, so a file part needs a backend change
+    // first (follow-up, not a half-wired input).
+    if (!isValidThumbnailUrl(editThumbnailUrl)) {
+      setEditThumbnailError(
+        "Enter a valid thumbnail URL starting with https://",
+      );
+      return;
+    }
+    setEditThumbnailError(null);
     updateMutation.mutate({
       id: editing._id,
       title: editTitle.trim(),
@@ -684,9 +700,17 @@ export default function Content() {
                   aria-label="Thumbnail URL"
                   placeholder="Thumbnail URL"
                   value={editThumbnailUrl}
-                  onChange={(e) => setEditThumbnailUrl(e.target.value)}
+                  onChange={(e) => {
+                    setEditThumbnailUrl(e.target.value);
+                    setEditThumbnailError(null);
+                  }}
                 />
               </label>
+              {editThumbnailError ? (
+                <p role="alert" style={{ color: "var(--danger)", margin: 0 }}>
+                  {editThumbnailError}
+                </p>
+              ) : null}
               <div className="studio-modal-actions">
                 <button
                   type="button"

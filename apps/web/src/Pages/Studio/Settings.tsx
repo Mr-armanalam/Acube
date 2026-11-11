@@ -37,6 +37,7 @@ import {
 } from "../../query/hooks";
 import { extractApiErrorMessage } from "../../utils/apiError";
 import { resolveApiMediaUrl } from "../../Api";
+import { validateImageFile } from "../../utils/thumbnail";
 import type { StudioChannelLink, VideoVisibility } from "../../types";
 
 const COUNTRIES = ["India", "United States", "United Kingdom", "Canada", "Australia", "Other"];
@@ -45,8 +46,6 @@ const LANGUAGES = ["English", "Hindi", "Spanish", "French", "German", "Other"];
 /** Live handle check debounce — one request per pause in typing, not
  * one per keystroke. */
 const HANDLE_DEBOUNCE_MS = 450;
-/** Banner/avatar upload limit (server contract): 5 MB, jpg/png only. */
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const BANNER_GRADIENT =
   "linear-gradient(100deg, #2b3a55 0%, #7a3b3b 35%, #e8482f 65%, #f59e0b 100%)";
@@ -104,22 +103,8 @@ function validateHandleFormat(handle: string): string | null {
   return null;
 }
 
-// Client-side file gate (same limits as the server): jpg/png, ≤ 5 MB.
-// Rejects before any upload is attempted, with an inline error.
-function validateImageFile(file: File): string | null {
-  if (file.type) {
-    if (file.type !== "image/jpeg" && file.type !== "image/png") {
-      return "Choose a JPG or PNG image.";
-    }
-  } else if (!/\.(jpe?g|png)$/i.test(file.name)) {
-    return "Choose a JPG or PNG image.";
-  }
-  if (file.size > MAX_IMAGE_BYTES) {
-    return "Image must be 5 MB or smaller.";
-  }
-  return null;
-}
-
+// Client-side file gate lives in utils/thumbnail.ts (shared with the
+// upload wizard's thumbnail picker): jpg/png, ≤ 5 MB.
 function capitalizeVisibility(v: VideoVisibility): string {
   return v.charAt(0).toUpperCase() + v.slice(1);
 }

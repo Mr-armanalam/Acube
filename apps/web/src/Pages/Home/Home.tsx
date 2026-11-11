@@ -60,6 +60,9 @@ const Home = () => {
     isFetchingNextPage,
   } = usePagedVideos();
   const [topic, setTopic] = useState("All");
+  // Hover preview: the id of the ONE card currently previewing, or
+  // null. Owned here so a new card starting pauses the previous one.
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const vids = useMemo(() => dedupeVideos(data?.pages ?? []), [data]);
 
@@ -157,7 +160,15 @@ const Home = () => {
           <>
             <div className="home-video-grid">
               {filtered?.map((vi) => (
-                <HomeVideoCard key={vi._id} vid={vi} />
+                <HomeVideoCard
+                  key={vi._id}
+                  vid={vi}
+                  previewActive={previewId === vi._id}
+                  onPreviewRequest={setPreviewId}
+                  onPreviewEnd={(id) =>
+                    setPreviewId((current) => (current === id ? null : current))
+                  }
+                />
               ))}
             </div>
             <div

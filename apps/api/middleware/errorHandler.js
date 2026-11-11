@@ -20,12 +20,16 @@ export const errorHandler = (err, req, res, next) => {
     // actually applied to this route.
     const isImageUpload =
       req.path === "/studio/banner" || req.path === "/studio/avatar";
+    // Auto-thumbnails: the upload endpoint's optional "thumbnail"
+    // part caps at 5 MB (the video "file" part caps at 10 MB).
+    // Multer reports the offending field name on LIMIT_FILE_SIZE.
+    const isThumbnailUpload = err.field === "thumbnail";
     return res.status(400).json({
       error: {
         code: "VALIDATION_ERROR",
         message:
           err.code === "LIMIT_FILE_SIZE"
-            ? isImageUpload
+            ? isImageUpload || isThumbnailUpload
               ? "File must be less than 5 MB"
               : "File must be less than 10 MB"
             : err.message || "Upload failed",

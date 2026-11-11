@@ -12,7 +12,7 @@ import {
 import { historycontroller, deletehistory, deletehistoryitem, getallhistorycontroller, updateHistoryProgress } from "../Controllers/History.js";
 import { watchlatercontroller, getallwatchlatervontroller, deletewatchlater } from "../Controllers/watchlater.js";
 import { likedvideocontroller, getalllikedvideo, deletelikedvideo } from "../Controllers/likedvideo.js";
-import upload from "../Helper/filehelper.js";
+import { uploadVideoWithThumbnail } from "../Helper/filehelper.js";
 import auth, { optionalAuth } from "../middleware/auth.js";
 import { validateBody, validateParams, validateQuery } from "../middleware/validate.js";
 import {
@@ -32,7 +32,12 @@ const routes = express.Router();
 
 // Multer runs before body validation: the file filter decides whether a
 // file was accepted, and the body schema then validates title/chanel.
-routes.post("/uploadvideo", auth, upload.single("file"), validateBody(uploadVideoBodySchema), uploadvideo);
+// Auto-thumbnails: the upload accepts an optional second file part,
+// "thumbnail" (JPG/PNG, 5 MB), alongside the video "file" part —
+// upload.fields(), not upload.single("file"), because .single() rejects
+// a second file part with LIMIT_UNEXPECTED_FILE. Existing single-file
+// clients are unaffected (the thumbnail part is optional).
+routes.post("/uploadvideo", auth, uploadVideoWithThumbnail, validateBody(uploadVideoBodySchema), uploadvideo);
 
 routes.get("/getvideos", validateQuery(paginationQuerySchema), getallvideos);
 routes.patch(
