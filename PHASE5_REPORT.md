@@ -2422,3 +2422,94 @@ full-suite failures, each verified).**
    updating to the no-count behaviour (the newer
    `watch-details-comments.spec.ts` test 3 already asserts the empty
    dislike text). Left untouched here — outside this branch's scope.
+
+#### 8.9.20 Vercel SPA fallback + search empty state (12 Nov 2026, branch `feat/acube-vercel-spa-fallback`, base `main` @ `000babc` — PR #13 merged)
+
+Two fixes for the live deployment. Work on `feat/acube-vercel-spa-fallback`; no merge, no push, no PR created by this worker.
+
+**1. Vercel SPA fallback — new repo-root `vercel.json`.**
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+```
+
+One file, one location (repo root only — NOT duplicated into `apps/web`). A single catch-all rewrite: Vercel serves real files in the output dir before applying rewrites, so static assets are not shadowed. This is what makes direct loads / refreshes of client-side routes (`/watch/:id`, `/search/:query`) serve the SPA instead of Vercel 404 `NOT_FOUND`.
+
+**Placement assumption (unverified — see open verification below).** The repo cannot prove the Vercel dashboard's Root Directory setting: DEPLOYMENT.md §3 recommends `apps/web` but marks it "to confirm", and no `vercel.json` existed anywhere in the repo before this change. This PR therefore places `vercel.json` at the **repo root** on the assumption that the Vercel project's Root Directory is the repo root (or unset). If the dashboard's Root Directory is `apps/web`, Vercel will not read a repo-root `vercel.json` and the fallback will silently not apply — the file would need to move to `apps/web/vercel.json` instead. DEPLOYMENT.md was deliberately NOT touched (PR #12 touches it — avoids the merge conflict); the placement note lives here and in the PR body.
+
+**2. Search empty state — `apps/web/src/Pages/Search/Search.tsx`.**
+
+Before: a loaded, non-error search with zero matches rendered the empty `Showvideogrid` — a blank page with no message (in-app search with zero matches rendered blank; the old test only asserted the empty grid container existed). After: the loaded, non-error, zero-match case renders an honest empty state in `Search.tsx` (it owns the `:Searchquery` route param — capital S, case-sensitive — not the query-blind shared `Showvideogrid`): `No results for "<query>"` using the real route param (falls back to plain `No results` if the param is somehow absent). No fake suggestions, no invented results. Styled exactly like the existing error paragraph in the same file (muted `var(--forground_text)`, `1rem` padding) — no new design language. Loading / error / results rendering untouched.
+
+**Tests.**
+
+- `apps/web/src/test/vercelSpaFallback.test.ts` (new, 1 test): reads the repo-root `vercel.json` (same `readFileSync` + `process.cwd()` candidate-path trick as `watchDetails.test.tsx` / `watchComments.test.tsx` — no config-file test convention existed before this) and asserts the parsed JSON equals `{ rewrites: [{ source: "/(.*)", destination: "/index.html" }] }`. No new test framework invented — plain Vitest, already in the repo.
+- `apps/web/src/test/search.test.tsx`: the unknown-query test now asserts the empty-state message appears with the real query text (`No results for "zzz-no-match"`). The three video-absence assertions are unchanged and still pass. The old `waitFor` on the empty grid container (`.Container_ShowVideoGrid2`) was replaced by waiting for the empty-state message — deliberately: the zero-match branch no longer renders the grid at all, so the container no longer exists in that case. The now-unused `waitFor` import was removed. Prettier also reflowed two pre-existing over-long lines in the same file (already non-conformant at HEAD).
+
+**Verification (fresh, uncached, real exit codes).**
+
+| Check | Command | Result |
+|---|---|---|
+| Typecheck (forced) | `pnpm typecheck --force` | exit 0, 3 tasks |
+| Test (turbo, forced) | `pnpm test --force` | exit 0 — **API 328/328 (23 files) + web 298/298 (32 files) = 626** (web was 297/297 in §8.9.19; +1 is the new `vercelSpaFallback.test.ts`; `search.test.tsx` still 3/3) |
+| Lint (forced) | `pnpm lint --force` | exit 0, **0 errors, 7 warnings** (all pre-existing, same files as §8.9.19; none in the touched files) |
+| Build (forced) | `pnpm build --force` | exit 0 (same "no output files" note for `@acube/api#build` as §8.9.19) |
+| Prettier | `prettier --check` on the 4 changed files | clean |
+| Built dist | `apps/web/dist/` left in place for the verifier | `dist/index.html` present; the built Search chunk contains `No results for` |
+
+No `any`, no `ts-ignore`, no excluded tests in the diff. No API code, env, or Vercel dashboard settings touched. No Playwright run by this worker, no screenshots taken — both are the verifier's job.
+
+**Open verification — for Arman / the verifier (NOT proven by this branch).**
+
+1. **Confirm the Vercel dashboard Root Directory** before relying on this fix: if it is `apps/web`, move `vercel.json` to `apps/web/vercel.json` (or change the dashboard setting to the repo root). If it is the repo root (or unset), this PR as-is is correct.
+2. **Live check only after merge + Vercel redeploy:** direct-load / refresh `https://accube.vercel.app/watch/<id>` and `/search/<query>` (deep links) must return the app, not Vercel 404 `NOT_FOUND`; in-app search with zero matches must show `No results for "<query>"`.
+3. **Static-server direct-load proof (separate verifier worker):** built dist left at `apps/web/dist/` (`dist/index.html` present). Direct loads of `/watch/*` and `/search/*` against the built dist must render the SPA.
+
+**Verifier results (12 Nov 2026, ~14:20 IST — independent re-run, nothing taken on trust).**
+
+**1. Vercel docs verdict — PASS.** Vercel's own "Vite on Vercel" guide ("Using Vite to make SPAs", canonical `vercel.com/docs/frameworks/frontend/vite`, read 12 Nov 2026) prescribes exactly this file:
+
+> "If your Vite app is configured to deploy as a Single Page Application (SPA), deep linking won't work out of the box. To enable deep linking in SPA Vite apps, create a `vercel.json` file at the root of your project, and add the following code:" — followed by `{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }` (with the `$schema` line, which this PR omits — harmless, the schema is only IDE validation).
+
+Vercel's rewrites doc (`vercel.com/docs/routing/rewrites`) confirms the shape independently: "Rewrites are defined in a `vercel.json` file in your project's root directory" as a `rewrites` array of `{ source, destination }` objects, "A rewrite routes a request to a different destination without changing the URL in the browser", and regex sources with capture groups are supported. On the filesystem-first point, Vercel's own docs do not state it in one sentence on those pages — the implementer's claim rests on the standard Vercel request pipeline (static file served if it exists, rewrites evaluated after), which the local static-server proof below mirrors exactly (real file wins, everything else → `index.html`). One nuance the docs add: if `cleanUrls` were ever set to `true`, the destination should be `/` not `/index.html` — `cleanUrls` is not set anywhere in this repo, so `/index.html` is correct as-is. The Root Directory caveat from the implementer's note stands: the docs place `vercel.json` in "your project's root directory" — if the dashboard Root Directory is `apps/web`, this repo-root file will not be read.
+
+**2. Static-server direct-load proof — PASS, 6/6.** New spec `apps/web/e2e-phase5/spa-fallback.spec.ts` (no `any`, no `ts-ignore`, Prettier clean). The server under test is a ~50-line `node:http` static server started by the spec itself (no framework, no `vite preview`, no downloaded tooling): real file in `apps/web/dist/` served as-is, any other path serves `dist/index.html` with HTTP 200 — the same filesystem-first-then-rewrite rule as the `vercel.json`. It listens on `:5173` because the API's CORS allowlist (`apps/api/app.js`) permits `http://localhost:5173` alongside the `:4173` preview origin; the API comes from the existing Phase 5 harness (`playwright.phase5.config.ts`, `PHASE5_SEED=1`, seeded video 201). Run with `pnpm exec playwright test -c playwright.phase5.config.ts e2e-phase5/spa-fallback.spec.ts` — exit 0, **6 passed (14.4s)**:
+
+| # | Test | Result |
+|---|---|---|
+| 1 | HTTP: `GET /watch/:id` and `GET /search/React` return 200 with the SPA shell (`<div id="root">`, no 404); `GET /manifest.json` still served as JSON, not rewritten | pass |
+| 2 | Direct load `/watch/507f1f77bcf86cd799430201` renders the watch page — title heading "Getting Started with React Hooks" visible, `<video>` attached, no "Could not load this video", no "Video not found." | pass |
+| 3 | Direct load `/search/React` renders results (video card title visible, no empty-state text) | pass |
+| 4 | In-app search (TopBar form → client-side navigation) for `zzz-no-match` lands on `/search/zzz-no-match` and shows `No results for "zzz-no-match"` | pass |
+| 5 | Mobile (390×844) direct load `/watch/:id` renders the watch page | pass |
+| 6 | Mobile (390×844) direct load `/search/zzz-no-match` shows the empty state | pass |
+
+Screenshots (viewed by the verifier, all at the requested sizes): `docs/screenshots/phase5-spa-fallback-watch-direct-desktop.png` (1280×850), `phase5-spa-fallback-search-empty-desktop.png` (1280×850), `phase5-spa-fallback-watch-direct-mobile.png` (390×844), `phase5-spa-fallback-search-empty-mobile.png` (390×844). Note on the watch screenshots: the player area shows "This video couldn't be played" + Retry — that is the expected media error for the seeded demo video, whose source is a dead `https://example.com/*.mp4` URL (the spec header documents this; the watch-page spec's test 8 expects the same poster + error state). It is NOT the "Could not load this video" API-fetch error, which is absent. Real playback is not proven by this seed, before or after this PR.
+
+**Dist rebuild note (material).** The `dist/` left by the implementer had `VITE_BACKEND_URL` unset at build time (`baseURL:void 0` in the bundle), so it could not reach any API — API calls would go relative to the web origin and fail. The static-server proof therefore rebuilt `dist` first with the exact env the repo's own e2e script uses (`VITE_BACKEND_URL=http://localhost:5000 VITE_CLIENT_ID=e2e-test.apps.googleusercontent.com VITE_ENCRYPTED_KEY=e2e-test-key pnpm exec vite build`, 13.1s, bundle then contains `localhost:5000`). That rebuild is documented in the spec header. The verifier's final `pnpm build --force` below rebuilt `dist` again WITHOUT env vars, so the worktree is left exactly as the implementer left it (plain build, `baseURL:void 0`) — anyone re-running the SPA spec must rebuild with the e2e env first.
+
+**Regression specs (same config, same seeded API).** `watch-page.spec.ts`: **8 passed, 1 failed (both runs, exit 1)** — test 2 "like then dislike toggles with real counts" fails at the dislike-count assertion (expected 1, got 0). This is NOT a regression from this PR: it is the known stale test documented in §8.9.19 point 3 (commit `ae40925` removed the dislike-count `<span>` from `NestedComments.tsx` without updating the test; it "fails alone too" on main). No lingering API server explained it (no `e2e-server`/`mongod` process and no `:5000` listener after the runs). `watch-details-comments.spec.ts`: **11/11 passed (exit 0)** — the newer spec that asserts the current no-count dislike behaviour. No search-specific e2e spec exists in the repo (only `URLSearchParams` mentions in `home-pagination.spec.ts`), so search regression coverage is the new spec + the `search.test.tsx` unit tests. The `watch-details-comments` run also wrote 3 screenshots (`phase5-watch-details-comments-{desktop,full-desktop,mobile}.png`) into `docs/screenshots/` — side effect of that existing spec, left in place, not part of this PR.
+
+**3. Independent re-run (uncached, unpiped, real exit codes).**
+
+| Check | Command | Result |
+|---|---|---|
+| Typecheck (forced) | `pnpm typecheck --force` | exit 0, 3 tasks |
+| Test (turbo, forced) | `pnpm test --force` | exit 0 — **API 328/328 (23 files) + web 298/298 (32 files) = 626**, confirming the implementer's counts exactly (web +1 vs §8.9.19 is the new `vercelSpaFallback.test.ts`) |
+| Lint (forced) | `pnpm lint --force` | exit 0, **0 errors, 7 warnings** — all pre-existing, none in the touched files: ChatSearch, SidebarAllGroups, LibraryHub, RoomContext, ThemeProvider, authSlice (7 warnings also in §8.9.18/§8.9.19; LibraryHub last touched in `602d1e2`, not this branch) |
+| Build (forced) | `pnpm build --force` | exit 0, 3 successful, 0 cached, same "no output files" note for `@acube/api#build` as §8.9.19 |
+| Prettier | `prettier --check` on the new spec + the 4 implementer files | clean |
+| Diff hygiene | `git diff HEAD~1` | no `any`, no `ts-ignore` in code (only the words in the report prose) |
+
+**Cleanup note.** No `mongo-mem-*` dirs appeared in `/tmp` (runs used `TMPDIR=$HOME/workspace/.tmp-mongo`); 5 dirs × ~202 MB sit in `~/workspace/.tmp-mongo/`, all under 1 hour old at check time, so none was cleaned per the >1h rule — they will be picked up by the e2e server's stale-cleanup on the next run.
+
+**Still unproven — needs Arman / post-merge (NOT fixed by this verification).**
+1. **Vercel dashboard Root Directory** — still unverified (implementer's open item 1 stands): if it is `apps/web`, move `vercel.json` to `apps/web/vercel.json`.
+2. **Live Vercel behaviour** — only provable after merge + redeploy: direct-load `https://accube.vercel.app/watch/<id>` and `/search/<query>` must return the app, not Vercel 404 `NOT_FOUND`; zero-match in-app search must show `No results for "<query>"`. The static-server proof validates the rule and the built app, not Vercel's reading of the file.
