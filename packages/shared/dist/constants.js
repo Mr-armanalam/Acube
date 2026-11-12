@@ -9,12 +9,20 @@ export const OTP_LENGTH = 6;
 export const SUPPORTED_VIDEO_MIMETYPES = ["video/mp4"];
 // Phase 3b: server-side premium price catalogue. The premium price lives
 // HERE (overridable by the PREMIUM_PRICE_INR env var) — never in a client
-// request. Any client-supplied amount is ignored. Arman must confirm the
-// price: the default 1000 INR matches what the old client sent before
-// Phase 3b removed the client amount entirely.
-export const PREMIUM_PRICE_INR = 1000;
+// request. Any client-supplied amount is ignored. Price confirmed by
+// Arman 12 Nov 2026: ₹15 (was ₹1000 before the premium-pricing change).
+export const PREMIUM_PRICE_INR = 15;
 export const PREMIUM_CURRENCY = "INR";
 export const PREMIUM_PRODUCT_NAME = "Acube Premium";
+// Premium-pricing change (12 Nov 2026, Arman decided): premium is FREE
+// for everyone for one year, until the end of 2027-11-12 (UTC). The API
+// reads the PREMIUM_FREE_UNTIL env var (a YYYY-MM-DD date) and falls
+// back to this default; see premiumFreeUntilEnd /
+// isPremiumFreeWindowActive in
+// apps/api/Controllers/downloadVideo/createPaymentRequest.js. No
+// permanent premium flag is stored for free-window users — the window
+// is evaluated at request time, so it ends automatically.
+export const PREMIUM_FREE_UNTIL_DEFAULT = "2027-11-12";
 // Phase 3b: points rule (see Controllers/Auth.js watchComplete). Points
 // are NEVER taken from the client: they are awarded server-side only when
 // a signed-in user completes watching a video that exists, at

@@ -114,7 +114,8 @@ Never commit a real `.env`. Placeholders only live in
 | `STRIPE_WEBHOOK_SECRET` | **Required for premium** | Signing secret for the webhook endpoint (§6). Without it the webhook answers 500 and premium is never granted. |
 | `FRONTEND_URL` | **Required on deploy** | Public frontend origin for the CORS allowlist, e.g. `https://accube.vercel.app` (see §6). |
 | `PORT` | Optional (default `5000`) | Hosts usually inject this themselves. |
-| `PREMIUM_PRICE_INR` | Optional (default `1000`) | Server-side price catalogue. **Arman has NOT confirmed 1000 INR is the intended price** — confirm before taking real payments. Change the price here, never in client code. |
+| `PREMIUM_PRICE_INR` | Optional (default `15`) | Server-side price catalogue. **Confirmed by Arman 12 Nov 2026: ₹15** (was ₹1000 before the premium-pricing change). Change the price here, never in client code. |
+| `PREMIUM_FREE_UNTIL` | Optional (default `2027-11-12`) | Premium is free for everyone until the end of this date (UTC). A `YYYY-MM-DD` date; an invalid value falls back to the default. No premium flag is stored for free-window users — the window ends automatically at the cutoff. Paying during the window still works and grants paid premium that survives the cutoff. |
 | `CLOUDINARY_CLOUD_NAME` | Required for uploads | Cloudinary cloud name. |
 | `CLOUDINARY_API_KEY` | Required for uploads | Cloudinary API key. |
 | `CLOUDINARY_API_SECRET` | Required for uploads | Cloudinary API secret. |
@@ -338,8 +339,7 @@ but deploy with eyes open:
      push:
        branches: [main, feat/acube-professional-rebuild]
    ```
-7. **1000 INR premium price is unconfirmed** (see §5a). Confirm with
-   Arman before taking real payments.
+7. **Premium price confirmed by Arman 12 Nov 2026: ₹15, free for everyone until end of 2027-11-12 UTC** (see §5a, `PREMIUM_PRICE_INR` / `PREMIUM_FREE_UNTIL`). Both grant paths reject sessions whose paid amount differs from the catalogue price, so old ₹1000 sessions cannot grant premium.
 8. **Known non-blockers:** 9 web lint warnings in untouched legacy
    files; remaining unconverted `.jsx` files in the web app
    (`RoomContext`, `LoadingCard`, `Drawersliderbar`, `Leftsidebar`,
@@ -356,7 +356,7 @@ but deploy with eyes open:
       origins updated (§6).
 - [ ] `STRIPE_SK` + `STRIPE_WEBHOOK_SECRET` set; webhook endpoint
       created in Stripe Dashboard; test-mode Checkout verified first.
-- [ ] `PREMIUM_PRICE_INR` confirmed with Arman (default 1000).
+- [ ] `PREMIUM_PRICE_INR` confirmed with Arman (₹15, decided 12 Nov 2026); `PREMIUM_FREE_UNTIL` default 2027-11-12.
 - [ ] `FRONTEND_URL` = deployed Vercel URL; `VITE_BACKEND_URL` = deployed
       API URL.
 - [ ] `DB_URL` (Atlas), Cloudinary, Twilio, Gmail app password set.

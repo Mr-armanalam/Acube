@@ -98,7 +98,8 @@ are marked **required live** below.
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret. |
 | `STRIPE_SK` | **Required live for payments.** Stripe secret key (server-side only, `sk_test_...` / `sk_live_...`). |
 | `STRIPE_WEBHOOK_SECRET` | **Required live for premium.** Signing secret from Stripe Dashboard → Developers → Webhooks → the endpoint's "Signing secret". Without it the webhook answers 500 and premium is never granted. |
-| `PREMIUM_PRICE_INR` | Premium price in INR, default `1000`. Change the price here, never in client code. Arman must confirm 1000 INR is the intended price. |
+| `PREMIUM_PRICE_INR` | Premium price in INR, default `15` (confirmed by Arman 12 Nov 2026; was ₹1000). Change the price here, never in client code. |
+| `PREMIUM_FREE_UNTIL` | Premium is free for everyone until the end of this date (UTC), default `2027-11-12`. A `YYYY-MM-DD` date; an invalid value falls back to the default. |
 | `SECRETKEY_CRYPTO` | Shared server-side key for chat-message encryption (see Security model — this is NOT end-to-end encryption). |
 | `ACCOUNT_SID` | Twilio account SID (SMS OTP). |
 | `ACCOUNT_TOKEN` | Twilio auth token (SMS OTP). |
@@ -174,7 +175,9 @@ pnpm build && pnpm typecheck && pnpm lint   # gates, all exit 0
   `payment_status === "paid"`, idempotently (duplicate deliveries are
   acknowledged without granting twice). The client never sends an
   amount — the price comes from the server catalogue (`PREMIUM_PRICE_INR`,
-  default 1000 INR). `POST /download/handle-payment-status` is a
+  default 15 INR). Both grant paths also verify the session paid exactly
+  the catalogue price, so a session created at the old ₹1000 price cannot
+  grant premium. `POST /download/handle-payment-status` is a
   verified fallback: it asks Stripe for the named Checkout Session and
   grants premium only if Stripe reports it paid and owned by the caller.
   A forged "success" URL grants nothing.

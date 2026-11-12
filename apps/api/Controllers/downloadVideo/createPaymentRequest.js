@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import User from "../../Models/Auth.js";
 import {
   PREMIUM_CURRENCY,
+  PREMIUM_FREE_UNTIL_DEFAULT,
   PREMIUM_PRICE_INR,
   PREMIUM_PRODUCT_NAME,
 } from "@acube/shared";
@@ -28,6 +29,58 @@ export function premiumPriceInr() {
     : PREMIUM_PRICE_INR;
 }
 
+// Premium free window (Arman decided 12 Nov 2026): premium is FREE for
+// everyone for one year. The cutoff is PREMIUM_FREE_UNTIL (a YYYY-MM-DD
+// date, overridable by env) and is treated as END OF DAY UTC on that
+// date — the window is active while `now` is before 00:00:00 UTC on the
+// day AFTER the cutoff (so 2027-11-12T23:59:59Z is still free, and
+// 2027-11-13T00:00:00Z is not). End-of-day was chosen so the whole
+// announced last day counts, in every timezone, with no timezone math
+// at the call sites. An invalid env value (not a real YYYY-MM-DD date)
+// falls back to PREMIUM_FREE_UNTIL_DEFAULT — it never crashes and never
+// silently disables the window. The cutoff is read on every call, so
+// tests and deploys can change it without a restart of the module.
+function parseFreeUntilDate(raw) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(raw ?? "").trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const startOfDay = new Date(Date.UTC(year, month - 1, day));
+  if (
+    startOfDay.getUTCFullYear() !== year ||
+    startOfDay.getUTCMonth() !== month - 1 ||
+    startOfDay.getUTCDate() !== day
+  ) {
+    return null; // e.g. 2027-02-30 — not a real calendar date
+  }
+  // End of the cutoff day, UTC = start of the next day.
+  return new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+}
+
+// Exclusive end of the free window (a Date): the window is active while
+// `now < premiumFreeUntilEnd()`.
+export function premiumFreeUntilEnd() {
+  return (
+    parseFreeUntilDate(process.env.PREMIUM_FREE_UNTIL) ??
+    parseFreeUntilDate(PREMIUM_FREE_UNTIL_DEFAULT)
+  );
+}
+
+// True while the free window is active. `now` is injectable so tests
+// can pin the clock instead of depending on the real date.
+export function isPremiumFreeWindowActive(now = new Date()) {
+  return now < premiumFreeUntilEnd();
+}
+
+// Effective premium: paid premium on record, OR the free window is
+// active. This is the ONLY definition of "premium" the download gate
+// and the status endpoint use. No permanent flag is ever stored for
+// free-window users, so the window ends automatically at the cutoff.
+export function isEffectivelyPremium(user, now = new Date()) {
+  return user?.isPremium === true || isPremiumFreeWindowActive(now);
+}
+
 // Phase 3b: creating a payment request NO LONGER grants premium. The
 // old code set `isPremium: true` before the Stripe session even existed,
 // so anyone could become premium for free. Now this route only creates
@@ -44,6 +97,12 @@ export const createPaymentRequest = async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found" });
     }
+    // 409 only for PAID premium on record (user.isPremium). During the
+    // free window a user without paid premium is effectively premium
+    // but may still check out: paying now grants paid premium that
+    // survives the cutoff, so checkout stays offered while the window
+    // is active. The download gate and the status endpoint (not this
+    // route) are what apply the free window.
     if (user.isPremium) {
       return res
         .status(409)

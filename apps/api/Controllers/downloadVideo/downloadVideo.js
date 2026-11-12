@@ -1,5 +1,6 @@
 import User from '../../Models/Auth.js';
 import { FREE_DAILY_DOWNLOADS } from "@acube/shared";
+import { isPremiumFreeWindowActive } from "./createPaymentRequest.js";
 
 // Phase 3b: the daily-limit check and the counter increment are now ONE
 // atomic findOneAndUpdate — the old read-then-save let two concurrent
@@ -7,17 +8,27 @@ import { FREE_DAILY_DOWNLOADS } from "@acube/shared";
 // user is premium OR still under the free daily limit; otherwise the
 // caller gets 403. (The daily reset itself still happens on login, as
 // before — see Controllers/Auth.js login.)
+//
+// Premium-pricing change: while the premium free window is active
+// (PREMIUM_FREE_UNTIL, default end of 2027-11-12 UTC) EVERY user is
+// effectively premium, so the gate is wide open — the filter is just
+// the user id and the daily limit is not enforced. The counter still
+// increments (as it does for paid premium users); after the window
+// ends the limit applies again from the next login reset. No premium
+// flag is stored for free-window users.
 export const downloadvideo = async (req, res) => {
     const userId = req.userid;
     try {
         const updated = await User.findOneAndUpdate(
-            {
-                _id: userId,
-                $or: [
-                    { isPremium: true },
-                    { downloadsToday: { $lt: FREE_DAILY_DOWNLOADS } },
-                ],
-            },
+            isPremiumFreeWindowActive()
+                ? { _id: userId }
+                : {
+                    _id: userId,
+                    $or: [
+                        { isPremium: true },
+                        { downloadsToday: { $lt: FREE_DAILY_DOWNLOADS } },
+                    ],
+                },
             {
                 $inc: { downloadsToday: 1 },
                 $set: { lastReset: new Date() },

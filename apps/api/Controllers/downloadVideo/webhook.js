@@ -11,7 +11,7 @@
 // grants premium; every other event type is acknowledged and ignored.
 import User from "../../Models/Auth.js";
 import ProcessedWebhookEvent from "../../Models/ProcessedWebhookEvent.js";
-import { getStripe } from "./createPaymentRequest.js";
+import { getStripe, premiumPriceInr } from "./createPaymentRequest.js";
 
 export const stripeWebhook = async (req, res) => {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -42,6 +42,28 @@ export const stripeWebhook = async (req, res) => {
   const session = event.data.object;
   if (session.payment_status !== "paid") {
     return res.status(200).json({ received: true, ignored: "unpaid" });
+  }
+
+  // Amount validation (premium-pricing change): the session must have
+  // paid exactly the catalogue price (premiumPriceInr() * 100 paise).
+  // A session created at the old ₹1000 price — or any other amount —
+  // must NOT grant premium after the price changed to ₹15. A mismatch
+  // is answered 200 (Stripe retries non-2xx, and there is nothing to
+  // retry: the session amount is fixed) and the event is NOT recorded
+  // as processed, so nothing about it is treated as granted.
+  const expectedAmountPaise = premiumPriceInr() * 100;
+  if (session.amount_total !== expectedAmountPaise) {
+    console.error(
+      "Stripe webhook: session amount mismatch — expected",
+      expectedAmountPaise,
+      "paise, got",
+      session.amount_total,
+      "for session",
+      session.id,
+    );
+    return res
+      .status(200)
+      .json({ received: true, ignored: "amount-mismatch" });
   }
 
   // Record first, atomically: an upsert with $setOnInsert claims the
