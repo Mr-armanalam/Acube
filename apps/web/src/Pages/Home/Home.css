@@ -162,3 +162,15 @@
   flex: none;
   white-space: nowrap;
 }
+/* Feed reason, third line below the meta line — same 13px muted
+ * block pattern as Watch's "Because: …" line. Only rendered when the
+ * personalised feed supplied a reason; it never shifts the thumbnail,
+ * avatar, title or meta line (it is a block below them). */
+.home-video-reason {
+  margin: 0.25rem 0 0;
+  font: 400 13px/18px "Manrope", sans-serif;
+  color: var(--forground_text_700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

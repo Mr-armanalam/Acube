@@ -20,6 +20,7 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "node:url";
 import videoroutes from "./Routes/video.js";
+import feedroutes from "./Routes/feed.js";
 import watchroutes from "./Routes/watch.js";
 import studioroutes from "./Routes/studio.js";
 import userroutes from "./Routes/User.js";
@@ -125,6 +126,8 @@ app.use("/channel", channelroutes);
 // Watch page: subscription toggle + status (see Routes/subscriptions.js).
 app.use("/subscriptions", subscriptionroutes);
 app.use("/video", videoroutes);
+// Personalised feed (GET /feed — optionalAuth, cold start when anonymous).
+app.use("/feed", feedroutes);
 // Phase 5 fix: watch-page routes (GET /watch/:id/suggestions).
 app.use("/watch", watchroutes);
 // Phase 5: Creator Studio (see Routes/studio.js).

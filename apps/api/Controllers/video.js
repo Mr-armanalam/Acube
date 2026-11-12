@@ -298,7 +298,8 @@ export const uploadvideo = async (req, res) => {
 // searches over this feed, so the same filter covers search.
 // Phase 5 fix: drafts never appear here either, and soft-deleted
 // videos (deletedAt set) are excluded from every public list.
-const PUBLIC_FEED_FILTER = {
+// (Exported for the personalised feed — GET /feed ranks the same pool.)
+export const PUBLIC_FEED_FILTER = {
   $or: [{ visibility: "public" }, { visibility: { $exists: false } }],
   deletedAt: null,
 };

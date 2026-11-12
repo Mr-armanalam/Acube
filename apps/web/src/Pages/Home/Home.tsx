@@ -16,16 +16,39 @@
 // deduped by video id. Changing the tag filter resets pagination to
 // page 1 (the extra pages are dropped from the cache — page 1 is
 // already loaded, so the reset itself fires no new request).
+//
+// Feed personalization: when SIGNED IN the feed comes from GET /feed
+// (optionalAuth — the axios interceptor attaches the Bearer token
+// when a session is stored), still 20/page over the same sentinel +
+// Load more. When LOGGED OUT the feed is the unchanged getvideos
+// path. Tag chips interact differently per feed:
+//   - Signed in: the selected chip (other than "All") is sent as
+//     ?tag= to GET /feed, so the server narrows the candidate pool
+//     BEFORE ranking; the tag is part of the feed query key, so each
+//     tag has its own page-1 cache and selecting a chip fetches that
+//     tag's page 1. No client-side filtering is applied — the server
+//     already narrowed the list.
+//   - Logged out: the chip filters client-side over the loaded pages
+//     (case-insensitive exact tag match), exactly as before; the
+//     reset drops pages past 1 with no new request.
+// The reason line under each card ("Because you watched …" /
+// "Trending now" / "Newest") is rendered verbatim from the /feed
+// item's `reason.label`; logged-out items carry no reason and render
+// no third line. The client never invents a reason.
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import "./Home.css";
 import HomeVideoCard from "./HomeVideoCard";
 import LoadingCard from "../../Component/LoadingCard";
+import { useAppSelector } from "../../store";
 import {
   dedupeVideos,
   resetPagedVideosToFirstPage,
+  resetPersonalizedFeedToFirstPage,
   usePagedVideos,
+  usePersonalizedFeed,
 } from "./usePagedVideos";
+import type { FeedVideo, PagedResult } from "../../types";
 
 // Sentinel / Load-more / end-of-list styles live inline here (exact
 // preview tokens) so no shared stylesheet is touched: the active chip
@@ -51,6 +74,19 @@ const loadMoreStyle: React.CSSProperties = {
 
 const Home = () => {
   const queryClient = useQueryClient();
+  const session = useAppSelector((s) => s.auth.session);
+  const signedIn = session !== null;
+  const [topic, setTopic] = useState("All");
+  // Feed source by session. Both hooks mount unconditionally (hooks
+  // cannot be conditional) and only the matching one is enabled, so
+  // the disabled one never fires a request: signed in → GET /feed,
+  // logged out → the unchanged getvideos feed. The feed tag comes
+  // from the raw selected chip (not effectiveTopic — the feed itself
+  // is what the chip list is built from, so the tag cannot vanish
+  // from a server-narrowed feed the way it can from loaded pages).
+  const feedTag = signedIn && topic !== "All" ? topic : null;
+  const pagedQuery = usePagedVideos({ enabled: !signedIn });
+  const feedQuery = usePersonalizedFeed(feedTag, { enabled: signedIn });
   const {
     data,
     isLoading,
@@ -58,13 +94,20 @@ const Home = () => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = usePagedVideos();
-  const [topic, setTopic] = useState("All");
+  } = signedIn ? feedQuery : pagedQuery;
   // Hover preview: the id of the ONE card currently previewing, or
   // null. Owned here so a new card starting pauses the previous one.
   const [previewId, setPreviewId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const vids = useMemo(() => dedupeVideos(data?.pages ?? []), [data]);
+  // FeedVideo covers both feeds: getvideos items simply carry no
+  // `reason`, so the card renders no third line for them.
+  const vids = useMemo<FeedVideo[]>(
+    () =>
+      dedupeVideos<FeedVideo>(
+        (data?.pages ?? []) as PagedResult<FeedVideo>[],
+      ),
+    [data],
+  );
 
   // Distinct tags in first-seen order (deduped case-insensitively,
   // keeping the first-seen casing for the label), "All" first.
@@ -85,20 +128,31 @@ const Home = () => {
   // refetch), fall back to "All" instead of showing an empty grid.
   const effectiveTopic = categories.includes(topic) ? topic : "All";
 
+  // Signed in, the server already narrowed the feed by ?tag=, so no
+  // client-side filtering is applied (re-filtering could drop items
+  // the server ranked in). Logged out, the chip filters client-side
+  // over the loaded pages, exactly as before.
   const filtered = useMemo(() => {
     if (!vids) return undefined;
+    if (signedIn) return vids;
     if (effectiveTopic === "All") return vids;
     const wanted = effectiveTopic.toLowerCase();
     return vids.filter((v) =>
       (v.tags ?? []).some((t) => t.toLowerCase() === wanted),
     );
-  }, [vids, effectiveTopic]);
+  }, [vids, effectiveTopic, signedIn]);
 
-  // Tag change resets pagination to page 1 (drops any loaded pages
-  // past the first; page 1 itself is not refetched).
+  // Tag change resets pagination to page 1. Logged out: the paged
+  // reset drops pages past 1 with no new request. Signed in: the tag
+  // is part of the feed query key, so selecting a chip fetches that
+  // tag's page 1 (?tag=), and the feed reset truncates every
+  // previously-visited tag's cache to page 1 so returning to a tag
+  // restarts from page 1 instead of resuming at page 2+. Each reset
+  // is a no-op for the feed the user is not on.
   const handleTopic = (label: string) => {
     setTopic(label);
     resetPagedVideosToFirstPage(queryClient);
+    resetPersonalizedFeedToFirstPage(queryClient);
   };
 
   // Auto-load the next page when the sentinel scrolls near the
@@ -127,6 +181,12 @@ const Home = () => {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const isEmpty = !isLoading && !isError && filtered?.length === 0;
+  // Signed in, the feed is server-narrowed to the selected chip, so
+  // the empty state names that chip even when it returned zero items
+  // (and therefore vanished from the chip list). Logged out, the chip
+  // may have vanished from the loaded videos and effectiveTopic has
+  // already fallen back to "All".
+  const emptyTopic = signedIn ? topic : effectiveTopic;
 
   return (
     <div className="container_Pages_App">
@@ -152,9 +212,9 @@ const Home = () => {
           </p>
         ) : isEmpty ? (
           <p style={{ color: "var(--forground_text)", padding: "1rem" }}>
-            {effectiveTopic === "All"
+            {emptyTopic === "All"
               ? "No videos yet. Be the first to upload one!"
-              : `No videos about ${effectiveTopic} yet.`}
+              : `No videos about ${emptyTopic} yet.`}
           </p>
         ) : (
           <>

@@ -27,7 +27,7 @@ import VideoThumb, {
   deterministicThumbGradient,
 } from "../../Component/VideoThumb";
 import { resolveApiMediaUrl } from "../../Api";
-import type { Video } from "../../types";
+import type { FeedVideo } from "../../types";
 
 /** Hover dwell before a preview starts (ms). */
 export const HOVER_PREVIEW_DWELL_MS = 900;
@@ -49,7 +49,10 @@ const HomeVideoCard = ({
   onPreviewRequest,
   onPreviewEnd,
 }: {
-  vid: Video;
+  // FeedVideo (a Video plus the server-supplied reason, when the
+  // personalised feed returned one). Plain Video items — the logged-
+  // out getvideos feed — carry no reason and render no third line.
+  vid: FeedVideo;
   /** True when this card is the grid's one active preview. */
   previewActive: boolean;
   /** Card asks the grid to make it the active preview (after dwell). */
@@ -216,6 +219,16 @@ const HomeVideoCard = ({
               <span className="home-video-views">· {viewsText}</span>
             ) : null}
           </p>
+          {/* Feed reason, third line (same 13px muted block pattern as
+           * Watch's "Because: …" line): the label is rendered exactly
+           * as the server supplied it — a "Because you watched …"
+           * label, a cold-start label ("Trending now" / "Newest"), or
+           * nothing when reason is null/absent. The client never
+           * invents a reason. The line sits below the meta line so
+           * the thumbnail, avatar, title and meta line do not move. */}
+          {vid.reason?.label ? (
+            <p className="home-video-reason">{vid.reason.label}</p>
+          ) : null}
         </div>
       </div>
     </div>

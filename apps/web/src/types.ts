@@ -333,6 +333,29 @@ export interface WatchSuggestion {
   reason: SuggestionReason;
 }
 
+/** Feed personalization — GET /feed (optionalAuth; signed-in only on
+ * the Home page, logged-out users keep the getvideos feed).
+ * The server ranks the candidate pool and attaches one reason per
+ * item. `label` is the exact human string to render (e.g. "Because
+ * you watched <title>", "Trending now", "Newest") — the client never
+ * invents a reason or a history claim; `reason: null` (or absent)
+ * means render no reason line. Cold-start items carry type
+ * "trending" / "newest" (or null). `type` is the server's real
+ * vocabulary ("watched" for the Because-you-watched reason — the
+ * agreed-contract draft said "tag", the landed API says "watched";
+ * the client only renders `label`, never branches on `type`). */
+export type FeedReasonType = "watched" | "trending" | "newest";
+
+export interface FeedReason {
+  type: FeedReasonType;
+  label: string;
+}
+
+/** A feed item: a video plus the server-supplied reason, if any. */
+export interface FeedVideo extends Video {
+  reason?: FeedReason | null;
+}
+
 export interface Playlist {
   _id: string;
   owner: string;

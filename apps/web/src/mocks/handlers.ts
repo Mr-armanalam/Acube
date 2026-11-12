@@ -433,6 +433,11 @@ export function withMockCommentReaction<T extends {
 
 export const handlers = [
   http.get("*/video/getvideos", () => json(pageOf(fixtureVideos))),
+  // Feed personalization (GET /feed, agreed contract with the API
+  // worker): the default answers the fixture videos as one page with
+  // no reasons, like the logged-out feed — tests that need reasons,
+  // paging or ?tag= narrow it with server.use overrides.
+  http.get("*/feed", () => json(pageOf(fixtureVideos))),
   http.patch("*/video/like/:id", async ({ params, request }) => {
     captured.likeVideo.push({ id: String(params.id), body: await request.json() });
     return json({});

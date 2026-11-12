@@ -25,8 +25,8 @@ import {
   type InfiniteData,
   type QueryClient,
 } from "@tanstack/react-query";
-import { getvideos } from "../../Api";
-import type { PagedResult, Video } from "../../types";
+import { getPersonalizedFeed, getvideos } from "../../Api";
+import type { FeedVideo, PagedResult, Video } from "../../types";
 
 /** Videos per Home page — the server default, inside the 12–24 range. */
 export const HOME_PAGE_SIZE = 20;
@@ -38,13 +38,31 @@ export const HOME_PAGED_VIDEOS_KEY = [
   HOME_PAGE_SIZE,
 ] as const;
 
+/** Prefix for the personalised-feed keys. The selected tag is part of
+ * the key (see homeFeedKey): a different tag is a different feed and
+ * starts at page 1 with its own cache. */
+export const HOME_FEED_KEY_PREFIX = [
+  "videos",
+  "feed",
+  HOME_PAGE_SIZE,
+] as const;
+
+/** Key for one personalised feed: `tag` is the selected chip, or
+ * "all" when no chip is selected. */
+export function homeFeedKey(tag: string | null): readonly unknown[] {
+  return [...HOME_FEED_KEY_PREFIX, tag ?? "all"] as const;
+}
+
 // The list endpoint answers the paged shape; older / stubbed responses
 // may still be a bare array (the MSW tagless-video override in
 // home.test.tsx answers one). Accept both so a bare array behaves as
 // a single page instead of crashing the feed.
-function normalizePage(data: unknown, page: number): PagedResult<Video> {
+function normalizePage<T extends Video>(
+  data: unknown,
+  page: number,
+): PagedResult<T> {
   if (Array.isArray(data)) {
-    const items = data as Video[];
+    const items = data as T[];
     return {
       items,
       page,
@@ -53,28 +71,65 @@ function normalizePage(data: unknown, page: number): PagedResult<Video> {
       totalPages: 1,
     };
   }
-  return data as PagedResult<Video>;
+  return data as PagedResult<T>;
 }
 
-export function usePagedVideos() {
+export function usePagedVideos(options: { enabled?: boolean } = {}) {
   return useInfiniteQuery({
     queryKey: HOME_PAGED_VIDEOS_KEY,
     queryFn: async ({ pageParam }): Promise<PagedResult<Video>> => {
       const { data } = await getvideos(pageParam, HOME_PAGE_SIZE);
-      return normalizePage(data, pageParam);
+      return normalizePage<Video>(data, pageParam);
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
+    enabled: options.enabled ?? true,
+  });
+}
+
+/** Personalised Home feed (signed-in only): GET /feed, same shape and
+ * page size as the public feed, items carrying the server-supplied
+ * `reason` (or null). `tag` is the selected chip other than "All" —
+ * it is sent as ?tag= so the server narrows the candidate pool before
+ * ranking, and it is part of the query key so each tag has its own
+ * page-1 cache. Pass null for "All" (no ?tag= param). The hook is
+ * Home-only, like usePagedVideos; other callers keep their own keys.
+ * `enabled` lets Home mount both feed hooks unconditionally (hooks
+ * cannot be conditional) and run only the one matching the session:
+ * signed in → this hook, logged out → usePagedVideos. */
+export function usePersonalizedFeed(
+  tag: string | null,
+  options: { enabled?: boolean } = {},
+) {
+  return useInfiniteQuery({
+    queryKey: homeFeedKey(tag),
+    queryFn: async ({
+      pageParam,
+    }): Promise<PagedResult<FeedVideo>> => {
+      const { data } = await getPersonalizedFeed(
+        pageParam,
+        HOME_PAGE_SIZE,
+        tag ?? undefined,
+      );
+      return normalizePage<FeedVideo>(data, pageParam);
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
+    enabled: options.enabled ?? true,
   });
 }
 
 /** Flatten loaded pages into one list, deduped by video id — a page
  * must never show the same video twice even if the server repeats a
- * row across pages. First-seen order is kept. */
-export function dedupeVideos(pages: PagedResult<Video>[]): Video[] {
+ * row across pages. First-seen order is kept. Generic so the
+ * personalised feed keeps its FeedVideo (reason) typing. */
+export function dedupeVideos<T extends Video>(
+  pages: PagedResult<T>[],
+): T[] {
   const seen = new Set<string>();
-  const out: Video[] = [];
+  const out: T[] = [];
   for (const page of pages) {
     for (const video of page.items ?? []) {
       if (!video || seen.has(video._id)) continue;
@@ -104,4 +159,31 @@ export function resetPagedVideosToFirstPage(
       };
     },
   );
+}
+
+/** Same reset for the personalised feed — but the tag is part of the
+ * feed key, so there is one cache per visited tag. Truncate EVERY
+ * feed key to page 1 in place (no refetch): the tag just selected
+ * fetches its own page 1 (or reuses its truncated cache), and a tag
+ * revisited later restarts from page 1 instead of resuming at page 2+.
+ * Called on every tag change alongside resetPagedVideosToFirstPage;
+ * each is a no-op for the feed the user is not on. */
+export function resetPersonalizedFeedToFirstPage(
+  queryClient: QueryClient,
+): void {
+  void queryClient.cancelQueries({ queryKey: HOME_FEED_KEY_PREFIX });
+  for (const query of queryClient
+    .getQueryCache()
+    .findAll({ queryKey: HOME_FEED_KEY_PREFIX })) {
+    queryClient.setQueryData<InfiniteData<PagedResult<FeedVideo>>>(
+      query.queryKey,
+      (old) => {
+        if (!old || old.pages.length <= 1) return old;
+        return {
+          pages: old.pages.slice(0, 1),
+          pageParams: old.pageParams.slice(0, 1),
+        };
+      },
+    );
+  }
 }
