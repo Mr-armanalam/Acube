@@ -28,6 +28,10 @@ const Search = () => {
           <p style={{ color: "var(--forground_text)", padding: "1rem" }}>
             Could not load videos. Please check your connection and try again.
           </p>
+        ) : vids !== undefined && vids.length === 0 ? (
+          <p style={{ color: "var(--forground_text)", padding: "1rem" }}>
+            {Searchquery ? `No results for "${Searchquery}"` : "No results"}
+          </p>
         ) : (
           <Showvideogrid vid={vids} />
         )}
