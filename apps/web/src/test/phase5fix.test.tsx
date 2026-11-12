@@ -537,9 +537,17 @@ describe("H — Watch", () => {
     renderRoutes("/watch/vid1", testSession);
     expect(await screen.findByText("Playlist · My favourites")).toBeInTheDocument();
     expect(screen.getByText("Playing now", { exact: false })).toBeInTheDocument();
-    expect(screen.getByText("Play all")).toBeInTheDocument();
-    expect(screen.getByText("Shuffle off")).toBeInTheDocument();
-    expect(screen.getByText("Loop off")).toBeInTheDocument();
+    // Sidebar controls are text links now (image-40), not pills:
+    // Play all is a link, Shuffle / Loop are toggle buttons.
+    expect(
+      screen.getByRole("link", { name: /Play all/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Shuffle off/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Loop off/ }),
+    ).toBeInTheDocument();
   });
 });
 

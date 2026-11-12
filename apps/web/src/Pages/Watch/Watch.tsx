@@ -9,9 +9,11 @@
 // (library + playlists), Download-Premium via the existing Download
 // component, pinned creator comment first, nested replies to any
 // depth, Up Next from GET /watch/:id/suggestions with "Because:
-// <reason>" labels, and a playlist showcase with thumbnails, index
-// numbers, current-video highlight, progress, Play-all / Shuffle /
-// Loop / Save-a-copy. Subscribe is real now: the Watch channel row
+// <reason>" labels, and a playlist showcase (image-40) with small
+// thumbnails, index numbers, per-item watched status, current-video
+// highlight (red border + ▶), progress, and text-link controls —
+// Play all / Shuffle / Loop / Save playlist (+ inline confirmation)
+// / Autoplay in the meta line. Subscribe is real now: the Watch channel row
 // carries the Subscribe toggle (POST /subscriptions/:channelId/toggle)
 // with the real subscriber count; the owner sees no button and a
 // logged-out viewer sees it disabled. Resume: ?t=<seconds> or the
@@ -22,6 +24,11 @@ import "./Watch.css";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { format } from "date-fns/format";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { FaPlay, FaPlus } from "react-icons/fa";
+// FaShuffle / FaRepeat are Font Awesome 6 icons: they live in
+// react-icons/fa6, not react-icons/fa (which is FA5 — no Shuffle /
+// Repeat there). Precedent: StreamRoom imports FaRegCircleStop from fa6.
+import { FaRepeat, FaShuffle } from "react-icons/fa6";
 import { useAppSelector } from "../../store";
 import { resolveApiMediaUrl } from "../../Api";
 import DownloadVideo from "../../Component/DownloadVideo/DownloadVideo";
@@ -96,6 +103,14 @@ const Watch = () => {
   // with no handler, so there was no behaviour to reuse).
   const [moreOpen, setMoreOpen] = useState(false);
   const [copiedItem, setCopiedItem] = useState<"link" | "timed" | null>(null);
+  // "Save playlist" feedback: the old Save-a-copy was a silent
+  // fire-and-forget POST with no confirmation at all. A transient
+  // inline state ("Saved ✓" / "Couldn't save") is the feedback — the
+  // app has no toast system to reuse.
+  const [saveFeedback, setSaveFeedback] = useState<
+    "saved" | "failed" | null
+  >(null);
+  const saveTimeout = useRef<number | null>(null);
   const postCommentMutation = usePostComment();
   // Last playback position seen (progress callback, not just the
   // throttled server write) — "Copy link at current time" uses it.
@@ -105,6 +120,9 @@ const Watch = () => {
     () => () => {
       if (copyTimeout.current !== null) {
         window.clearTimeout(copyTimeout.current);
+      }
+      if (saveTimeout.current !== null) {
+        window.clearTimeout(saveTimeout.current);
       }
     },
     [],
@@ -189,11 +207,25 @@ const Watch = () => {
   }, [playlist, feedVideos]);
 
   // Playlist progress: how many of its videos have a history row.
+  // Any history row counts as watched (visiting a video creates one
+  // immediately) — the same rule drives the per-item "✓ Watched"
+  // status in the sidebar, so the aggregate and the items agree.
+  const watchedVideoIds = useMemo(
+    () => new Set((historyQuery.data ?? []).map((e) => e.videoid)),
+    [historyQuery.data],
+  );
   const playlistWatched = useMemo(() => {
     if (!playlist) return 0;
-    const seen = new Set((historyQuery.data ?? []).map((e) => e.videoid));
-    return playlist.videoIds.filter((vid) => seen.has(vid)).length;
-  }, [playlist, historyQuery.data]);
+    return playlist.videoIds.filter((vid) => watchedVideoIds.has(vid))
+      .length;
+  }, [playlist, watchedVideoIds]);
+
+  // The playlist payload carries no channel name (owner is an id), so
+  // the meta line uses the first playlist video's uploader — the
+  // playlist's channel in the preview's sense — falling back to the
+  // current video's uploader (it is in the playlist). Never invented:
+  // when neither exists the channel segment is omitted.
+  const playlistChannelName = playlistVideos[0]?.uploader ?? vv?.uploader;
 
   const orderedPlaylistVideos = useMemo(() => {
     if (!shuffled) return playlistVideos;
@@ -295,6 +327,35 @@ const Watch = () => {
     });
     setMoreOpen(false);
   }, [currentuser, vv, postCommentMutation]);
+
+  // Sidebar "Save playlist": the same private "<title> (copy)" POST
+  // the old pill did — but with a transient inline confirmation, and
+  // disabled (never fired) when logged out, like the action-row Save.
+  const savePlaylistCopy = useCallback(() => {
+    if (!currentuser || !playlist) return;
+    const showFeedback = (result: "saved" | "failed") => {
+      setSaveFeedback(result);
+      if (saveTimeout.current !== null) {
+        window.clearTimeout(saveTimeout.current);
+      }
+      saveTimeout.current = window.setTimeout(
+        () => setSaveFeedback(null),
+        2000,
+      );
+    };
+    createPlaylist.mutate(
+      {
+        title: `${playlist.title} (copy)`,
+        description: playlist.description,
+        visibility: "private",
+        videoIds: playlist.videoIds,
+      },
+      {
+        onSuccess: () => showFeedback("saved"),
+        onError: () => showFeedback("failed"),
+      },
+    );
+  }, [currentuser, playlist, createPlaylist]);
 
   if (videoQuery.isLoading) {
     return (
@@ -514,20 +575,42 @@ const Watch = () => {
       </div>
       <aside className="watch-side">
         {playlist ? (
-          <div className="acube-card" style={{ padding: 16, marginBottom: 24 }}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 16 }}>
+          <div className="acube-card watch-playlist">
+            <h2 className="watch-playlist-title">
               Playlist · {playlist.title}
             </h2>
-            <p style={{ color: "var(--text-2)", margin: "0 0 12px" }}>
+            <p className="watch-playlist-meta">
+              {playlistChannelName ? `${playlistChannelName} · ` : ""}
               {playlistWatched} / {playlist.videoIds.length} watched ·{" "}
               {currentIndex >= 0
-                ? `Playing ${currentIndex + 1} of ${playlist.videoIds.length}`
+                ? `Playing ${currentIndex + 1} of ${playlist.videoIds.length} · `
                 : ""}
+              <button
+                type="button"
+                className="watch-playlist-autoplay"
+                aria-pressed={autoplay}
+                title={
+                  autoplay
+                    ? "Autoplay is on — turn off"
+                    : "Autoplay is off — turn on"
+                }
+                onClick={() => setAutoplay((v) => !v)}
+              >
+                Autoplay {autoplay ? "ON" : "OFF"}
+              </button>
             </p>
-            <div className="watch-up-next">
+            <div className="watch-playlist-items">
               {orderedPlaylistVideos.map((v) => {
                 const idx = playlist.videoIds.indexOf(v._id);
                 const isCurrent = v._id === vv._id;
+                // Status precedence: the video playing now is never
+                // labelled "Watched" even though visiting it created a
+                // history row — it is "Playing now" (preview item 3).
+                const status = isCurrent
+                  ? "Playing now"
+                  : watchedVideoIds.has(v._id)
+                    ? "✓ Watched"
+                    : "Up next";
                 const playlistDuration = formatDuration(
                   v.durationSec ?? v.duration ?? undefined,
                 );
@@ -535,84 +618,100 @@ const Watch = () => {
                   <Link
                     key={v._id}
                     to={`/watch/${v._id}`}
-                    className="watch-up-next-item"
-                    style={
-                      isCurrent
-                        ? { outline: "2px solid var(--accent)", borderRadius: 8, padding: 4 }
-                        : undefined
-                    }
+                    className={`watch-playlist-item${
+                      isCurrent ? " watch-playlist-item--current" : ""
+                    }`}
+                    aria-current={isCurrent ? "true" : undefined}
                   >
-                    <span className="watch-thumb-wrap">
+                    <span
+                      className="watch-playlist-index"
+                      aria-hidden="true"
+                    >
+                      {isCurrent ? "▶" : idx + 1}
+                    </span>
+                    <span className="watch-playlist-thumb-wrap">
                       <VideoThumb
                         src={v.thumbnailUrl ?? v.thumbnail ?? undefined}
-                        className="watch-thumb"
+                        className="watch-playlist-thumb"
                       />
                       {playlistDuration ? (
-                        <span className="watch-duration-badge">{playlistDuration}</span>
+                        <span className="watch-duration-badge">
+                          {playlistDuration}
+                        </span>
                       ) : null}
                     </span>
-                    <span className="watch-up-next-text">
-                      <span style={{ color: "var(--text-2)" }}>
-                        {idx + 1}.{" "}
+                    <span className="watch-playlist-text">
+                      <span className="watch-playlist-item-title">
+                        {v.videotitle}
                       </span>
-                      <span>{v.videotitle}</span>
-                      {isCurrent ? " · Playing now" : ""}
-                      <span style={{ display: "block", color: "var(--text-2)", fontWeight: 400, fontSize: 13 }}>
-                        {playlistDuration}{" "}
-                        {v.uploader} · {v.views ?? 0} views
+                      <span className="watch-playlist-item-meta">
+                        {playlistDuration ? `${playlistDuration} · ` : ""}
+                        {status}
                       </span>
                     </span>
                   </Link>
                 );
               })}
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+            <div className="watch-playlist-controls">
               <Link
                 to={`/watch/${playlist.videoIds[0] ?? ""}`}
-                className="acube-btn-secondary"
+                className="watch-playlist-control"
               >
-                Play all
+                <FaPlay aria-hidden="true" /> Play all
               </Link>
+              <span aria-hidden="true" className="watch-playlist-separator">
+                ·
+              </span>
               <button
                 type="button"
-                className="acube-btn-secondary"
+                className="watch-playlist-control"
                 aria-pressed={shuffled}
                 onClick={() => setShuffled((v) => !v)}
               >
-                Shuffle {shuffled ? "on" : "off"}
+                Shuffle {shuffled ? "on" : "off"}{" "}
+                <FaShuffle aria-hidden="true" />
               </button>
+              <span aria-hidden="true" className="watch-playlist-separator">
+                ·
+              </span>
               <button
                 type="button"
-                className="acube-btn-secondary"
+                className="watch-playlist-control"
                 aria-pressed={loop}
                 onClick={() => setLoop((v) => !v)}
               >
-                Loop {loop ? "on" : "off"}
+                Loop {loop ? "on" : "off"} <FaRepeat aria-hidden="true" />
               </button>
+              <span aria-hidden="true" className="watch-playlist-separator">
+                ·
+              </span>
               <button
                 type="button"
-                className="acube-btn-secondary"
-                aria-pressed={autoplay}
-                onClick={() => setAutoplay((v) => !v)}
+                className="watch-playlist-control"
+                disabled={!currentuser || createPlaylist.isPending}
+                title={
+                  currentuser
+                    ? undefined
+                    : "Sign in to save a copy of this playlist"
+                }
+                onClick={savePlaylistCopy}
               >
-                Autoplay {autoplay ? "ON" : "OFF"}
-              </button>
-              <button
-                type="button"
-                className="acube-btn-secondary"
-                onClick={() => {
-                  createPlaylist.mutate({
-                    title: `${playlist.title} (copy)`,
-                    description: playlist.description,
-                    visibility: "private",
-                    videoIds: playlist.videoIds,
-                  });
-                }}
-              >
-                Save a copy
+                {saveFeedback === "saved" ? (
+                  "✓ Saved"
+                ) : saveFeedback === "failed" ? (
+                  "Couldn't save"
+                ) : (
+                  <>
+                    Save playlist <FaPlus aria-hidden="true" />
+                  </>
+                )}
               </button>
             </div>
-            <Link to={`/playlist/${playlist._id}`} style={{ display: "inline-block", marginTop: 12 }}>
+            <Link
+              to={`/playlist/${playlist._id}`}
+              className="watch-playlist-full"
+            >
               View full playlist
             </Link>
           </div>
