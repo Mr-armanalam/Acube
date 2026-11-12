@@ -350,6 +350,25 @@ export const restoreVideo = (id: string) =>
 // Phase 5 fix contract: ranked suggestions with a reason per item.
 export const getWatchSuggestions = (id: string) =>
   API.get(`/watch/${id}/suggestions`);
+// Feed personalization — GET /feed?page&limit&tag? (agreed contract
+// with the API worker building the endpoint in parallel; the MSW
+// handlers answer the same shape meanwhile):
+//   GET /feed -> { items: FeedVideo[] (each with reason?: { type,
+//   label } | null), page, limit, total, totalPages }
+// `tag` narrows the candidate pool server-side before ranking — the
+// Home page passes it only when signed in and a chip other than
+// "All" is selected. The axios interceptor attaches the Bearer token
+// when a session is stored (optionalAuth server-side), so a signed-in
+// call is personalised and a logged-out call is not — the Home page
+// never calls this logged out, it keeps getvideos instead.
+export const getPersonalizedFeed = (
+  page = 1,
+  limit = 50,
+  tag?: string,
+) =>
+  API.get("/feed", {
+    params: { page, limit, ...(tag ? { tag } : {}) },
+  });
 // Watch-page subscribe contract (backend worker, parallel — the MSW handlers answer
 // the same shapes meanwhile):
 //   GET  /subscriptions/:channelId        -> { subscribed, subscriberCount }
