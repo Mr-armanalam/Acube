@@ -209,3 +209,61 @@
 .watch-download-pill button.download b { display: none; }
 .watch-download-pill button.download::after { content: "Download · Premium"; }
 .watch-download-pill:has(> button.download) > a.download { display: none; }
+
+/* Playlist sidebar (approved preview image-40): compact numbered
+ * items with SMALL thumbnails, per-item watched status, the current
+ * item in a red border with a red ▶ at its left, and plain text-link
+ * controls — no pill buttons. Everything here is scoped under
+ * .watch-playlist: the 120px .watch-thumb-wrap (Up Next) and the
+ * shared .acube-btn-secondary (Studio/Library) are untouched. */
+.watch-playlist { padding: 16px; margin-bottom: 24px; }
+.watch-playlist-title { margin: 0 0 8px; font-size: 16px; }
+.watch-playlist-meta { color: var(--text-2); margin: 0 0 12px; font-size: 13px; line-height: 1.5; }
+/* Autoplay lives in the meta line as text (preview) AND stays a real
+ * toggle — the button inherits the meta's muted tone. */
+.watch-playlist-autoplay {
+  background: transparent; border: 0; padding: 0; cursor: pointer;
+  color: var(--text-2); font: inherit;
+}
+.watch-playlist-autoplay:hover { color: var(--text); text-decoration: underline; }
+.watch-playlist-items { display: flex; flex-direction: column; gap: 8px; }
+.watch-playlist-item {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 4px; border: 1px solid transparent; border-radius: 8px;
+  color: var(--text); text-decoration: none;
+}
+.watch-playlist-item--current { border-color: var(--accent); }
+.watch-playlist-index {
+  flex-shrink: 0; width: 16px; text-align: center; padding-top: 2px;
+  color: var(--text-2); font-size: 13px; line-height: 1.4;
+}
+.watch-playlist-item--current .watch-playlist-index { color: var(--accent); }
+/* Preview-sized thumb: 56px wide (not the 120px Up Next thumb). The
+ * real thumbnail shows via VideoThumb; its grey ▶ fallback stands
+ * when a video genuinely has no thumbnail — no gradient is wired in
+ * here, by design. */
+.watch-playlist-thumb-wrap { position: relative; flex-shrink: 0; width: 56px; aspect-ratio: 16 / 9; }
+.watch-playlist-thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; display: block; }
+.watch-playlist-item .watch-duration-badge { font-size: 10px; padding: 1px 4px; }
+.watch-playlist-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.watch-playlist-item-title { font-weight: 600; font-size: 13px; line-height: 1.4; }
+.watch-playlist-item-meta { color: var(--text-2); font-weight: 400; font-size: 12px; }
+/* Text-link controls (NOT .acube-btn-secondary pills): Play all /
+ * Shuffle / Loop / Save playlist, separated by "·" like the preview. */
+.watch-playlist-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.watch-playlist-control {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: transparent; border: 0; padding: 0; cursor: pointer;
+  color: var(--text); font: 600 13px/20px "Manrope", sans-serif; text-decoration: none;
+}
+.watch-playlist-control:hover:not(:disabled) { color: var(--accent); }
+.watch-playlist-control:disabled { cursor: not-allowed; opacity: 0.55; }
+.watch-playlist-control svg { width: 13px; height: 13px; }
+.watch-playlist-separator { color: var(--text-2); }
+/* "View full playlist": muted text link, never the unstyled blue
+ * underlined browser default it used to be. */
+.watch-playlist-full {
+  display: inline-block; margin-top: 12px;
+  color: var(--text-2); font-size: 13px; text-decoration: none;
+}
+.watch-playlist-full:hover { color: var(--text); text-decoration: underline; }

@@ -2284,3 +2284,141 @@ progress-callback second, falling back to the resume position
 when playback has not started. (3) `watch-page.spec.ts` tests 1–4
 still pass unchanged against the rebuilt section (comment post,
 comment like/dislike, reply, subscribe) — no updates needed there.
+
+#### 8.9.19 Watch playlist sidebar redesign (12 Nov 2026, branch `feat/acube-watch-playlist-sidebar`, base `main` @ `5c421d5`, implementation `089f25d` + `e16a29b`)
+
+Rebuild of the Watch playlist sidebar against the approved preview
+(user media image-40; images 41–42 are the replaced current layout).
+Player, details, comments, and the Up Next list below the card are
+untouched. Work on `feat/acube-watch-playlist-sidebar`; no merge, no
+push, no PR created by this worker.
+
+**What changed, per image-40 element (before = images 41–42).**
+
+| Preview element | Before (images 41–42) | After |
+|---|---|---|
+| Header | `Playlist · Learning Path: Full-Stack Foundations` (same text) | Same text — kept |
+| Meta | `0 / 4 watched · Playing 1 of 4` only | `Code Streamer · N / 4 watched · Playing X of 4 · Autoplay ON/OFF` — channel from the first playlist video's uploader (the payload carries no channel name), position, and the Autoplay toggle inline |
+| Items | ~120px thumbs, `1.` number prefix, `7:00 · Code Streamer · 216 views` per item | 56px thumbs, bare number (current item shows red ▶ instead), `duration · ✓ Watched / Playing now / Up next` — no per-item channel/views line |
+| Current item | Red border only (same class reused from Up Next) | Red border (`--accent` `#e8482f`) + red ▶ + `Playing now` — never labelled `✓ Watched` even though visiting it created a history row |
+| Controls | Pill buttons (`.acube-btn-secondary`): Play all, Shuffle off, Loop off, Autoplay ON, Save a copy | Plain text links with react-icons, `·` separators: Play all (link), Shuffle on/off, Loop on/off, Save playlist; Autoplay moved out of the row into the meta line |
+| Save playlist | `Save a copy` pill, silent POST | Text link; posts a private `<title> (copy)` and shows transient `✓ Saved` (or `Couldn't save` on failure); disabled with `Sign in to save a copy of this playlist` when logged out |
+| View full playlist | Blue underlined link | Muted text link (`watch-playlist-full`) to `/playlist/:id` |
+
+**Verification (fresh, uncached, real exit codes).**
+
+| Check | Command | Result |
+|---|---|---|
+| Typecheck (forced) | `pnpm typecheck --force` | exit 0, 3 tasks |
+| Test (turbo, forced) | `pnpm test --force` | exit 0 — **API 328/328 (23 files) + web 297/297 (31 files) = 625**, incl. the new `watchPlaylistSidebar.test.tsx` 13/13 |
+| Lint (forced) | `pnpm lint --force` | exit 0, **0 errors, 7 warnings** (all pre-existing legacy files; the verifier's own 2 new warnings were fixed before this count) |
+| Build (forced) | `pnpm build --force` | exit 0 (same "no output files" note for `@acube/api#build` as Phase 4) |
+| Playwright Phase 5 (full suite) | `pnpm --filter @acube/web test:e2e:phase5` | **67 passed, 5 failed** — the new `watch-playlist-sidebar.spec.ts` is 10/10 inside the suite (and 10/10 alone); the 5 failures are pre-existing, see below |
+| Playwright, new spec alone | `playwright test -c playwright.phase5.config.ts watch-playlist-sidebar.spec.ts` | **10/10 passed** |
+
+The new e2e spec (`apps/web/e2e-phase5/watch-playlist-sidebar.spec.ts`,
+10 tests, real API + seeded demo data, playlist "Learning Path:
+Full-Stack Foundations", 4 videos): header/meta/items render; current
+item has the red-border class + red ▶ + computed border colour
+`rgb(232, 72, 47)`; Shuffle/Loop toggle and restore (Shuffle off
+restores playlist order); Autoplay flips and persists to localStorage
+`acube:watch:autoplay` across a reload, then is restored to ON; Play
+all navigates to the first video; Save playlist posts a real private
+copy (verified via `GET /studio/playlists`, then deleted again so the
+suite leaves no state) and shows `✓ Saved`; View full playlist
+navigates to `/playlist/507f1f77bcf86cd799430401`; seeded example.com
+thumbnails render the VideoThumb grey ▶ fallback (expected — they
+never resolve); real thumbnails render as `<img>` when the
+watch-playlists payload is overridden with resolvable URLs (same
+override shape as the unit tests); desktop + mobile screenshots.
+
+**Defects found in this pass — fixed by the verifier.**
+
+1. **The verifier's own e2e test 1 assumed a fresh watch history**
+   ("6:00 · Up next" for video 202). In the full-suite run it failed:
+   earlier spec files in the same run visit videos as the same e2e
+   user (the Autoplay spec advances onto video 202), so video 202
+   correctly showed "6:00 · ✓ Watched". The test now reads the real
+   history (`GET /video/getallhistory`) before visiting and derives
+   each item's expected status from it; the "Up next" state is still
+   covered by the unit tests with mocked history. 10/10 after the fix,
+   inside the full suite and alone.
+2. **The verifier's own spec added 2 new lint warnings** (unused
+   `VIDEO_3` / `VIDEO_6` constants). Removed before the final lint
+   count; the spec lints clean on its own (`eslint
+   e2e-phase5/watch-playlist-sidebar.spec.ts`, exit 0).
+
+**Screenshots (local only, not in the PR).**
+`phase5-watch-playlist-sidebar-desktop.png` (element capture,
+1280×850 viewport), `-mobile.png` (390×844), and
+`-full-desktop.png` (viewport context). Visually compared against
+image-40 by the verifier: header/meta, small thumbs, current-item
+red border + ▶, text-link controls, no pill buttons — all match.
+Honest deltas, all data not layout: 4 videos vs the preview's 6
+(seed data); the meta reads "2 / 4 watched" because this run's
+earlier specs watched videos 201+202 as the e2e user (real state);
+seeded thumbs are the grey ▶ fallback (example.com never resolves)
+with the duration badge slightly crowding the ▶ glyph at 56px —
+cosmetic, and the real-thumb path is proven by e2e test 9 and the
+unit test; the controls wrap to two lines (4 controls + state words
+vs the preview's 3) and "Play all" / "View full playlist" are
+additions beyond the image-40 crop, per the task spec. The player in
+the full shot reads "This video couldn't be played" — expected, the
+seeded filepath is an example.com placeholder, pre-existing and
+outside this task.
+
+**Static checks.** No `.acube-btn-secondary` inside the playlist card
+(`Watch.tsx` contains none at all; the two mentions in `Watch.css`
+are comments). The shared `.acube-btn-secondary` class is unchanged
+(the diff touches no file that defines it: only `Watch.css`,
+`Watch.tsx`, `phase5fix.test.tsx`, and the new test file). The
+`Watch.tsx` diff is confined to the playlist sidebar — the old
+in-card reuse of the Up Next markup is gone, the standalone Up Next
+section, Player, details, and comments are untouched. No `any`, no
+`ts-ignore`, no excluded tests in the diff.
+
+**Environment incidents.** (1) `/tmp` (512 MB tmpfs) filled twice
+during the e2e runs — each Playwright run leaks 1–2 orphaned ~201 MB
+`mongo-mem-*` dirs and mongod died mid-seed once (`interrupted at
+shutdown`). Cleaned only the orphaned dirs (no mongod running) and
+re-ran; `/tmp` left at 3% used. Same incident as §8.9.18. (2) The
+`pnpm test:e2e:phase5 -- <file>` filter arg does not reach
+Playwright (the script appends it past the `&&`), so the full suite
+ran instead — the per-file runs used `pnpm exec playwright test -c
+playwright.phase5.config.ts <file>` directly against the already
+built dist.
+
+**Open / flagged — pre-existing, NOT caused by this branch (all 5
+full-suite failures, each verified).**
+
+1. **Full-suite cross-file state pollution (4 failures).** The Phase 5
+   config shares ONE API server across all spec files, but several
+   specs assume fresh seeded state. `content-cleanup` test 1 fails in
+   the suite because `auto-thumbnails-hover` (runs earlier) uploads a
+   real thumbnail to the e2e user's own video, so the Content row
+   shows a real `<img>` instead of the expected ▶ fallback; `phase5`
+   tests 2/4/8 fail because earlier specs add views/history (dashboard
+   read TOTAL VIEWS 8, not the seeded 7). Each file passes alone on
+   this branch: `phase5.spec.ts` 10/10, `content-cleanup.spec.ts`
+   6/6. All 4 failures occur before this branch's spec executes
+   (sequential run, workers: 1) and in files this branch never
+   touched.
+2. **`studio-content-thumbnail` needs an uncommitted local fixture.**
+   Its 3 tests fail in this worktree with `ENOENT:
+   e2e-phase5/fixtures/test-thumbnail.png` — the file is not in git
+   and exists only in sibling worktrees (`~/workspace/acube`,
+   `~/workspace/acube-watch-page`). Copying it in temporarily made the
+   file pass 3/3 alone; the copy was removed again after verification
+   so the branch carries no stray file. The fixture should be
+   committed (or generated) by whoever owns that spec — until then the
+   file cannot pass in a fresh worktree.
+3. **`watch-page.spec.ts` test 2 is stale on main (fails alone too).**
+   It expects the comment dislike button to show a count of 1, but
+   commit `ae40925` (image-37 redesign, merged via PR #11, ancestor
+   of this base) removed the `<span>{c.dislikes ?? 0}</span>` from
+   `NestedComments.tsx` without updating the test — the dislike
+   control now renders only the icon, so the count reads 0 forever.
+   The implementation matches the approved preview; the TEST needs
+   updating to the no-count behaviour (the newer
+   `watch-details-comments.spec.ts` test 3 already asserts the empty
+   dislike text). Left untouched here — outside this branch's scope.
