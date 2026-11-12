@@ -1,7 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, authHeader, createUser } from "./helpers.js";
 import User from "../Models/Auth.js";
 import ProcessedWebhookEvent from "../Models/ProcessedWebhookEvent.js";
+import { PREMIUM_PRICE_INR } from "@acube/shared";
+import {
+  isPremiumFreeWindowActive,
+  premiumFreeUntilEnd,
+  premiumPriceInr,
+} from "../Controllers/downloadVideo/createPaymentRequest.js";
 
 // Stripe is mocked: no Stripe account or network call. The mock must be
 // a class: the controller constructs it with `new Stripe(...)`, and an
@@ -25,6 +31,9 @@ vi.mock("stripe", () => ({
           stripeState.retrieveResult ?? {
             id,
             payment_status: "paid",
+            // Catalogue price: ₹15 = 1500 paise (see the amount-validation
+            // tests below — a session without the exact amount grants nothing).
+            amount_total: 1500,
             customer_email: "buyer@example.com",
             metadata: {},
           },
@@ -39,9 +48,41 @@ vi.mock("stripe", () => ({
   },
 }));
 
+const ORIGINAL_FREE_UNTIL = process.env.PREMIUM_FREE_UNTIL;
+const ORIGINAL_PRICE_INR = process.env.PREMIUM_PRICE_INR;
+
 beforeEach(() => {
   stripeState.retrieveResult = null;
+  // Baseline for the limit / grant tests: the free window CLOSED, so
+  // they exercise the paid-premium path deterministically instead of
+  // depending on the real calendar date. Free-window tests delete this
+  // override (default cutoff applies) and pin the clock with fake
+  // timers instead — only `Date` is faked, real timers keep running
+  // for the in-memory MongoDB driver and supertest.
+  process.env.PREMIUM_FREE_UNTIL = "2020-01-01";
 });
+
+afterEach(() => {
+  if (ORIGINAL_FREE_UNTIL === undefined) {
+    delete process.env.PREMIUM_FREE_UNTIL;
+  } else {
+    process.env.PREMIUM_FREE_UNTIL = ORIGINAL_FREE_UNTIL;
+  }
+  if (ORIGINAL_PRICE_INR === undefined) {
+    delete process.env.PREMIUM_PRICE_INR;
+  } else {
+    process.env.PREMIUM_PRICE_INR = ORIGINAL_PRICE_INR;
+  }
+  vi.useRealTimers();
+});
+
+// Use the real default cutoff (PREMIUM_FREE_UNTIL unset) and pin the
+// clock, so the test never depends on the date it happens to run on.
+function pinDateForDefaultWindow(isoDate) {
+  delete process.env.PREMIUM_FREE_UNTIL;
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(isoDate));
+}
 
 function completedEvent(overrides = {}) {
   return {
@@ -51,6 +92,8 @@ function completedEvent(overrides = {}) {
       object: {
         id: "cs_test_123",
         payment_status: "paid",
+        // Catalogue price: ₹15 = 1500 paise.
+        amount_total: 1500,
         customer_email: "buyer@example.com",
         metadata: {},
         ...overrides,
@@ -74,7 +117,9 @@ describe("download limits and premium status", () => {
       .get("/download/user/premium-status")
       .set(authHeader(user));
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ success: true, isPremium: false });
+    // Window closed by the beforeEach baseline (see top of file), so a
+    // non-paying user is not premium and the window is not active.
+    expect(res.body).toEqual({ success: true, isPremium: false, freeWindowActive: false });
   });
 
   it("GET /download/user/premium-status returns 401 without a token", async () => {
@@ -130,7 +175,7 @@ describe("POST /download/create-payment-request (Phase 3b)", () => {
     expect(res.body.payment_request).toBe("https://checkout.stripe.test/session_123");
     expect(res.body.sessionId).toBe("cs_test_123");
     // The price comes from the server catalogue, not the request.
-    expect(res.body.amount).toBe(1000);
+    expect(res.body.amount).toBe(15);
     expect(res.body.currency).toBe("INR");
     const after = await User.findById(user._id);
     expect(after.isPremium).toBe(false);
@@ -144,7 +189,7 @@ describe("POST /download/create-payment-request (Phase 3b)", () => {
       .set(authHeader(user))
       .send({ amount: 1, _id: String(user._id), emailId: "someone-else@example.com" });
     expect(res.status).toBe(200);
-    expect(res.body.amount).toBe(1000);
+    expect(res.body.amount).toBe(15);
     expect((await User.findById(user._id)).isPremium).toBe(false);
   });
 
@@ -203,6 +248,7 @@ describe("POST /download/handle-payment-status (Phase 3b)", () => {
     stripeState.retrieveResult = {
       id: "cs_test_paid",
       payment_status: "paid",
+      amount_total: 1500,
       customer_email: user.email,
       metadata: { userId: String(user._id) },
     };
@@ -286,5 +332,187 @@ describe("POST /download/webhook (Phase 3b)", () => {
     expect(res.status).toBe(200);
     expect((await User.findById(user._id)).isPremium).toBe(false);
     expect(await ProcessedWebhookEvent.countDocuments({})).toBe(0);
+  });
+});
+
+describe("premium price catalogue (premium-pricing change: ₹15)", () => {
+  it("the shared catalogue price is 15 INR", () => {
+    expect(PREMIUM_PRICE_INR).toBe(15);
+  });
+
+  it("premiumPriceInr() returns 15 by default", () => {
+    delete process.env.PREMIUM_PRICE_INR;
+    expect(premiumPriceInr()).toBe(15);
+  });
+
+  it("premiumPriceInr() honours a valid PREMIUM_PRICE_INR env override", () => {
+    process.env.PREMIUM_PRICE_INR = "42";
+    expect(premiumPriceInr()).toBe(42);
+  });
+
+  it("premiumPriceInr() falls back to 15 for an invalid env value", () => {
+    for (const bad of ["abc", "0", "-5", ""]) {
+      process.env.PREMIUM_PRICE_INR = bad;
+      expect(premiumPriceInr()).toBe(15);
+    }
+  });
+});
+
+describe("premium free window (free until end of 2027-11-12 UTC)", () => {
+  it("premium-status is true during the window without any payment", async () => {
+    pinDateForDefaultWindow("2026-06-01T12:00:00.000Z");
+    const user = await createUser();
+    const res = await api
+      .get("/download/user/premium-status")
+      .set(authHeader(user));
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ success: true, isPremium: true, freeWindowActive: true });
+    // Nothing is stored: the window grants nothing permanent.
+    const after = await User.findById(user._id);
+    expect(after.isPremium).toBe(false);
+    expect(after.premiumGrantedAt).toBeNull();
+  });
+
+  it("premium-status is false after the cutoff without payment", async () => {
+    pinDateForDefaultWindow("2027-11-13T00:00:00.000Z");
+    const user = await createUser();
+    const res = await api
+      .get("/download/user/premium-status")
+      .set(authHeader(user));
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ success: true, isPremium: false, freeWindowActive: false });
+  });
+
+  it("the cutoff is end-of-day UTC: the last second of 2027-11-12 is free, midnight after is not", async () => {
+    pinDateForDefaultWindow("2027-11-12T23:59:59.000Z");
+    expect(isPremiumFreeWindowActive()).toBe(true);
+    expect(premiumFreeUntilEnd().toISOString()).toBe("2027-11-13T00:00:00.000Z");
+    vi.setSystemTime(new Date("2027-11-13T00:00:00.000Z"));
+    expect(isPremiumFreeWindowActive()).toBe(false);
+  });
+
+  it("an invalid PREMIUM_FREE_UNTIL falls back to the default instead of crashing", async () => {
+    // Garbage and impossible calendar dates both fall back to the
+    // default cutoff 2027-11-12 (end of day UTC).
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-01T12:00:00.000Z"));
+    for (const bad of ["not-a-date", "2027-02-30", "2027-13-01", ""]) {
+      process.env.PREMIUM_FREE_UNTIL = bad;
+      expect(isPremiumFreeWindowActive()).toBe(true);
+      expect(premiumFreeUntilEnd().toISOString()).toBe("2027-11-13T00:00:00.000Z");
+    }
+    // And after the default cutoff the same invalid value is not free.
+    process.env.PREMIUM_FREE_UNTIL = "not-a-date";
+    vi.setSystemTime(new Date("2028-01-01T00:00:00.000Z"));
+    expect(isPremiumFreeWindowActive()).toBe(false);
+  });
+
+  it("paid premium is still premium after the cutoff", async () => {
+    pinDateForDefaultWindow("2028-01-01T00:00:00.000Z");
+    const user = await createUser({ isPremium: true });
+    const res = await api
+      .get("/download/user/premium-status")
+      .set(authHeader(user));
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ success: true, isPremium: true, freeWindowActive: false });
+    for (let i = 0; i < 3; i++) {
+      const dl = await api.post("/download/download-video").set(authHeader(user)).send({});
+      expect(dl.status).toBe(200);
+    }
+  });
+
+  it("download gate allows unlimited downloads during the window", async () => {
+    pinDateForDefaultWindow("2026-06-01T12:00:00.000Z");
+    const user = await createUser();
+    for (let i = 0; i < 3; i++) {
+      const res = await api.post("/download/download-video").set(authHeader(user)).send({});
+      expect(res.status).toBe(200);
+    }
+    expect((await User.findById(user._id)).isPremium).toBe(false);
+  });
+
+  it("download gate enforces the free daily limit after the window", async () => {
+    pinDateForDefaultWindow("2027-11-13T00:00:00.000Z");
+    const user = await createUser();
+    const first = await api.post("/download/download-video").set(authHeader(user)).send({});
+    expect(first.status).toBe(200);
+    const second = await api.post("/download/download-video").set(authHeader(user)).send({});
+    expect(second.status).toBe(403);
+    expect(second.body.message).toMatch(/Daily download limit reached/);
+  });
+
+  it("checkout is still offered during the window — no 409 for a non-paying user", async () => {
+    pinDateForDefaultWindow("2026-06-01T12:00:00.000Z");
+    const user = await createUser();
+    const res = await api
+      .post("/download/create-payment-request")
+      .set(authHeader(user))
+      .send({});
+    expect(res.status).toBe(200);
+    expect(res.body.amount).toBe(15);
+    expect((await User.findById(user._id)).isPremium).toBe(false);
+  });
+});
+
+describe("amount validation (old ₹1000 sessions must not grant premium)", () => {
+  it("webhook rejects a paid session whose amount_total is not 1500 paise", async () => {
+    const user = await createUser();
+    const res = await postWebhook(
+      completedEvent({
+        amount_total: 100000, // old ₹1000 session
+        metadata: { userId: String(user._id) },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.ignored).toBe("amount-mismatch");
+    expect((await User.findById(user._id)).isPremium).toBe(false);
+    expect(await ProcessedWebhookEvent.countDocuments({})).toBe(0);
+  });
+
+  it("webhook rejects a paid session with no amount_total at all", async () => {
+    const user = await createUser();
+    const event = completedEvent({ metadata: { userId: String(user._id) } });
+    delete event.data.object.amount_total;
+    const res = await postWebhook(event);
+    expect(res.status).toBe(200);
+    expect(res.body.ignored).toBe("amount-mismatch");
+    expect((await User.findById(user._id)).isPremium).toBe(false);
+  });
+
+  it("handle-payment-status rejects a paid session whose amount_total is not 1500 paise", async () => {
+    const user = await createUser();
+    stripeState.retrieveResult = {
+      id: "cs_test_old_price",
+      payment_status: "paid",
+      amount_total: 100000, // old ₹1000 session
+      customer_email: user.email,
+      metadata: { userId: String(user._id) },
+    };
+    const res = await api
+      .post("/download/handle-payment-status")
+      .set(authHeader(user))
+      .send({ sessionId: "cs_test_old_price" });
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toMatch(/amount mismatch/i);
+    expect((await User.findById(user._id)).isPremium).toBe(false);
+  });
+
+  it("handle-payment-status accepts a paid session at exactly 1500 paise", async () => {
+    const user = await createUser();
+    stripeState.retrieveResult = {
+      id: "cs_test_new_price",
+      payment_status: "paid",
+      amount_total: 1500,
+      customer_email: user.email,
+      metadata: { userId: String(user._id) },
+    };
+    const res = await api
+      .post("/download/handle-payment-status")
+      .set(authHeader(user))
+      .send({ sessionId: "cs_test_new_price" });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect((await User.findById(user._id)).isPremium).toBe(true);
   });
 });

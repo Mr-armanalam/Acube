@@ -195,9 +195,18 @@
  * both render (non-premium with a free download left) only the
  * premium-gated Upgrade control shows, so the row keeps ONE pill.
  * `.ishidden` (from the deleted Likewatchlatersavebtn.css) hides the
- * anchor for logged-out / out-of-free-download viewers. */
+ * anchor for logged-out / out-of-free-download viewers.
+ * Premium free window (₹15 pricing): while the window is active the
+ * status line sits in the pill next to the Upgrade control, so the
+ * ₹15 price and the 12 Nov 2027 cutoff stay visible even though
+ * every user is effectively premium. */
 .ishidden { display: none !important; }
 .watch-download-pill { padding: 0; }
+.watch-download-pill .premium-free-window {
+  display: inline-flex; align-items: center;
+  font: 600 12px/16px "Manrope", sans-serif; color: var(--text-2);
+  padding: 8px 2px 8px 12px;
+}
 .watch-download-pill a.download,
 .watch-download-pill button.download {
   display: inline-flex; align-items: center; gap: 6px;

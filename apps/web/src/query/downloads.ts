@@ -13,14 +13,35 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+// Premium status (Phase 3b + premium free window): the API returns the
+// EFFECTIVE premium value plus `freeWindowActive`, so the client can
+// tell a free-window grant apart from paid premium. NOTE: there is NO
+// separate paid flag — during the window `isPremium` is true for
+// everyone, so `isPremium && !freeWindowActive` is NOT a sound "paid"
+// derivation while the window is active (it only becomes sound after
+// the cutoff, when isPremium means paid). Do not derive paid status
+// from these two fields; a `paidPremium` field from the API is the
+// follow-up that would let the client hide the lock-in offer for
+// users who already paid.
+export interface PremiumStatus {
+  isPremium: boolean;
+  freeWindowActive: boolean;
+}
+
 export function usePremiumStatus() {
   const userId = useAppSelector((s) => s.auth.session?.result._id);
   return useQuery({
     queryKey: queryKeys.premium,
-    queryFn: async (): Promise<boolean> => {
+    queryFn: async (): Promise<PremiumStatus> => {
       const { data } = await api.checkPremiumStatus();
-      const rec = (data ?? {}) as { isPremium?: unknown };
-      return rec.isPremium === true;
+      const rec = (data ?? {}) as {
+        isPremium?: unknown;
+        freeWindowActive?: unknown;
+      };
+      return {
+        isPremium: rec.isPremium === true,
+        freeWindowActive: rec.freeWindowActive === true,
+      };
     },
     enabled: Boolean(userId),
   });

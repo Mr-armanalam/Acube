@@ -24,7 +24,18 @@ const DownloadVideo = ({
   const user = useAppSelector((s) => s.auth.session);
   const { data: premiumData } = usePremiumStatus();
   const { data: downloadsData } = useDownloads();
-  const isPremium = premiumData ?? false;
+  // Effective premium + free-window flag (see usePremiumStatus): during
+  // the window every user is effectively premium, so the Upgrade
+  // button must NOT be gated on `!isPremium` alone or nobody would
+  // ever see the ₹15 price or a way to lock in paid premium before
+  // the cutoff. The API returns no paid flag, so this UI never claims
+  // paid status — it states the window facts and offers checkout
+  // (which the server allows during the window; paying grants paid
+  // premium that survives the cutoff). After the cutoff the old
+  // behaviour holds exactly: Upgrade at ₹15 when not premium, hidden
+  // when premium.
+  const isPremium = premiumData?.isPremium ?? false;
+  const freeWindowActive = premiumData?.freeWindowActive ?? false;
   const downloads = downloadsData ?? [];
   const [isDownloading, setIsDownloading] = useState(false);
   const downloadMutation = useDownloadVideo();
@@ -102,10 +113,26 @@ const DownloadVideo = ({
         <button
           className="btn_VideoPage download"
           onClick={handleUpgradeToPremium}
+          title="Upgrade to Premium — ₹15"
         >
           <RiMoneyRupeeCircleLine size={22} className="btns_videoPage" />
-          <b>Upgrade</b>
+          <b>Upgrade — ₹15</b>
         </button>
+      )}
+      {freeWindowActive && (
+        <>
+          <span className="premium-free-window">
+            Premium free until 12 Nov 2027 · ₹15 after that
+          </span>
+          <button
+            className="btn_VideoPage download"
+            onClick={handleUpgradeToPremium}
+            title="Upgrade to Premium — ₹15"
+          >
+            <RiMoneyRupeeCircleLine size={22} className="btns_videoPage" />
+            <b>Upgrade — ₹15</b>
+          </button>
+        </>
       )}
     </>
   );

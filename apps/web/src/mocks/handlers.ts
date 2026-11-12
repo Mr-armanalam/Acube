@@ -566,8 +566,13 @@ export const handlers = [
     }
     return json(fixtureSession);
   }),
+  // Premium status default: post-cutoff, non-premium baseline
+  // ({ success, isPremium, freeWindowActive } — the real
+  // GET /download/user/premium-status shape). Tests that need the
+  // free window override this with server.use(); the default never
+  // depends on the real clock.
   http.get("*/download/user/premium-status", () =>
-    json({ isPremium: false }),
+    json({ success: true, isPremium: false, freeWindowActive: false }),
   ),
   http.get("*/download/user/downloads", () => json({ downloads: [] })),
   http.post("*/download/download-video", async ({ request }) => {
@@ -584,7 +589,8 @@ export const handlers = [
       success: true,
       payment_request: "https://example.com/pay",
       sessionId: "cs_test_123",
-      amount: 1000,
+      // Premium catalogue price: ₹15 (PREMIUM_PRICE_INR default).
+      amount: 15,
       currency: "INR",
     });
   }),

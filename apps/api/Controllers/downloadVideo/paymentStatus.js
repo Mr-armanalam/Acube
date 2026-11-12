@@ -1,5 +1,5 @@
 import User from '../../Models/Auth.js'
-import { getStripe } from "./createPaymentRequest.js";
+import { getStripe, premiumPriceInr } from "./createPaymentRequest.js";
 
 // Phase 3b: the old handler granted premium on ANY authenticated call
 // — a forged client "success" callback made anyone premium for free.
@@ -34,6 +34,29 @@ export const handlePaymentStatus = async (req, res) => {
             (session.customer_email && session.customer_email === user.email);
         if (!ownedByCaller || session.payment_status !== 'paid') {
             return res.status(200).json({ success: false, message: 'Payment not verified' });
+        }
+
+        // Amount validation (premium-pricing change): the session must
+        // have paid exactly the catalogue price (premiumPriceInr() *
+        // 100 paise). A session created at the old ₹1000 price — or any
+        // other amount — must NOT grant premium after the price changed
+        // to ₹15. Unlike the webhook (which answers 200 so Stripe does
+        // not retry a fixed-amount session), this caller-facing route
+        // answers 400 with a clear error.
+        const expectedAmountPaise = premiumPriceInr() * 100;
+        if (session.amount_total !== expectedAmountPaise) {
+            console.error(
+                'Payment status: session amount mismatch — expected',
+                expectedAmountPaise,
+                'paise, got',
+                session.amount_total,
+                'for session',
+                session.id,
+            );
+            return res.status(400).json({
+                success: false,
+                message: `Payment amount mismatch: expected ${premiumPriceInr()} INR for Acube Premium`,
+            });
         }
 
         if (!user.isPremium) {
