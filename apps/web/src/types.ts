@@ -9,7 +9,7 @@
 // src/store/slices/authSlice.ts, src/query/downloads.ts,
 // src/query/hooks.ts). What could NOT be wired: @acube/shared has no
 // response/model schemas, so SessionUser / Video / Channel / CommentItem /
-// VideoListEntry / Chat* / Group / PaymentRequestResponse stay local here.
+// VideoListEntry / PaymentRequestResponse stay local here.
 // POST /download/download-video is also unwired: the API validates it
 // with emptyBodySchema and the server ignores the body, so there is no
 // meaningful shared schema for the client's { videoId } record-keeping
@@ -383,43 +383,6 @@ export interface PagedResult<T> {
   limit: number;
   total: number;
   totalPages: number;
-}
-
-export interface ChatUser {
-  _id: string;
-  username: string;
-  email: string;
-  picture?: string;
-}
-
-export interface ChatUserList {
-  filteredUsers: ChatUser[];
-  currentMessages: Array<{
-    user?: string;
-    date?: string;
-    message?: string;
-  } | null>;
-}
-
-export interface ChatMessage {
-  _id: string;
-  sender: string;
-  receiver?: string;
-  group?: string;
-  content: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface Group {
-  _id: string;
-  name: string;
-  GroupPicture?: string;
-  admin?: string[];
-  members?: string[];
-  messages?: string[];
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface DownloadItem {

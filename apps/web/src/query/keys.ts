@@ -8,10 +8,6 @@ export const queryKeys = {
   history: ["history"] as const,
   liked: ["liked"] as const,
   watchLater: ["watchLater"] as const,
-  chatUsers: (search: string) => ["chatUsers", search] as const,
-  chatMessages: (userId: string) => ["chatMessages", userId] as const,
-  groups: ["groups"] as const,
-  groupMessages: (groupId: string) => ["groupMessages", groupId] as const,
   premium: ["premium"] as const,
   downloads: ["downloads"] as const,
   // Phase 5 — Creator Studio.

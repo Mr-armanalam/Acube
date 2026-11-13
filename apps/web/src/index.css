@@ -68,17 +68,8 @@ code {
   --channel_edit_bg: blue;
   --channel_edit_brdr: #e78c0e;
 
-  --chat_bg_logo: #0f0f0f;
-  --chat_nav_btm_brdr: #4c4b4b;
-  --cretegrp_selectbtn: #111111;
-  --Nochat_foreground: #212121;
-  --selected_member_bg: #272727;
-  --grp_createNameInput: white;
-  --grp_chat_bx_brdr: #050505;
   --grp_selected_spanclr: #c2c2c2;
-  --grp_selected_spanclrHover: #e3dacf;
   --grf_form: #2f2f2f;
-  --grf_formHover: beige;
 
   --auth_cont_background: #101010;
   --create_channel_cont: rgba(0, 0, 0, 0.697);
@@ -138,20 +129,11 @@ code {
   --comment_border_bottom_low: rgba(22, 19, 15, 0.05);
   --comment_border_bottom_800: rgba(22, 19, 15, 0.05);
   --whl_box_background: rgba(0, 0, 0, 0.153);
-  --chat_bg_logo: #FFFFFF;
-  --cretegrp_selectbtn: #EFEFEC;
-  --grp_chat_bx_brdr: #E4E2DC;
-  --grp_selected_spanclrHover: #EFEFEC;
   --grp_selected_spanclr: #575450;
-  --grf_formHover: #E5E5E0;
-  --grp_createNameInput: #FFFFFF;
-  --selected_member_bg: #EFEFEC;
   --create_channel_cont: rgba(22, 19, 15, 0.04);
   --create_channel_cont2: #ffffff;
   /* ffffff99 */
   --create_channel_inputT: #16130F;
-  --chat_nav_btm_brdr: #E4E2DC;
-  --Nochat_foreground: #EFEFEC;
   --navbar_border: #E4E2DC;
   --search_text: #16130F;
   --otp_auth_cont_bg: #F5F5F2;

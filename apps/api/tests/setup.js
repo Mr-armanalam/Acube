@@ -7,7 +7,6 @@ import { afterAll, beforeAll, beforeEach } from "vitest";
 
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = "test-secret-for-tests-only";
-process.env.SECRETKEY_CRYPTO = "test-crypto-key-for-tests-only";
 process.env.ACCOUNT_SID = "ACtest0000000000000000000000000000";
 process.env.ACCOUNT_TOKEN = "test-twilio-token";
 process.env.TWILIO_NUMBER = "+10000000000";

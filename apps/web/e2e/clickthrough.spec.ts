@@ -12,7 +12,6 @@
 //   VITE_ENCRYPTED_KEY=e2e-test-key vite build && \
 //   npx playwright test e2e/clickthrough.spec.ts
 import { test, expect, type Page } from "@playwright/test";
-import CryptoJS from "crypto-js";
 import { createHmac } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -32,24 +31,9 @@ const SEEDED_VIDEO_TITLE = "E2E Smoke Video";
 // Fake signed-in user id (matches the smoke spec's seeded session).
 const FAKE_USER_ID = "507f1f77bcf86cd799439012";
 
-// Must match the VITE_ENCRYPTED_KEY the `test:e2e` script builds with.
-const E2E_ENCRYPTION_KEY = "e2e-test-key";
-
-// Replicates src/utils/toEncrypt.js encryptData2 (AES + base64url).
-function encryptData2(data: unknown): string {
-  const encrypted = CryptoJS.AES.encrypt(
-    JSON.stringify(data),
-    E2E_ENCRYPTION_KEY,
-  ).toString();
-  return encrypted
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
 // The signed-in session the app persists (localStorage "Profile").
-// The smoke spec's UNSIGNED dummy JWT is NOT enough here: Chat and
-// Premium both make authenticated API calls, and the API's auth
+// The smoke spec's UNSIGNED dummy JWT is NOT enough here: Premium
+// makes authenticated API calls, and the API's auth
 // middleware (apps/api/middleware/auth.js) jwt.verify()s the token
 // against JWT_SECRET — an unsigned token gets 401, and the client's
 // axios 401 interceptor (apps/web/src/Api/index.ts) then clears the
@@ -185,7 +169,6 @@ test.describe("Acube click-through", () => {
       "/studio",
       "/studio/content",
       "/history",
-      "/chat",
     ];
     for (const [i, route] of guarded.entries()) {
       await page.goto(route);
@@ -211,53 +194,6 @@ test.describe("Acube click-through", () => {
         page.getByRole("heading", { name: "404 — Page not found" }),
       ).toBeVisible();
     }
-  });
-
-  test("5. Chat: logged-out redirects; signed-in shell renders (empty users)", async ({
-    page,
-  }) => {
-    // Logged out: redirect, as in step 4.
-    await page.goto("/chat");
-    await expect(page).toHaveURL("http://localhost:4173/");
-    // Signed in (fake session): the chat shell renders.
-    await seedFakeSession(page);
-    await page.goto("/chat");
-    await expect(page).toHaveURL("http://localhost:4173/chat");
-    await expect(page.locator(".chat_container")).toBeVisible();
-    // Sidebar renders; the seeded DB has no users, so record what it shows.
-    const sidebar = page.locator(".chat_container");
-    const sidebarText = (await sidebar.innerText()).trim();
-    test.info().annotations.push({
-      type: "chat-sidebar-text",
-      description: sidebarText.slice(0, 500) || "(empty)",
-    });
-    // No user can be selected (none exist), so the empty main pane shows.
-    await expect(page.locator(".main_chat_container")).toBeVisible();
-    await page.screenshot({ path: shot("chat.png") });
-  });
-
-  test("6. StreamRoom renders the call UI with a fake session (no real peer)", async ({
-    page,
-  }) => {
-    const pageErrors: string[] = [];
-    page.on("pageerror", (err) => pageErrors.push(String(err)));
-    await seedFakeSession(page);
-    const roomId = encryptData2("e2e-room");
-    await page.goto(`/video-stream/${roomId}`);
-    await expect(page.locator(".video_stream_container")).toBeVisible();
-    // Call controls render; no peer is ever connected in this pass.
-    await expect(page.locator(".start_meeting_btn").first()).toBeVisible();
-    const media = await page.evaluate(() => ({
-      hasMediaDevices: !!navigator.mediaDevices,
-      hasGetUserMedia: !!navigator.mediaDevices?.getUserMedia,
-    }));
-    test.info().annotations.push({
-      type: "media-devices",
-      description: JSON.stringify(media),
-    });
-    // Record honestly: no real call is possible headless with no devices.
-    expect(pageErrors).toEqual([]);
-    await page.screenshot({ path: shot("streamroom.png") });
   });
 
   test("7. Upload modal: entry point is owner-only on the channel page", async ({

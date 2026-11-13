@@ -1,8 +1,7 @@
 # Acube
 
 A YouTube-style media platform: video feed, player and uploads, channels,
-comments, likes / watch history / watch later, private and group chat with
-video calls and screen sharing, downloads (free daily limit, premium
+comments, likes / watch history / watch later, downloads (free daily limit, premium
 unlimited), and a points system for completed watches.
 
 Live demo: [accube.vercel.app](https://accube.vercel.app/) (deployed from
@@ -19,8 +18,6 @@ the original project; this rebuild has not been deployed yet).
   player (play/pause, seek, speed, theatre, fullscreen, picture-in-picture,
   keyboard shortcuts), view and like counters.
 - **Library**: watch history, liked videos, watch later (all behind sign-in).
-- **Chat**: private messages and groups, plus 1:1 video calls with screen
-  sharing and local session recording (WebRTC via `simple-peer`).
 - **Downloads**: free users get 1 download per day; premium users get
   unlimited downloads. Premium is sold through Stripe Checkout.
 - **Points**: 5 points per completed watch, max 10 points per video per day
@@ -46,9 +43,7 @@ the original project; this rebuild has not been deployed yet).
               |              |              |
         MongoDB          Cloudinary     Stripe / Twilio / Gmail
    (videos, users,   (video storage)  (Checkout + webhooks /
-    chats, OTPs)                        SMS + email OTP)
-              |
-        Socket.IO (chat + video-call signalling, same :5000 server)
+    OTPs)                              SMS + email OTP)
 
 packages/shared   @acube/shared — Zod route schemas + constants used by
                   BOTH the API (runtime validation) and the web client
@@ -99,7 +94,6 @@ are marked **required live** below.
 | `STRIPE_SK` | **Required live for payments.** Stripe secret key (server-side only, `sk_test_...` / `sk_live_...`). |
 | `STRIPE_WEBHOOK_SECRET` | **Required live for premium.** Signing secret from Stripe Dashboard → Developers → Webhooks → the endpoint's "Signing secret". Without it the webhook answers 500 and premium is never granted. |
 | `PREMIUM_PRICE_INR` | Premium price in INR, default `1000`. Change the price here, never in client code. Arman must confirm 1000 INR is the intended price. |
-| `SECRETKEY_CRYPTO` | Shared server-side key for chat-message encryption (see Security model — this is NOT end-to-end encryption). |
 | `ACCOUNT_SID` | Twilio account SID (SMS OTP). |
 | `ACCOUNT_TOKEN` | Twilio auth token (SMS OTP). |
 | `TWILIO_NUMBER` | Twilio phone number that sends SMS OTPs. |
@@ -137,13 +131,13 @@ pnpm build && pnpm typecheck && pnpm lint   # gates, all exit 0
 ```
 
 - **API** (`apps/api/tests/`, Vitest + Supertest + `mongodb-memory-server`):
-  auth, OTP, video, comment, chat, download/payments, history, routes
+  auth, OTP, video, comment, download/payments, history, routes
   smoke. No live MongoDB, Stripe, Twilio, or Cloudinary account is needed:
   one in-memory mongod for the run, Stripe and Cloudinary mocked, OTP
   senders mocked. First run on a fresh machine downloads the mongod
   binary (~128 MB) into `~/.cache/mongodb-binaries`.
 - **Web** (`apps/web/src/test/`, Vitest + Testing Library + MSW): search,
-  home, OTP, likes/save, upload, chat, player, auth guards, downloads,
+  home, OTP, likes/save, upload, player, auth guards, downloads,
   payment status, slices, queries. The API is mocked with MSW; no live
   backend needed. DOM assertions use jest-dom matchers (`toBeInTheDocument`,
   `toHaveValue`, `toHaveTextContent`); see `src/test/jest-dom.d.ts`.
@@ -185,12 +179,11 @@ pnpm build && pnpm typecheck && pnpm lint   # gates, all exit 0
   (`{ items, page, limit, total, totalPages }`, limit clamped to 50).
   Like/view counters move by atomic `$inc`; points are awarded
   server-side only (5 per completed watch, max 10 per video per day).
-- **Chat encryption is TLS + server-side encryption at rest, NOT
-  end-to-end.** Messages are AES-encrypted with a single shared
-  server-side key (`SECRETKEY_CRYPTO`), so the server can decrypt every
-  message. Do not call it end-to-end encryption anywhere — the old
-  "End-to-End Encripted" label in the chat UI and the old README claim
-  were wrong and have been removed.
+- **Chat and video calls removed.** The 1:1/group chat and WebRTC
+  video-call features (and the `SECRETKEY_CRYPTO` chat-message
+  encryption) were removed; the `conversations` / `messages` / `groups`
+  collections are orphaned in existing databases — dropping them is an
+  ops decision, not code.
 - **Other hardening**: Helmet headers, CORS allowlist (never `*`),
   rate limits (300 req / 15 min global, 30 / 15 min on auth routes),
   central error handler (`{ error: { code, message } }`, no stack
@@ -205,7 +198,6 @@ pnpm build && pnpm typecheck && pnpm lint   # gates, all exit 0
 
 - Home feed: _to add — `docs/screenshots/home.png`_
 - Video page / player: _to add — `docs/screenshots/video-page.png`_
-- Chat: _to add — `docs/screenshots/chat.png`_
 - Library (history / liked / watch later): _to add — `docs/screenshots/library.png`_
 
 ## Known limitations

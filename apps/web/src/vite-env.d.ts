@@ -5,7 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_BACKEND_URL: string;
   /** Google OAuth client ID (from Google Cloud Console) */
   readonly VITE_CLIENT_ID: string;
-  /** Client-side AES key for encrypting room ids in URLs (obfuscation only — the key ships in the bundle) */
+  /** Client-side AES key for the OTP/location payloads (obfuscation only — the key ships in the bundle) */
   readonly VITE_ENCRYPTED_KEY: string;
 }
 

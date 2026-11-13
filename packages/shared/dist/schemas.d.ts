@@ -41,30 +41,6 @@ export declare const commentListQuerySchema: z.ZodObject<{
         newest: "newest";
     }>>;
 }, z.core.$strip>;
-export declare const chatUserSchema: z.ZodObject<{
-    searchquery: z.ZodOptional<z.ZodString>;
-}, z.core.$strip>;
-export declare const messageIdParamSchema: z.ZodObject<{
-    id: z.ZodString;
-}, z.core.$strip>;
-export declare const deleteChatMessageSchema: z.ZodObject<{
-    id: z.ZodString;
-}, z.core.$strip>;
-export declare const sendMessageSchema: z.ZodObject<{
-    message: z.ZodString;
-    recieverId: z.ZodString;
-}, z.core.$strip>;
-export declare const createGroupSchema: z.ZodObject<{
-    GroupId: z.ZodArray<z.ZodString>;
-    GroupName: z.ZodString;
-}, z.core.$strip>;
-export declare const groupIdParamSchema: z.ZodObject<{
-    groupId: z.ZodString;
-}, z.core.$strip>;
-export declare const sendGroupMessageSchema: z.ZodObject<{
-    content: z.ZodString;
-    groupId: z.ZodString;
-}, z.core.$strip>;
 export declare const postCommentSchema: z.ZodObject<{
     videoid: z.ZodOptional<z.ZodString>;
     userid: z.ZodOptional<z.ZodString>;
@@ -291,8 +267,5 @@ export type HistoryPausedInput = z.infer<typeof historyPausedSchema>;
 export type CreatePlaylistInput = z.infer<typeof createPlaylistSchema>;
 export type UpdatePlaylistInput = z.infer<typeof updatePlaylistSchema>;
 export type LibraryEntryInput = z.infer<typeof libraryEntrySchema>;
-export type SendMessageInput = z.infer<typeof sendMessageSchema>;
-export type CreateGroupInput = z.infer<typeof createGroupSchema>;
-export type SendGroupMessageInput = z.infer<typeof sendGroupMessageSchema>;
 export type HistoryEntryInput = z.infer<typeof historyEntrySchema>;
 //# sourceMappingURL=schemas.d.ts.map

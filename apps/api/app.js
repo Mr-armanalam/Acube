@@ -27,7 +27,6 @@ import userroutes from "./Routes/User.js";
 import channelroutes from "./Routes/channel.js";
 import subscriptionroutes from "./Routes/subscriptions.js";
 import commentroutes from "./Routes/comment.js";
-import chatroutes from "./Routes/chat.js";
 import downloadVid from "./Routes/downloadVid.js";
 import Otpauth from "./Routes/Otpauth.js";
 import { authLimiter, globalLimiter } from "./middleware/rateLimit.js";
@@ -133,7 +132,6 @@ app.use("/watch", watchroutes);
 // Phase 5: Creator Studio (see Routes/studio.js).
 app.use("/studio", studioroutes);
 app.use("/comment", commentroutes);
-app.use("/chat", chatroutes);
 app.use("/download", downloadVid);
 
 // Unknown routes + central error handler (stable { error: { code, message } }
