@@ -1,5 +1,5 @@
 // RTK store (Phase 2b). Client state ONLY — auth session, theme, player UI,
-// chat UI, upload progress. All server state lives in TanStack Query
+// upload progress. All server state lives in TanStack Query
 // (see ../query). No redux-thunk, no hand-rolled reducers.
 import { configureStore } from "@reduxjs/toolkit";
 import type { TypedUseSelectorHook } from "react-redux";
@@ -7,7 +7,6 @@ import { useDispatch, useSelector } from "react-redux";
 import authReducer, { loadInitialSession } from "./slices/authSlice";
 import themeReducer from "./slices/themeSlice";
 import playerReducer from "./slices/playerSlice";
-import chatUiReducer from "./slices/chatUiSlice";
 import uploadReducer from "./slices/uploadSlice";
 
 export const store = configureStore({
@@ -15,7 +14,6 @@ export const store = configureStore({
     auth: authReducer,
     theme: themeReducer,
     player: playerReducer,
-    chatUi: chatUiReducer,
     upload: uploadReducer,
   },
   // Single session bootstrap: hydrate the stored profile once, here —

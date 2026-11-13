@@ -24,14 +24,14 @@ vi.mock("../utils/googleAuth.js", () => ({
 
 describe("auth middleware (401 for missing/invalid token)", () => {
   it("returns 401 with the stable error shape when no token is sent", async () => {
-    const res = await api.get("/chat/group");
+    const res = await api.get("/user/me");
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe("UNAUTHORIZED");
   });
 
   it("returns 401 for a malformed token", async () => {
     const res = await api
-      .get("/chat/group")
+      .get("/user/me")
       .set("Authorization", "Bearer not-a-real-token");
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe("UNAUTHORIZED");
@@ -39,19 +39,19 @@ describe("auth middleware (401 for missing/invalid token)", () => {
 
   it("returns 401 for a token signed with the wrong secret", async () => {
     const bad = jwt.sign({ id: "000000000000000000000001" }, "wrong-secret");
-    const res = await api.get("/chat/group").set("Authorization", `Bearer ${bad}`);
+    const res = await api.get("/user/me").set("Authorization", `Bearer ${bad}`);
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe("UNAUTHORIZED");
   });
 
   it("returns 401 when the Authorization header has no token part", async () => {
-    const res = await api.get("/chat/group").set("Authorization", "Bearer");
+    const res = await api.get("/user/me").set("Authorization", "Bearer");
     expect(res.status).toBe(401);
   });
 
   it("accepts a valid token", async () => {
     const user = await createUser();
-    const res = await api.get("/chat/group").set(authHeader(user));
+    const res = await api.get("/user/me").set(authHeader(user));
     expect(res.status).toBe(200);
   });
 });

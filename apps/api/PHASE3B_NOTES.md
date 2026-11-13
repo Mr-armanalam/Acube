@@ -1,3 +1,9 @@
+> **Note (13 Nov 2026): chat + video calls were removed from the app** — the
+> chat endpoints, controllers, models and the Socket.IO signalling server
+> described below are historical; they no longer exist. The
+> `conversations` / `messages` / `groups` collections are orphaned in
+> existing databases (dropping them is an ops decision, not code).
+
 # Phase 3b Notes — Payments + Ownership + Counters + Uploads + Pagination (10 Nov 2026)
 
 Branch: `feat/acube-professional-rebuild`. No push, no merge, main untouched.
@@ -80,17 +86,14 @@ Auth was added to every formerly-open endpoint found by reading
 | `PATCH /video/view/:id` | authed (see note below) |
 | `GET /video/getallhistory`, `getallwatchlater`, `getalllikevide` | authed + scoped to `req.userid` |
 | `GET /comment/get` | **stays public — recorded decision, see §2.1** |
-| `GET /chat/group/:groupId/messages` | authed + group members only (403) |
-| `PUT /chat/chat_message` | authed + sender only (403) |
+| `GET /chat/group/:groupId/messages` | REMOVED with chat (see note above) |
+| `PUT /chat/chat_message` | REMOVED with chat (see note above) |
 | `POST /download/create-payment-request` | authed |
 
-Owner checks added: channel update, comment edit/delete, message
-delete, history/watch-later/liked delete (`viewer`/`userid` param
-must equal `req.userid`, else 403). Group membership checks on group
-send + get (non-member → 403). `POST /chat/group/messages` now checks
-the group exists and the sender is a member BEFORE storing the
-message (the old code saved first, then updated a possibly-missing
-group).
+Owner checks added: channel update, comment edit/delete,
+history/watch-later/liked delete (`viewer`/`userid` param must equal
+`req.userid`, else 403). (Chat message/group checks described here
+were removed with chat — see note above.)
 
 Mass assignment fixed everywhere: controllers take explicit DTO
 fields only — never `new Model(req.body)`. The author/viewer is
@@ -178,15 +181,9 @@ pushing onto the request-body array.
   return `{ items, page, limit, total, totalPages }` instead of a bare
   array. Affected: `getvideos`, `getcomment`, `getallchannel`,
   `getallhistory`, `getallwatchlater`, `getalllikevide`,
-  `GET /chat/group`, `GET /chat/message/:id`,
-  `GET /chat/group/:groupId/messages`. `POST /chat/chat_user` keeps
-  `{ filteredUsers, currentMessages }` and adds the pagination fields.
   `GET /download/user/downloads` keeps the `downloads` key and adds
   the pagination fields alongside it. All lists use `.lean()` and are
   sorted by `createdAt` ascending (insertion order, as before).
-- **Messages** are now queried from the `Message` collection
-  (paginated, chronological) instead of `populate`-everything on the
-  conversation/group — a long thread no longer loads every message.
 - Web hooks unwrap `items` (with a bare-array fallback) and fetch the
   first page of 50. True infinite scroll is a follow-up, not done
   here: lists longer than 50 rows are truncated to the first page in
@@ -195,9 +192,8 @@ pushing onto the request-body array.
 ### Indexes
 - `videofile.createdAt`, `comment.{videoid, commentedon}`,
   `history` / `likedvideo` / `watchlater` unique compound
-  `(videoid, viewer)`, `conversation.participants`,
-  `message.{group, createdAt}` + `{sender, receiver, createdAt}`,
-  `group.members`, `User.email` (unique), `ProcessedWebhookEvent.eventId`
+  `(videoid, viewer)`, `User.email` (unique),
+  `ProcessedWebhookEvent.eventId`
   (unique) + `sessionId`, `PointsAward.{userId, videoid, day}`.
 - Adds on history/liked/watch-later are upserts, so re-adding is a
   no-op instead of a duplicate row (enforced by the unique indexes).
@@ -225,8 +221,8 @@ duplicate rows — dedupe first (keep the earliest row per pair).
 
 ### Not done here
 - No new E2E claims were added (the full honesty pass is 3c's job).
-  The chat-encryption note (shared server-side key, not true E2E)
-  is unchanged.
+  (The chat-encryption note is obsolete — chat was removed, see note
+  at the top.)
 - `Controllers/Auth.js` `login` untouched (3a owns it); only
   `updatePoints` was replaced and `getMe` / `watchComplete` added.
 - `middleware/auth.js`, `utils/googleAuth.js`, `Models/Otp.js`,

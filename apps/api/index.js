@@ -1,36 +1,16 @@
 // Entry point: connect to MongoDB BEFORE listening (previously the server
 // listened first and connected afterwards, so it could serve requests with
-// no database), then start the HTTP + Socket.IO server.
+// no database), then start the HTTP server.
 // Env is loaded by app.js (dotenv.config runs there before routes are built).
 import mongoose from "mongoose";
 import { createServer } from "http";
-import { Server } from "socket.io";
-import app, { corsOptions } from "./app.js";
-import { roomhandler } from "./V-Stream-Room/Roomhandler.js";
+import app from "./app.js";
 import logger from "./utils/logger.js";
 
 const PORT = process.env.PORT || 5000;
 const DB_URL = process.env.DB_URL;
 
 const server = createServer(app);
-const io = new Server(server, {
-  cors: { ...corsOptions, methods: ["GET", "POST"] },
-});
-
-const users = {};
-
-io.on("connection", (socket) => {
-  roomhandler(socket, io, users);
-
-  socket.on("disconnect", () => {
-    for (const userId in users) {
-      if (users[userId] === socket.id) {
-        delete users[userId];
-        break;
-      }
-    }
-  });
-});
 
 async function start() {
   if (!DB_URL) {

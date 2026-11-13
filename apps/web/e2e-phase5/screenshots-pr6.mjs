@@ -95,10 +95,6 @@ async function take(name, route, session, waitFor, extra) {
         errors.push(`REQFAIL ${req.url()} :: ${req.failure()?.errorText ?? ""}`);
     });
     page.on("response", (res) => {
-      // socket.io polling 404s are a known client artifact: the chat
-      // client polls /socket.io on the API, which has no socket
-      // endpoint in this setup. Not a page error, not branch-related.
-      if (res.url().includes("/socket.io/")) return;
       if (res.status() >= 400 && res.url().startsWith("http://localhost:"))
         errors.push(`HTTP ${res.status()} ${res.url()}`);
     });

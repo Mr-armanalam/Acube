@@ -110,31 +110,6 @@ export const commentListQuerySchema = paginationQuerySchema.extend({
   sort: z.enum(["oldest", "newest"]).default("oldest"),
 });
 
-export const chatUserSchema = z.object({
-  searchquery: z.string().optional(),
-});
-
-export const messageIdParamSchema = z.object({ id: objectId });
-
-export const deleteChatMessageSchema = z.object({ id: objectId });
-
-export const sendMessageSchema = z.object({
-  message: nonEmptyString,
-  recieverId: objectId,
-});
-
-export const createGroupSchema = z.object({
-  GroupId: z.array(objectId).min(1, "at least one member is required"),
-  GroupName: nonEmptyString,
-});
-
-export const groupIdParamSchema = z.object({ groupId: objectId });
-
-export const sendGroupMessageSchema = z.object({
-  content: nonEmptyString,
-  groupId: objectId,
-});
-
 export const postCommentSchema = z.object({
   videoid: z.string().optional(),
   userid: z.string().optional(),
@@ -480,7 +455,4 @@ export type HistoryPausedInput = z.infer<typeof historyPausedSchema>;
 export type CreatePlaylistInput = z.infer<typeof createPlaylistSchema>;
 export type UpdatePlaylistInput = z.infer<typeof updatePlaylistSchema>;
 export type LibraryEntryInput = z.infer<typeof libraryEntrySchema>;
-export type SendMessageInput = z.infer<typeof sendMessageSchema>;
-export type CreateGroupInput = z.infer<typeof createGroupSchema>;
-export type SendGroupMessageInput = z.infer<typeof sendGroupMessageSchema>;
 export type HistoryEntryInput = z.infer<typeof historyEntrySchema>;

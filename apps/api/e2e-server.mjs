@@ -16,7 +16,6 @@ import { cleanStaleMongoTmp } from "./tests/mongoTmpCleanup.js";
 
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = "e2e-test-secret-not-a-real-secret";
-process.env.SECRETKEY_CRYPTO = "e2e-test-crypto-key-not-a-real-secret";
 process.env.GOOGLE_CLIENT_ID = "e2e-test.apps.googleusercontent.com";
 process.env.STRIPE_SK = "sk_test_e2e_dummy_key";
 process.env.STRIPE_WEBHOOK_SECRET = "whsec_e2e_test_dummy_secret";

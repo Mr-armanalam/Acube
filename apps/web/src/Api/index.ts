@@ -147,24 +147,6 @@ export const getallwatchlater = (page = 1, limit = 50) =>
 export const deletewatchlater = (videoid: string, viewer: string) =>
   API.delete(`/video/deletewatchlater/${videoid}/${viewer}`);
 
-export const all_chat_user_sidebar = (searquery: unknown) =>
-  API.post(`/chat/chat_user`, searquery);
-export const deleteChat = (chat: unknown) =>
-  API.put(`/chat/chat_message`, chat);
-export const send_chat_Messages = (sendMessages: unknown) =>
-  API.post(`/chat/send`, sendMessages);
-export const get_chat_Messages = (selectedId: string, page = 1, limit = 50) =>
-  API.get(`/chat/message/${selectedId}`, { params: { page, limit } });
-
-export const send_GroupUsers = (GroupUsers: unknown) =>
-  API.post("/chat/group_user", GroupUsers);
-export const get_all_Group = (page = 1, limit = 50) =>
-  API.get("/chat/group", { params: { page, limit } });
-export const send_group_messages = (group_messages: unknown) =>
-  API.post("/chat/group/messages", group_messages);
-export const fetch_group_messages = (groupId: string, page = 1, limit = 50) =>
-  API.get(`/chat/group/${groupId}/messages`, { params: { page, limit } });
-
 export const downloadVideo = (videoId: unknown) =>
   API.post("/download/download-video", videoId);
 export const checkPremiumStatus = () =>
