@@ -2568,3 +2568,47 @@ First run: **4 passed, 2 failed (exit 1)** — tests (c) and (d). Both failures 
 1. **Live Vercel behaviour** — only provable after merge + redeploy: the personalised feed needs a signed-in session against the live API; the e2e proof is local-only (seeded demo data, `DEMO_LOGIN_ENABLED=1`).
 2. **`home-pagination.spec.ts` Load-more race** — same latent sentinel race as fixed in (d) above; passes by timing today, could flake the same way.
 3. **`/tmp` orphan cleanup** — see §5: the 1h stale rule does not save a back-to-back rerun within the hour.
+
+#### 8.9.22 vercel.json placement correction — repo root → apps/web (13 Nov 2026, branch `feat/acube-vercel-json-apps-web`, base `main` @ `d3c97cc` — PR #15 merge; NOT pushed, NO PR yet)
+
+Numbering note: highest in the file is §8.9.21 (feed personalization), so §8.9.22 is the next free number with no collision. Base-head note: the handoff said main was @ `94dc1b67` (PR #14 merge) with PR #15 OPEN; the live head was verified via the GitHub connector before branching and had moved — main is @ `d3c97cc`, "Merge pull request #15" (12 Nov 2026 09:45 UTC, feed personalization merged by Arman). This branch is therefore based on `d3c97cc`, not `94dc1b67`; the feed files are untouched (this branch's diff touches only the two paths below).
+
+**The bug.** PR #14 placed `vercel.json` at the REPO ROOT with the catch-all rewrite `{ "source": "/(.*)", "destination": "/index.html" }`. Arman confirmed the Vercel project's Root Directory is `apps/web`, so Vercel reads config only from inside `apps/web` and silently ignores a repo-root `vercel.json` — the deep-link fix from PR #14 was never live. The search empty-state half of PR #14 is merged and working and was not redone.
+
+**Placement evidence (checked before the move).**
+
+- Only ONE `vercel.json` existed anywhere in the repo (`find . -name vercel.json`, excluding node_modules): the repo-root one from PR #14. No `apps/web/vercel.json`, no other copy.
+- `apps/web` is the Vite app Vercel builds: `apps/web/package.json` (`@acube/web`) has `"build": "vite build"`; `apps/web/vite.config.ts` sets no custom `outDir`, so the output is the Vite default `apps/web/dist`; `DEPLOYMENT.md` §3 states Root Directory `apps/web`, Framework preset Vite, Build command `pnpm --filter @acube/web build`, output `apps/web/dist`.
+
+**The fix (one commit, `2870cb1`, config-only).** `git mv vercel.json apps/web/vercel.json` — content unchanged. Byte-identical proof, not by eye: `cmp` of `apps/web/vercel.json` against the merged blob (`git show d3c97cc:vercel.json`) reports BYTE-IDENTICAL, and `diff` is empty. No other code changed; no `any`, no `ts-ignore`.
+
+**Verification (fresh, uncached, real exit codes).**
+
+| Check | Command | Result |
+|---|---|---|
+| JSON validity | `node -e "JSON.parse(...)"` on `apps/web/vercel.json` | exit 0, JSON VALID |
+| Byte-identical | `cmp` + `diff` vs merged `d3c97cc:vercel.json` | exit 0, BYTE-IDENTICAL, DIFF-EMPTY |
+| Build (forced) | `pnpm build --force` | exit 0, 3 successful, 0 cached, 19.1s (same "no output files" note for `@acube/api#build` as §8.9.20/§8.9.21) |
+| Typecheck (forced) | `pnpm typecheck --force` | exit 0, 3 tasks, 16.9s |
+| Test (turbo, forced) | `pnpm test --force` | exit 1 — **API 340/340 (24 files)** + web 308/309 (33 files, 1 failed — the §8.9.21 flake, see below). Combined 648/649 |
+| Web re-run | `pnpm test` in `apps/web` | exit 0, **33 files, 309/309 passed** |
+| API re-run | `pnpm test` in `apps/api` | exit 0, **24 files, 340/340 passed** |
+| Lint (forced) | `pnpm lint --force` | exit 0, **0 errors, 7 warnings** — all pre-existing, same files as §8.9.20/§8.9.21 (ChatSearch, SidebarAllGroups, LibraryHub, RoomContext, ThemeProvider, authSlice); none in the touched files |
+| E2E build | `VITE_BACKEND_URL=http://localhost:5000 VITE_CLIENT_ID=e2e-test.apps.googleusercontent.com VITE_ENCRYPTED_KEY=e2e-test-key pnpm exec vite build` | exit 0, 11.8s |
+| SPA fallback spec | `pnpm exec playwright test -c playwright.phase5.config.ts e2e-phase5/spa-fallback.spec.ts` | exit 0, **6/6 passed** (17.4s) |
+
+**The one failing test is the same §8.9.21 flake, not a regression from the move (proven).** First turbo run: `src/test/studioPreview.test.tsx` > "Latest comments show a relative time like the preview, not the commenter" — timed out in 5000ms under the full 33-worker parallel run on this 1.5-CPU VM (failure fragment shows the `twoHoursAgo`/`server.use(` setup at lines 149–150). Proof it is not move-caused: (1) the branch moves one JSON file and touches no test or source file — `git diff d3c97cc..HEAD --name-only` has no test path; (2) the web suite re-run passes **309/309, exit 0** with no code changed; (3) it is the identical test and identical failure mode documented as a flake in §8.9.21.
+
+**E2E evidence — `apps/web/e2e-phase5/spa-fallback.spec.ts` (config `playwright.phase5.config.ts`: production build :4173 + real seeded API :5000, `PHASE5_SEED=1`).** **6/6 passed, exit 0**, no spec change needed — the spec implements the fallback rule itself in its ~50-line static server and never reads `vercel.json`, so the move cannot change its behaviour; the pass confirms no regression from relocating the config. Direct-load /watch/:id renders the watch page (title heading + player, playlist sidebar, comments) and direct-load /search/:query renders results; in-app search for `zzz-no-match` shows `No results for "zzz-no-match"`. Both desktop screenshots were viewed: watch-direct shows the seeded "Getting Started with React Hooks" page correctly; search-empty shows the empty state. The 4 screenshots the spec wrote (`phase5-spa-fallback-{watch-direct,search-empty}-{desktop,mobile}.png`) are NEW files — PR #14 never committed them (not in `d3c97cc`) — and are left UNTRACKED in the worktree, not committed; the coordinator decides whether to add them (this branch's commits are the move + this section only, per the handoff).
+
+**Follow-up, NOT fixed here.** The spec header comment still says "the repo-root vercel.json catch-all rewrite" — the location is now stale (the rule content is unchanged and the spec never reads the file). One-word comment fix for whoever next touches the spec; deliberately left alone here under the config-only scope.
+
+**Environment note.** `pnpm` was not on `PATH` in this shell (same as §8.9.21); installed `pnpm@12.18.0` globally via `npm install -g` to run the verification — no repo files changed by that. `pnpm install --frozen-lockfile` in the worktree, exit 0.
+
+**`/tmp` incident (known VM issue, §8.9.21 §5 again).** The e2e run orphaned one ~201 MB `/tmp/mongo-mem-*` dir (Playwright teardown kills the server before `mongod.stop()` runs); `/tmp` reached 42%. Verified 0 mongod/e2e processes running and no ports held (:5000/:4173/:5173), removed the orphan by hand — `/tmp` back to 3%. `~/workspace/.tmp-mongo/` was used as `TMPDIR` for the e2e run per the §8.9.21 follow-up.
+
+**State left behind.** `apps/web/dist/` was rebuilt plain (`pnpm build --force`, exit 0) after the e2e runs, so it carries no e2e env — exactly as §8.9.21 left it; re-running the spec requires the e2e-env rebuild documented in the spec header. No servers left running, no ports held, `/tmp` at 3%.
+
+**Still unproven — needs Arman / post-merge (NOT fixed by this verification).**
+1. **Live Vercel behaviour** — only provable after merge + redeploy: direct-load a deep link (e.g. `/watch/<id>`) on https://accube.vercel.app/ and confirm HTTP 200 with the SPA shell instead of a Vercel 404. This branch only puts the file where Vercel will read it; nothing local can prove Vercel honours it.
+2. **`/tmp` orphan cleanup** — see above: the 1h stale rule does not save a back-to-back rerun within the hour (same open follow-up as §8.9.21 §5).
