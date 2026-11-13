@@ -184,3 +184,10 @@
     align-self: center;
   }
 }
+
+/* ---- Porcelain light theme (13 Nov 2026, §8.9.23). Light-only. */
+/* Placeholder initials sit on a light surface-2 thumb in light, so
+ * they read in ink-2 instead of bone. Duration badges and the resume
+ * progress track stay dark-on-thumbnail in both themes (preview
+ * spec 7 + p. I: progress reuses the brand bar). */
+body.white-theme .history-thumb-initial { color: var(--ink-2); }

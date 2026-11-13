@@ -24,12 +24,20 @@
 .btn_nav_home:hover {
   background-color: var(--body_second_topbtn_navHover);
 }
-/* Preview: the active chip is a WHITE pill ("All"), dark text. */
+/* Preview: the active chip is the selected-chip token pair — bone
+ * pill on dark, ink pill on light (Porcelain, §8.9.23). */
 .btn_nav_home.active {
-  background-color: #f2eee6;
-  border-color: #f2eee6;
-  color: #0c0b0a;
+  background-color: var(--chip-selected-bg);
+  border-color: var(--chip-selected-bg);
+  color: var(--chip-selected-text);
 }
+/* Light: rest chips are white surface + hairline (preview spec 3).
+ * :not(.active) — the selected chip keeps its ink fill; without the
+ * exclusion this rule out-specifics .btn_nav_home.active and the
+ * white-on-white label vanishes. */
+body.white-theme .btn_nav_home:not(.active) { background-color: var(--bg-surface); }
+/* Light: reason lines are brand-strong, real reasons only (spec 10). */
+body.white-theme .home-video-reason { color: var(--brand-strong); }
 /* @media (max-width:768px) {
     .navigation_Home::-webkit-scrollbar {
         display: none;

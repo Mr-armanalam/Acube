@@ -95,72 +95,75 @@ code {
   --authSubmit_bg: #131313;
 }
 
+/* Legacy light vars, re-pointed at Porcelain (13 Nov 2026, §8.9.23).
+ * Same values as the Phase 5 .white-theme block below; the Phase 5
+ * block wins where both define a name (it comes later). */
 .white-theme{
-  --body_background: #FFFFFF;
-  --body_background_800: white;
-  --body_background_850: white;
-  --body_forground: white;
-  --body_forground_850: white;
-  --body_forground_800: #d7e0e9;
-  --body_forground_700: white;
-  --search_background_btn: #d7e0e9;
-  --nav_logo_background: #d7e0e9;
-  --channel_avatar_bg: #d7e0e9;
-  --auth_cont_background: #f0f0f0;
-  --grf_form: #d7d7d7;
-  --left_Sidebar_background: white;
-  --left_Sidebar_icon: black;
-  --drawer_leftSidebar_bg: white;
-  --body_second_top_navlight: #d7e0e9;
-  --body_second_top_navbtn: white;
-  --body_second_topbtn_navHover: #d7e0e9;
-  --nav_logo_text: black;
-  --forground_text: black;
-  --forground_text_700: black;
-  --video_page_background: white;
-  --dot: gray;
-  --authBorder: #3ea6ff;
-  --logo_tag_text: black;
+  --body_background: #F5F5F2;
+  --body_background_800: #FFFFFF;
+  --body_background_850: #EFEFEC;
+  --body_forground: #FFFFFF;
+  --body_forground_850: #EFEFEC;
+  --body_forground_800: #E5E5E0;
+  --body_forground_700: #FFFFFF;
+  --search_background_btn: #EFEFEC;
+  --nav_logo_background: #EFEFEC;
+  --channel_avatar_bg: #EFEFEC;
+  --auth_cont_background: #F5F5F2;
+  --grf_form: #EFEFEC;
+  --left_Sidebar_background: #FFFFFF;
+  --left_Sidebar_icon: #16130F;
+  --drawer_leftSidebar_bg: #FFFFFF;
+  --body_second_top_navlight: #EFEFEC;
+  --body_second_top_navbtn: #FFFFFF;
+  --body_second_topbtn_navHover: #EFEFEC;
+  --nav_logo_text: #16130F;
+  --forground_text: #16130F;
+  --forground_text_700: #575450;
+  --video_page_background: #F5F5F2;
+  --dot: #716E67;
+  --authBorder: #1D4ED8;
+  --logo_tag_text: #16130F;
   --home_bg_transparent: rgba(0, 0, 0, 0.056);
   --video_controls_background: linear-gradient(to top, #f8f8f879, transparent);
-  --loading_animation_background: linear-gradient(110deg, #f1f1f1 8%, #fff 18%, #f1f1f1 33%);
-  --showVidMobile_loading_bg: linear-gradient(110deg, #f1f1f1 8%, #fff 18%, #f1f1f1 33%);
-  --video_title_text: black;
-  --video_title_des: gray;
-  --loading_box_border: white;
-  --video_page_log: #d7e0e9;
-  --video_page_logBorder: white;
-  --video_page_title_section_brder: #f7f7f7;
-  --comment_border_bottom: #404040;
-  --comment_border_bottom_low: #4040400d;
-  --comment_border_bottom_800: #f0f8ff0d;
+  --loading_animation_background: linear-gradient(110deg, #EFEFEC 8%, #F7F7F4 18%, #EFEFEC 33%);
+  --showVidMobile_loading_bg: linear-gradient(110deg, #EFEFEC 8%, #F7F7F4 18%, #EFEFEC 33%);
+  --video_title_text: #16130F;
+  --video_title_des: #575450;
+  --loading_box_border: #E4E2DC;
+  --video_page_log: #EFEFEC;
+  --video_page_logBorder: #FFFFFF;
+  --video_page_title_section_brder: #EFEFEC;
+  --comment_border_bottom: #E4E2DC;
+  --comment_border_bottom_low: rgba(22, 19, 15, 0.05);
+  --comment_border_bottom_800: rgba(22, 19, 15, 0.05);
   --whl_box_background: rgba(0, 0, 0, 0.153);
-  --chat_bg_logo: #fff;
-  --cretegrp_selectbtn: #c4c4c4;
-  --grp_chat_bx_brdr: #eef2f7;
-  --grp_selected_spanclrHover: #d7e0e9;
-  --grp_selected_spanclr: gray;
-  --grf_formHover: gray;
-  --grp_createNameInput: #f0f0f0;
-  --selected_member_bg: #dee5eb9c;
-  --create_channel_cont: rgba(0, 0, 0, 0.057);
-  --create_channel_cont2: #ffffff; 
+  --chat_bg_logo: #FFFFFF;
+  --cretegrp_selectbtn: #EFEFEC;
+  --grp_chat_bx_brdr: #E4E2DC;
+  --grp_selected_spanclrHover: #EFEFEC;
+  --grp_selected_spanclr: #575450;
+  --grf_formHover: #E5E5E0;
+  --grp_createNameInput: #FFFFFF;
+  --selected_member_bg: #EFEFEC;
+  --create_channel_cont: rgba(22, 19, 15, 0.04);
+  --create_channel_cont2: #ffffff;
   /* ffffff99 */
-  --create_channel_inputT: #daf3f5;
-  --chat_nav_btm_brdr: #d7e0e9;
-  --Nochat_foreground: #cbcbcb;
-  --navbar_border: #e4edef;
-  --search_text: #202020;
-  --otp_auth_cont_bg: #00000015;
-  --otp_auth_cont_box_bg: #fcfcfc;
-  --otp_auth_title_h1: #444444;
-  --otp_auth_title_p: #d9d9d9;
-  --otp_auth_title_button_clr: #313131;
-  --auth_region: #7e7e7e;
-  --authSubmit_bg: #d7e0e9;
-  --channel_text: #506191;
-  --channel_edit_brdr: black;
-  --channel_edit_bg: #d7e0e9;
+  --create_channel_inputT: #16130F;
+  --chat_nav_btm_brdr: #E4E2DC;
+  --Nochat_foreground: #EFEFEC;
+  --navbar_border: #E4E2DC;
+  --search_text: #16130F;
+  --otp_auth_cont_bg: #F5F5F2;
+  --otp_auth_cont_box_bg: #FFFFFF;
+  --otp_auth_title_h1: #16130F;
+  --otp_auth_title_p: #575450;
+  --otp_auth_title_button_clr: #16130F;
+  --auth_region: #575450;
+  --authSubmit_bg: #EFEFEC;
+  --channel_text: #575450;
+  --channel_edit_brdr: #D2CFC7;
+  --channel_edit_bg: #EFEFEC;
 }
 
 ::-webkit-scrollbar {
@@ -201,6 +204,39 @@ code {
   --space-8: 32px;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  /* Porcelain light-theme aliases (13 Nov 2026, §8.9.23). Dark values
+   * are the shipped Obsidian values re-exposed under the preview's
+   * token names, so shared rules can reference one name in both
+   * themes; the light values live in the .white-theme block below.
+   * --brand-strong is the shipped dark subscribe-hover #d03d27. */
+  --bg-app: #0c0b0a;
+  --bg-surface: #171512;
+  --bg-subtle: #24211e;
+  --bg-active: #2a2724;
+  --bg-hover: #24211e;
+  --ink-1: #f2eee6;
+  --ink-2: #a8a198;
+  --ink-3: #a8a198;
+  --line: #2a2724;
+  --line-strong: #2a2724;
+  --brand: #e8482f;
+  --brand-strong: #d03d27;
+  --brand-bright: #e8482f;
+  --brand-soft: rgba(232, 72, 47, 0.14);
+  --brand-soft-2: rgba(232, 72, 47, 0.28);
+  --player: #12100e;
+  --warning: #fbbf24;
+  --chip-selected-bg: #f2eee6;
+  --chip-selected-text: #0c0b0a;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 6px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.45), 0 14px 34px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 4px 10px rgba(0, 0, 0, 0.5), 0 20px 48px rgba(0, 0, 0, 0.5);
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --font: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
   /* Legacy vars re-pointed at the preview palette. */
   --body_background: #0c0b0a;
   --body_background_800: #0c0b0a;
@@ -231,23 +267,61 @@ h1, h2, h3, .display {
   letter-spacing: -0.02em;
 }
 
+/* ---- Porcelain light theme (13 Nov 2026, §8.9.23). The approved
+ * preview's token set, adapted to the repo's existing body.white-theme
+ * mechanism (no data-theme attribute — see §8.9.23). Dark values
+ * above are untouched; this block only re-points the same names.
+ * Acube Red deepens one step to #D93A22 so text/buttons pass on
+ * white; bright #E8482F survives as --brand-bright for the player
+ * and large graphics only. The player stays dark (#12100E token;
+ * the player element itself keeps its shipped #000 surface). */
 .white-theme {
-  --bg: #f7f5f1;
+  --bg: #f5f5f2;
   --surface: #ffffff;
-  --surface-2: #efece6;
-  --border: #e2ddd3;
+  --surface-2: #efefec;
+  --border: #e4e2dc;
   --text: #16130f;
-  --text-2: #5c564c;
-  --accent: #e8482f;
+  --text-2: #575450;
+  --accent: #d93a22;
   --accent-2: #5b4bd6;
   --danger: #dc2626;
-  --success: #0e9f7a;
-  --body_background: #f7f5f1;
+  --success: #177245;
+  --shadow-sm: 0 1px 2px rgba(22, 19, 15, 0.05), 0 1px 6px rgba(22, 19, 15, 0.05);
+  --shadow-md: 0 2px 6px rgba(22, 19, 15, 0.06), 0 14px 34px rgba(22, 19, 15, 0.10);
+  --bg-app: #f5f5f2;
+  --bg-surface: #ffffff;
+  --bg-subtle: #efefec;
+  --bg-active: #e5e5e0;
+  --bg-hover: #efefec;
+  --ink-1: #16130f;
+  --ink-2: #575450;
+  --ink-3: #716e67;
+  --line: #e4e2dc;
+  --line-strong: #d2cfc7;
+  --brand: #d93a22;
+  --brand-strong: #bc2e18;
+  --brand-bright: #e8482f;
+  --brand-soft: #fcece9;
+  --brand-soft-2: #f9dcd6;
+  --gold: #8a6414;
+  --gold-soft: #fbf3dc;
+  --player: #12100e;
+  --success-soft: #e4f2e9;
+  --warning: #8a5a00;
+  --warning-soft: #fbf0d3;
+  --info: #1d4ed8;
+  --info-soft: #e7edfd;
+  --chip-selected-bg: #16130f;
+  --chip-selected-text: #ffffff;
+  --shadow-1: 0 1px 2px rgba(22, 19, 15, 0.05), 0 1px 6px rgba(22, 19, 15, 0.05);
+  --shadow-2: 0 2px 6px rgba(22, 19, 15, 0.06), 0 14px 34px rgba(22, 19, 15, 0.10);
+  --shadow-pop: 0 4px 10px rgba(22, 19, 15, 0.08), 0 20px 48px rgba(22, 19, 15, 0.16);
+  --body_background: #f5f5f2;
   --body_forground: #ffffff;
-  --body_forground_850: #efece6;
+  --body_forground_850: #efefec;
   --forground_text: #16130f;
-  --forground_text_700: #5c564c;
-  --channel_text: #5c564c;
+  --forground_text_700: #575450;
+  --channel_text: #575450;
   --left_Sidebar_background: #ffffff;
   --loading_bg_clr: #ffffff;
 }
@@ -334,4 +408,56 @@ h1, h2, h3, .display {
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 16px;
+}
+
+/* ---- Porcelain light-theme component rules (13 Nov 2026, §8.9.23).
+ * Light-only: every rule below is scoped under body.white-theme, so
+ * the dark theme is byte-for-byte the shipped behaviour. Depth in
+ * light comes from hairlines first, shadow second. */
+/* Buttons (preview spec 1): primary hovers to brand-strong; secondary
+ * hovers to bg-hover; one primary per view is a usage rule, not CSS. */
+body.white-theme .acube-btn:hover { background: var(--brand-strong); }
+body.white-theme .acube-btn-secondary:hover { background: var(--bg-hover); }
+body.white-theme .acube-btn:disabled,
+body.white-theme .acube-btn-secondary:disabled { opacity: 0.45; }
+/* Search & inputs (preview spec 4): 2px brand focus ring. */
+body.white-theme .acube-input:focus,
+body.white-theme .acube-select:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+/* Skeleton shimmer (preview spec 9): bg-subtle -> #F7F7F4 -> bg-subtle. */
+body.white-theme .acube-skeleton {
+  background: linear-gradient(110deg, #EFEFEC 8%, #F7F7F4 18%, #EFEFEC 33%);
+  background-size: 200% 100%;
+}
+/* Segmented pill (preview page J — same pattern as the portfolio
+ * toggle): System / Light / Dark in Studio Settings Appearance and
+ * the TopBar account-menu theme row. Selected = ink pill. */
+.acube-segmented {
+  display: inline-flex;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.acube-segmented button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-2);
+  font: 600 13px/20px "Manrope", sans-serif;
+  padding: 6px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.acube-segmented button:hover { color: var(--text); }
+.acube-segmented button[aria-pressed="true"] {
+  background: var(--ink-1);
+  color: var(--bg-surface);
+}
+.acube-segmented button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
