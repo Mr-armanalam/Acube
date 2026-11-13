@@ -40,6 +40,7 @@ function RangeButtons({
 }) {
   return (
     <div
+      className="studio-range-switch"
       style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}
     >
       {([7, 28, 90] as Range[]).map((r) => (

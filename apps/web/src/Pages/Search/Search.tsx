@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { Link } from "react-router";
 import Showvideogrid from "../../Component/Showvideogrid/Showvideogrid";
 import { useParams } from "react-router";
 import { useVideos } from "../../query/hooks";
@@ -29,9 +30,21 @@ const Search = () => {
             Could not load videos. Please check your connection and try again.
           </p>
         ) : vids !== undefined && vids.length === 0 ? (
-          <p style={{ color: "var(--forground_text)", padding: "1rem" }}>
-            {Searchquery ? `No results for "${Searchquery}"` : "No results"}
-          </p>
+          // Preview screen C (§8.9.23): the empty state is a card with
+          // the same "No results for ..." line (as shipped in PR #14)
+          // plus a route back to the feed. .acube-empty is token-based,
+          // so it reads correctly in both themes.
+          <div className="acube-empty" role="status">
+            <p style={{ fontWeight: 700, color: "var(--text)", margin: "0 0 4px" }}>
+              {Searchquery ? `No results for "${Searchquery}"` : "No results"}
+            </p>
+            <p style={{ margin: "0 0 12px" }}>
+              Try a different search, or go back to the feed.
+            </p>
+            <Link to="/" className="acube-btn-secondary">
+              Back to feed
+            </Link>
+          </div>
         ) : (
           <Showvideogrid vid={vids} />
         )}

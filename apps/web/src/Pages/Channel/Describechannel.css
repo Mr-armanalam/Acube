@@ -108,7 +108,7 @@
  * red pill per the preview; Subscribed is a quiet pill; disabled
  * only when logged out (SubscribeButton) — never "Coming soon". */
 .channel_subscribe {
-  background: #e8482f;
+  background: var(--brand);
   color: #fff;
   border: 0;
   border-radius: 999px;
@@ -116,7 +116,10 @@
   font: 600 0.95rem/1 "Manrope", sans-serif;
   cursor: pointer;
 }
-.channel_subscribe:hover { background: #d03d27; }
+.channel_subscribe:hover { background: var(--brand-strong); }
+/* Light (Porcelain, §8.9.23): Subscribe is an ink button (preview B). */
+body.white-theme .channel_subscribe { background: var(--ink-1); }
+body.white-theme .channel_subscribe:hover { background: var(--ink-1); opacity: 0.85; }
 .channel_subscribe--subscribed {
   background: var(--surface-2);
   color: var(--text);
@@ -160,6 +163,8 @@
   color: var(--text);
   border-bottom-color: var(--accent);
 }
+/* Light (preview D): active tab = ink underline. */
+body.white-theme .channel_tab--active { border-bottom-color: var(--ink-1); }
 .channel_search_btn {
   margin-left: auto;
   background: none;

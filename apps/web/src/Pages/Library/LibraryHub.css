@@ -317,3 +317,10 @@
   font-size: 13px;
   margin: 8px 0 0;
 }
+
+/* ---- Porcelain light theme (13 Nov 2026, §8.9.23). Light-only. */
+/* Placeholder initials sit on a light surface-2 thumb in light, so
+ * they read in ink-2 instead of bone. Duration badges, remove/delete
+ * buttons and playlist-cover text stay bone-on-dark — they sit on
+ * thumbnails/covers in both themes (preview spec 7). */
+body.white-theme .library-card-initial { color: var(--ink-2); }

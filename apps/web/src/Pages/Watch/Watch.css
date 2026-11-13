@@ -69,10 +69,13 @@
 .watch-resumed { color: var(--text-2); }
 .subscribe-wrap { display: inline-flex; align-items: center; gap: 8px; }
 .watch-subscribe {
-  background: #e8482f; color: #fff; border: 0; border-radius: 999px;
+  background: var(--brand); color: #fff; border: 0; border-radius: 999px;
   padding: 0.55rem 1.25rem; font: 700 0.95rem/1 "Manrope", sans-serif; cursor: pointer;
 }
-.watch-subscribe:hover { background: #d03d27; }
+.watch-subscribe:hover { background: var(--brand-strong); }
+/* Light (Porcelain, §8.9.23): Subscribe is an ink button (preview B). */
+body.white-theme .watch-subscribe { background: var(--ink-1); }
+body.white-theme .watch-subscribe:hover { background: var(--ink-1); opacity: 0.85; }
 .watch-subscribe--subscribed { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
 .watch-subscribe:disabled { cursor: not-allowed; opacity: 0.6; }
 .subscribe-count { color: var(--text-2); font-size: 0.9rem; }
@@ -158,9 +161,12 @@
   padding: 8px 12px; font: 600 14px/20px "Manrope", sans-serif; cursor: pointer;
 }
 .watch-like-btn:hover { background: rgba(255, 255, 255, 0.08); }
+body.white-theme .watch-like-btn:hover { background: rgba(22, 19, 15, 0.06); }
 .watch-like-btn:first-child:hover { border-radius: 999px 0 0 999px; }
 .watch-like-btn:last-child:hover { border-radius: 0 999px 999px 0; }
 .watch-like-btn.active { color: var(--accent); }
+/* Light (preview spec 6): active thumb fills brand-soft, brand-strong icon. */
+body.white-theme .watch-like-btn.active { color: var(--brand-strong); background: var(--brand-soft); }
 .watch-like-divider { width: 1px; align-self: stretch; margin: 8px 0; background: var(--border); }
 /* "··· More" menu: every item does something real (see Watch.tsx). */
 .watch-more-wrap { position: relative; display: inline-block; }
@@ -188,6 +194,9 @@
   background: transparent; border: 0; padding: 0; color: var(--accent);
   font: 700 14px/20px "Manrope", sans-serif; cursor: pointer;
 }
+/* Light (preview spec 2): text links in ink-2, hover ink-1. */
+body.white-theme .watch-text-action { color: var(--ink-2); }
+body.white-theme .watch-text-action:hover { color: var(--ink-1); }
 .watch-desc-toggle { margin-left: 6px; }
 /* Download pill: DownloadVideo keeps its own (shared) rendering —
  * an icon-only anchor and, when not premium, an "Upgrade" button.
@@ -233,11 +242,26 @@
   color: var(--text); text-decoration: none;
 }
 .watch-playlist-item--current { border-color: var(--accent); }
+/* Light (preview B + spec 10): 1.5px brand border + brand-soft wash. */
+body.white-theme .watch-playlist-item--current {
+  border-width: 1.5px;
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
 .watch-playlist-index {
   flex-shrink: 0; width: 16px; text-align: center; padding-top: 2px;
   color: var(--text-2); font-size: 13px; line-height: 1.4;
 }
 .watch-playlist-item--current .watch-playlist-index { color: var(--accent); }
+/* Light: number is mono 12px ink-3, brand when current (preview B). */
+body.white-theme .watch-playlist-index {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+body.white-theme .watch-playlist-item--current .watch-playlist-index { color: var(--brand); }
+/* Light: playlist rows hover bg-hover (spec 10). */
+body.white-theme .watch-playlist-item:hover { background: var(--bg-hover); }
 /* Preview-sized thumb: 56px wide (not the 120px Up Next thumb). The
  * real thumbnail shows via VideoThumb; its grey ▶ fallback stands
  * when a video genuinely has no thumbnail — no gradient is wired in
@@ -257,6 +281,12 @@
   color: var(--text); font: 600 13px/20px "Manrope", sans-serif; text-decoration: none;
 }
 .watch-playlist-control:hover:not(:disabled) { color: var(--accent); }
+/* Light (preview spec 2): text links in ink-2, hover ink-1, active
+ * (aria-pressed) brand-strong; separators in ink-3 at 12px. */
+body.white-theme .watch-playlist-control { color: var(--ink-2); font-size: 13.5px; }
+body.white-theme .watch-playlist-control:hover:not(:disabled) { color: var(--ink-1); }
+body.white-theme .watch-playlist-control[aria-pressed="true"] { color: var(--brand-strong); }
+body.white-theme .watch-playlist-separator { color: var(--ink-3); font-size: 12px; }
 .watch-playlist-control:disabled { cursor: not-allowed; opacity: 0.55; }
 .watch-playlist-control svg { width: 13px; height: 13px; }
 .watch-playlist-separator { color: var(--text-2); }

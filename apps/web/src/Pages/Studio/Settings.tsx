@@ -35,6 +35,8 @@ import {
   useUploadStudioBanner,
   type StudioImageKind,
 } from "../../query/hooks";
+import { useAppDispatch, useAppSelector } from "../../store";
+import { setMode } from "../../store/slices/themeSlice";
 import { extractApiErrorMessage } from "../../utils/apiError";
 import { resolveApiMediaUrl } from "../../Api";
 import { validateImageFile } from "../../utils/thumbnail";
@@ -110,6 +112,8 @@ function capitalizeVisibility(v: VideoVisibility): string {
 }
 
 export default function Settings() {
+  const themeMode = useAppSelector((s) => s.theme.mode);
+  const dispatch = useAppDispatch();
   const settings = useStudioSettings();
   const updateMutation = useUpdateStudioSettings();
   const bannerUpload = useUploadStudioBanner();
@@ -356,6 +360,55 @@ export default function Settings() {
         Customisation · Basic info · Branding — changes preview live, save
         once.
       </p>
+      {/* Appearance (Porcelain light theme, §8.9.23): System / Light /
+          Dark, same choice as the TopBar toggle and the account-menu
+          theme row. System follows the OS preference. */}
+      <div
+        className="acube-card"
+        style={{ padding: "8px 16px", marginBottom: 16 }}
+      >
+        <h2 style={{ fontSize: 18, margin: "12px 0 4px" }}>Appearance</h2>
+        <p
+          style={{
+            color: "var(--text-2)",
+            fontSize: 14,
+            margin: "0 0 12px",
+          }}
+        >
+          System follows your device setting. Light is the Porcelain
+          theme; Dark is Obsidian.
+        </p>
+        <div
+          className="acube-segmented"
+          role="group"
+          aria-label="Appearance"
+        >
+          {(["auto", "light", "dark"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              data-testid={`appearance-${m}`}
+              aria-pressed={themeMode === m}
+              onClick={() => dispatch(setMode(m))}
+            >
+              {m === "auto" ? "System" : m === "light" ? "Light" : "Dark"}
+            </button>
+          ))}
+        </div>
+        <p
+          style={{
+            color: "var(--text-2)",
+            fontSize: 13,
+            margin: "12px 0",
+          }}
+        >
+          {themeMode === "auto"
+            ? "Following your system setting."
+            : themeMode === "light"
+              ? "Porcelain light theme."
+              : "Obsidian dark theme."}
+        </p>
+      </div>
       {settings.isLoading || !form ? (
         <StudioSkeleton label="Loading channel settings" />
       ) : settings.isError || !settings.data ? (

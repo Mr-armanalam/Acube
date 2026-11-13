@@ -23,6 +23,28 @@
     <title>Acube</title>
   </head>
   <body>
+    <script>
+      // Pre-paint theme init (Porcelain light theme, §8.9.23): apply the
+      // stored choice — or the OS preference when System — before first
+      // paint, so there is no flash of the wrong theme. Mirrors
+      // ThemeProvider (localStorage key "theme": "auto" | "light" |
+      // "dark"; default dark). Runs before React mounts.
+      (function () {
+        try {
+          var mode = localStorage.getItem("theme") || "auto";
+          var light =
+            mode === "light" ||
+            (mode !== "dark" &&
+              window.matchMedia("(prefers-color-scheme: light)").matches);
+          if (light) document.body.classList.add("white-theme");
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta)
+            meta.setAttribute("content", light ? "#F5F5F2" : "#0c0b0a");
+        } catch (e) {
+          /* Storage/media unavailable — dark default. */
+        }
+      })();
+    </script>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

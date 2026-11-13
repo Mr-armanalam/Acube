@@ -1,5 +1,17 @@
+// Theme provider (RTK slice drives it; persistence via the store
+// subscriber in store/index.ts). The body-class effect lives here.
+//
+// BEHAVIOUR CHANGE (13 Nov 2026, §8.9.23 — Porcelain light theme):
+// "auto" (System) used to follow a legacy region/time rule — light in
+// South India 10:00–12:00 via an ipapi.co lookup
+// (utils/getUserLocation_time.js). It now means the OS preference:
+// prefers-color-scheme: light, live-tracked while the mode is auto.
+// Dark stays the default: a fresh install (no stored "theme") is auto,
+// and auto is dark unless the OS says light. Explicit light/dark win
+// over the OS. The pre-paint init in index.html mirrors this logic so
+// there is no flash of the wrong theme; utils/getUserLocation_time.js
+// is now unused (left in place, not deleted).
 import React, { createContext, useEffect } from "react";
-import { CheckRegion, getCurrentTime } from "../utils/getUserLocation_time";
 import { useAppDispatch, useAppSelector } from "../store";
 import { setMode, type ThemeMode } from "../store/slices/themeSlice";
 
@@ -14,31 +26,33 @@ export const ThemeContext = createContext<{
   setMode: () => {},
 });
 
+function systemPrefersLight(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-color-scheme: light)").matches
+  );
+}
+
 const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const mode = useAppSelector((s) => s.theme.mode);
   const dispatch = useAppDispatch();
 
-  async function handleThemeChange() {
-    const isSouthIndia = await CheckRegion();
-    const hours = getCurrentTime();
-
-    // Effective old behaviour: unset/auto follows the region/time rule
-    // (light in South India 10:00–12:00, dark otherwise); light/dark are
-    // explicit. (The old `theme === "auto"` branch was unreachable — the
-    // first branch already caught it.)
-    if (mode === "light") {
-      document.body.classList.add("white-theme");
-    } else if (mode === "dark") {
-      document.body.classList.remove("white-theme");
-    } else if (isSouthIndia && hours >= 10 && hours <= 12) {
-      document.body.classList.add("white-theme");
-    } else {
-      document.body.classList.remove("white-theme");
-    }
-  }
-
   useEffect(() => {
-    handleThemeChange();
+    const apply = () => {
+      const light = mode === "light" || (mode === "auto" && systemPrefersLight());
+      document.body.classList.toggle("white-theme", light);
+      // Keep the browser-chrome tint in step with the theme.
+      document
+        .querySelector('meta[name="theme-color"]')
+        ?.setAttribute("content", light ? "#F5F5F2" : "#0c0b0a");
+    };
+    apply();
+    // Live-track the OS preference only while the mode is System.
+    if (mode !== "auto") return undefined;
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
   }, [mode]);
 
   return (

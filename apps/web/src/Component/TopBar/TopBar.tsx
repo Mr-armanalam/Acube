@@ -18,8 +18,27 @@ import { GoogleLogin, googleLogout, type CredentialResponse } from "@react-oauth
 import { jwtDecode } from "jwt-decode";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { loginThunk, logoutThunk } from "../../store/slices/authSlice";
-import { setMode } from "../../store/slices/themeSlice";
+import { setMode, type ThemeMode } from "../../store/slices/themeSlice";
 import "./TopBar.css";
+
+// Theme cycle (Porcelain light theme, §8.9.23): System -> Light ->
+// Dark -> System. "System" means the OS preference
+// (prefers-color-scheme), live-tracked by ThemeProvider.
+const THEME_CYCLE: Record<ThemeMode, ThemeMode> = {
+  auto: "light",
+  light: "dark",
+  dark: "auto",
+};
+const THEME_LABEL: Record<ThemeMode, string> = {
+  auto: "System",
+  light: "Light",
+  dark: "Dark",
+};
+const THEME_ICON: Record<ThemeMode, string> = {
+  auto: "◐",
+  light: "☀",
+  dark: "☾",
+};
 
 export default function TopBar({
   seteditcreatechanelbtn,
@@ -122,14 +141,12 @@ export default function TopBar({
         <button
           type="button"
           className="topbar-icon-btn"
-          aria-label={
-            themeMode === "light" ? "Switch to dark theme" : "Switch to light theme"
-          }
-          onClick={() =>
-            dispatch(setMode(themeMode === "light" ? "dark" : "light"))
-          }
+          data-testid="theme-toggle"
+          aria-label={`Theme: ${THEME_LABEL[themeMode]} — switch to ${THEME_LABEL[THEME_CYCLE[themeMode]]}`}
+          title={`Theme: ${THEME_LABEL[themeMode]}`}
+          onClick={() => dispatch(setMode(THEME_CYCLE[themeMode]))}
         >
-          {themeMode === "light" ? "☾" : "☀"}
+          {THEME_ICON[themeMode]}
         </button>
         {currentuser ? (
           <div className="topbar-user">
@@ -168,6 +185,34 @@ export default function TopBar({
                 <button type="button" onClick={logout}>
                   Sign out
                 </button>
+                {/* Theme row (Porcelain light theme, §8.9.23): the same
+                    System / Light / Dark choice as the TopBar toggle
+                    and Studio Settings Appearance. */}
+                <div className="topbar-menu-theme">
+                  <span className="topbar-menu-theme-label" aria-hidden="true">
+                    Theme
+                  </span>
+                  <div
+                    className="acube-segmented"
+                    role="group"
+                    aria-label="Theme"
+                  >
+                    {(["auto", "light", "dark"] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        data-testid={`theme-menu-${m}`}
+                        aria-pressed={themeMode === m}
+                        onClick={() => {
+                          dispatch(setMode(m));
+                          setMenuOpen(false);
+                        }}
+                      >
+                        {THEME_LABEL[m]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : null}
           </div>

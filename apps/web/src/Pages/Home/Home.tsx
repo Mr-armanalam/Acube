@@ -52,7 +52,8 @@ import type { FeedVideo, PagedResult } from "../../types";
 
 // Sentinel / Load-more / end-of-list styles live inline here (exact
 // preview tokens) so no shared stylesheet is touched: the active chip
-// is the #f2eee6 pill, body text is var(--forground_text).
+// is the selected-chip token pair — bone on dark, ink on light
+// (Porcelain, §8.9.23) — body text is var(--forground_text).
 const sentinelStatusStyle: React.CSSProperties = {
   color: "var(--forground_text)",
   padding: "1rem",
@@ -66,9 +67,9 @@ const loadMoreStyle: React.CSSProperties = {
   padding: "0.5rem 1.25rem",
   borderRadius: "999px",
   cursor: "pointer",
-  border: "1px solid #f2eee6",
-  backgroundColor: "#f2eee6",
-  color: "#0c0b0a",
+  border: "1px solid var(--chip-selected-bg)",
+  backgroundColor: "var(--chip-selected-bg)",
+  color: "var(--chip-selected-text)",
   font: "600 13px/20px Manrope, sans-serif",
 };
 
