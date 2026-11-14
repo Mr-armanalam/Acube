@@ -2,16 +2,12 @@
 
 Vite 7 + React 19 + React Router 8. TypeScript is strict and incremental
 (`src/tsconfig.json`, `allowJs` / `checkJs: false`): the store, query
-hooks, API layer, most pages/components, and (Phase 3c) `StreamRoom` and
-`PaymentStatus` are `.ts`/`.tsx`. A few legacy files are still plain
-JS/JSX (`RoomContext`, `LoadingCard`, `Showvideo`, `CreateButton`,
-utils); converting them is separate work. (Phase 5 match-preview: the
-legacy Navbar / Leftsidebar / Searchbar / ProgressRing / WHL /
-Showvideolist components and the Likedvideo / Watchlater /
-Watchhistory / Yourvideo / Videoupload pages are deleted; the watch
-side renders the premium `TopBar`, Studio is its own shell, and
-liked / history / watch-later live in `/library` + `/history`.) The
-web ESLint flat config lives in
+hooks, API layer, and most pages/components are `.ts`/`.tsx`. A few
+legacy files are still plain JS/JSX (`RoomContext`, `LoadingCard`,
+`Showvideo`, `CreateButton`, `reportWebVitals`, `setupTests`, and some
+`utils`); converting them is separate work. Liked videos, history and
+watch-later live in `/library` + `/history`; Studio is its own shell.
+The web ESLint flat config lives in
 `packages/config/eslint.web.config.mjs` (imported by `eslint.config.mjs`).
 
 ## Scripts
@@ -23,10 +19,13 @@ web ESLint flat config lives in
 
 ## Env
 
-Copy `.env.example` to `.env`. The client calls the API through an
-absolute base URL (`VITE_BACKEND_URL`, default http://localhost:5000),
-so there is no dev-server proxy. `VITE_*` vars are bundled into the
-JS sent to the browser — never put server secrets here.
+Create a local `.env` — there is no `.env.example` in the repo. The
+client calls the API through an absolute base URL (`VITE_BACKEND_URL`,
+default http://localhost:5000), so there is no dev-server proxy.
+`VITE_*` vars are bundled into the JS sent to the browser — never put
+server secrets here. See the repo-root `README.md` for the full list of
+variables (names only); values are set in the deployment dashboard or
+supplied by Arman.
 
 ## Notes
 

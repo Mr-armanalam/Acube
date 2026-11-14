@@ -39,9 +39,10 @@ dotenv.config();
 const app = express();
 
 // CORS allowlist — never "*". FRONTEND_URL is the deployed frontend;
-// the localhost entries cover local dev (CRA on 3000, Vite on 5173 in
-// Phase 2). Requests with no Origin header (curl, server-to-server,
-// Supertest) are allowed. The deployed frontend from the README,
+// the localhost entries cover local dev (web dev server on :3000;
+// :5173 is Vite's default port, kept for compatibility). Requests with
+// no Origin header (curl, server-to-server, Supertest) are allowed.
+// The deployed frontend from the README,
 // https://accube.vercel.app, is in the default list; set FRONTEND_URL to
 // override/add origins.
 const allowedOrigins = [
