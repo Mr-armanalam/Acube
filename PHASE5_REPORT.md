@@ -2,7 +2,8 @@
 
 Branch: `feat/acube-phase5-studio` (head `bb76901` + the work below).
 Date: 10 Nov 2026. Node on this VM: v24.22.1 (target pinned to 22).
-**Status: work complete and verified; nothing merged, nothing pushed.**
+**Status: work complete and verified; merged to `main` (Phase 5 landed
+via PRs #2–#17; `main` head `87e612b`, the PR #17 merge).**
 The coordinator owns the PR step.
 
 This phase was built by two parallel workers (backend in `apps/api`,
@@ -2514,7 +2515,7 @@ Screenshots (viewed by the verifier, all at the requested sizes): `docs/screensh
 1. **Vercel dashboard Root Directory** — still unverified (implementer's open item 1 stands): if it is `apps/web`, move `vercel.json` to `apps/web/vercel.json`.
 2. **Live Vercel behaviour** — only provable after merge + redeploy: direct-load `https://accube.vercel.app/watch/<id>` and `/search/<query>` must return the app, not Vercel 404 `NOT_FOUND`; zero-match in-app search must show `No results for "<query>"`. The static-server proof validates the rule and the built app, not Vercel's reading of the file.
 
-#### 8.9.21 Feed personalization, Phase 1 (12 Nov 2026, branch `feat/acube-feed-personalization`, base `main` @ `94dc1b67` — PR #14 merge; NOT pushed, NO PR yet)
+#### 8.9.21 Feed personalization, Phase 1 (12 Nov 2026, branch `feat/acube-feed-personalization`, base `main` @ `94dc1b67` — PR #14 merged)
 
 Numbering note: the handoff said main includes §8.9.19 twice (premium + playlist); this file has only ONE §8.9.19 heading (playlist sidebar, line 2288) and no premium §8.9.19 — highest in the file is §8.9.20, so §8.9.21 is the next free number with no collision.
 
@@ -2569,7 +2570,7 @@ First run: **4 passed, 2 failed (exit 1)** — tests (c) and (d). Both failures 
 2. **`home-pagination.spec.ts` Load-more race** — same latent sentinel race as fixed in (d) above; passes by timing today, could flake the same way.
 3. **`/tmp` orphan cleanup** — see §5: the 1h stale rule does not save a back-to-back rerun within the hour.
 
-#### 8.9.22 vercel.json placement correction — repo root → apps/web (13 Nov 2026, branch `feat/acube-vercel-json-apps-web`, base `main` @ `d3c97cc` — PR #15 merge; NOT pushed, NO PR yet)
+#### 8.9.22 vercel.json placement correction — repo root → apps/web (13 Nov 2026, branch `feat/acube-vercel-json-apps-web`, base `main` @ `d3c97cc` — PR #15 merged)
 
 Numbering note: highest in the file is §8.9.21 (feed personalization), so §8.9.22 is the next free number with no collision. Base-head note: the handoff said main was @ `94dc1b67` (PR #14 merge) with PR #15 OPEN; the live head was verified via the GitHub connector before branching and had moved — main is @ `d3c97cc`, "Merge pull request #15" (12 Nov 2026 09:45 UTC, feed personalization merged by Arman). This branch is therefore based on `d3c97cc`, not `94dc1b67`; the feed files are untouched (this branch's diff touches only the two paths below).
 
@@ -2613,7 +2614,7 @@ Numbering note: highest in the file is §8.9.21 (feed personalization), so §8.9
 1. **Live Vercel behaviour** — only provable after merge + redeploy: direct-load a deep link (e.g. `/watch/<id>`) on https://accube.vercel.app/ and confirm HTTP 200 with the SPA shell instead of a Vercel 404. This branch only puts the file where Vercel will read it; nothing local can prove Vercel honours it.
 2. **`/tmp` orphan cleanup** — see above: the 1h stale rule does not save a back-to-back rerun within the hour (same open follow-up as §8.9.21 §5).
 
-#### 8.9.23 Porcelain light theme — System → Light → Dark cycle, pre-paint init (13 Nov 2026, branch `feat/acube-light-theme`, base `main` @ `a14c25f` — PR #16 merge; NOT pushed, NO PR yet)
+#### 8.9.23 Porcelain light theme — System → Light → Dark cycle, pre-paint init (13 Nov 2026, branch `feat/acube-light-theme`, base `main` @ `a14c25f` — PR #16 merged)
 
 Numbering note: highest in the file is §8.9.22 (vercel.json placement), so §8.9.23 is the next free number with no collision. Base-head note: the handoff said main was @ `a14c25f` ("Merge pull request #16", the vercel.json move) — verified live via the GitHub connector before branching; main had not moved. This branch is based on `a14c25f`.
 
@@ -2700,7 +2701,7 @@ Dark watch was 3.480% on the first comparison (Up-next thumbnail fallback render
 2. **`/tmp` orphan cleanup** — see above: the 1h stale rule does not save a back-to-back rerun within the hour (same open follow-up as §8.9.21 §5).
 3. **Premium page (H)** — there is no Premium page/hero in the app to theme; if one is built later (PR #12 is pricing only), it should follow the preview's ink-hero + gold-badge spec.
 
-#### 8.9.24 Remove chat + video calls (13 Nov 2026, branch `feat/acube-remove-chat-calls`, base `main` @ `87e612b` — PR #17 merge; NOT pushed, NO PR yet)
+#### 8.9.24 Remove chat + video calls (13 Nov 2026, branch `feat/acube-remove-chat-calls`, base `main` @ `87e612b` — PR #18 merged)
 
 Numbering note: highest in the file is §8.9.23 (Porcelain light theme), so §8.9.24 is the next free number with no collision. Base-head note: the handoff said main was @ `87e612b` ("Merge pull request #17", Porcelain light theme) — verified live via the GitHub connector before branching; main had not moved. This branch is based on `87e612b`. PR #12 (premium pricing) is OPEN on its own branch and untouched.
 
@@ -2732,3 +2733,62 @@ Numbering note: highest in the file is §8.9.23 (Porcelain light theme), so §8.
 1. **Delete `SECRETKEY_CRYPTO` from Render** — dead env var, no rotation needed (see above).
 2. **Orphaned MongoDB collections** — `conversations` / `messages` / `groups` still exist in the live database; drop them only if Arman decides to.
 3. **Live Vercel behaviour** — only provable after merge + redeploy: `/chat` and `/video-stream/*` deep links must 404 on https://accube.vercel.app/ (Vercel SPA fallback was verified for other routes in §8.9.22, but these two URLs are new 404s).
+
+#### 8.9.25 README rewrite + repo cleanup (14 Nov 2026, branch `feat/acube-readme-cleanup`, base `main` @ `87e612b` — PR to be opened)
+
+Numbering note: highest in the file on `main` is §8.9.23 (light theme);
+§8.9.24 already exists on the open PR #18 branch (`feat/acube-remove-chat-calls`,
+"Remove chat + video calls"), so this section is §8.9.25 — no collision
+when both merge. The §8.9.21–§8.9.23 header boilerplate ("PR #N merge;
+NOT pushed, NO PR yet") was corrected in place to "PR #N merged" — all
+three PRs (#14, #15, #16) are merged — and the report header ("nothing
+merged, nothing pushed") was corrected to merged-to-`main`. No other
+history in §§1–8.9.23 was touched.
+
+**What changed (no core functionality altered).** The old `README.md`
+(235 lines) described a rebuild that had not merged or deployed, advertised
+chat + video calls, claimed ₹1000 premium, `.env.example` setup, time-of-day
+auto theme, API 119 + web 47 tests, 10 lint warnings, and screenshot
+placeholders including a nonexistent `video-page.png`. It was rewritten from
+scratch against the code on `main`, describing the decided state: premium
+₹15, free until 12 Nov 2027 (PR #12, open), no chat/video calls (PR #18,
+open). Merge order: this PR merges after (or alongside) PRs #12 and #18,
+so its claims are true on `main`. No chat/video-call code was deleted here
+(PR #18 owns it); no price code was changed (PR #12 owns it).
+
+**Verification — re-run uncached by the implementation worker.**
+
+| Check | Command | Result |
+|---|---|---|
+| Typecheck (forced) | `pnpm typecheck --force` | exit 0, 3 tasks |
+| Test (turbo, forced) | `pnpm test --force` | exit 1 — **API 340/340 (24 files)** + web 312/313 (34 files, 1 failed — the §8.9.21/§8.9.22 flake, see below). Combined 652/653 |
+| Web re-run (flake file) | `pnpm exec vitest run src/test/studioPreview.test.tsx` in `apps/web` | exit 0, **15/15 passed**, no code changed |
+| API re-run | `pnpm exec vitest run` in `apps/api` | exit 0, **24 files, 340/340 passed** |
+| Lint (forced) | `pnpm lint --force` | exit 0, **0 errors, 6 warnings** — all pre-existing (ChatSearch, SidebarAllGroups, LibraryHub, RoomContext, authSlice); none in the touched files. Down from 7 in §8.9.22: the ThemeProvider warning is gone |
+| Build (forced) | `pnpm build --force` | exit 0, 3 tasks, 16.1s (same "no output files" note for `@acube/api#build` as §8.9.20/§8.9.21/§8.9.22) |
+
+**The one failing test is the same §8.9.21/§8.9.22/§8.9.23 flake, not a regression (proven).** First turbo run: `src/test/studioPreview.test.tsx` > "Latest comments show a relative time like the preview, not the commenter" — timed out in 5000ms under the full parallel run on this 1.5-CPU VM. Proof: the file re-run alone passes **15/15, exit 0**, with no code changed; it is the identical test and identical failure mode documented as a flake in §8.9.21, §8.9.22 and §8.9.23. This branch deletes no test or source file the suite depends on (the three deleted utils had zero references — grep-verified).
+
+**Cleanup inventory.**
+
+- Moved to `docs/archive/` (frozen history, not deleted): `PHASE0_BASELINE.md`, `PHASE1_REPORT.md`, `PHASE2_REPORT.md`, `PHASE3_REPORT.md`, `PHASE4_REPORT.md`, `PHASE5_PLAN.md`, `apps/api/PHASE3A_NOTES.md`, `apps/api/PHASE3B_NOTES.md`. Cross-references in `README.md` / `DEPLOYMENT.md` updated to the new paths. `PHASE5_REPORT.md` stays in place (still appended to).
+- Deleted (each grep-proven unreferenced): `apps/web/src/utils/deta.jsx` (themedata, zero refs, superseded by ThemeProvider + themeSlice), `apps/web/src/utils/getCookie.js` (zero refs), `apps/web/src/utils/getObjectCookies.js` (zero refs; also broken — two `export default` declarations), `apps/web/public/log.ico` and `apps/web/public/shorts.png` (zero refs in src/index.html/manifest), `docs/screenshots/chat.png`, `streamroom.png` (removed features), `premium.png` (misnamed Watch-page shot with e2e test data, no price visible), `videopage.png` (old route, near-duplicate of `premium.png`). 37 screenshots remain as Phase 5 verification evidence.
+- `DEPLOYMENT.md` fixes: header corrected (rebuild merged + deployed, no longer "NOT deployed, PR not opened"); §3 Root Directory confirmed `apps/web` (`apps/web/vercel.json` exists, SPA fallback); §5 `.env.example` references removed (vars are dashboard-set / supplied by Arman); §5a price ₹15 free until 12 Nov 2027, extra env rows added (`LOG_LEVEL`, `RATE_LIMIT_MAX`, `RATE_LIMIT_AUTH_MAX`, `DEMO_LOGIN_ENABLED`, `SEED_DEMO_ALLOW_REMOTE`, `NODE_ENV`); §6 CORS stale-comment note updated (comment fixed in `apps/api/app.js`); §7 chat/StreamRoom click-through steps removed; §8 rollback rewritten (rebuild is deployed — rollback is redeploying the previous production deployment); §9.5/§9.6 CI trigger fixed (see below); §9.7 price decided; §9.8 deleted-files list corrected (`Drawersliderbar`/`Leftsidebar`/`ProgressRing`/`Searchlist` never existed on `main`); §10 retitled for redeploys/env changes; §11 sources repointed to `docs/archive/`.
+- `apps/web/README.md`: dropped the "Copy `.env.example`" line (file removed in f37c013, never re-added) and the stale parenthetical naming deleted legacy components.
+- Reviewer-facing fixes: `apps/web/public/manifest.json` rewritten for Acube (was CRA boilerplate "React App" / "Create React App Sample", referencing missing favicon.ico/logo192.png/logo512.png — no icon asset exists in `public/`, so the manifest carries no icons; `apps/web/src/logo.svg` is the CRA React-atom default and was NOT used as an icon); `apps/web/index.html` copy fixed ("Hi Dear user! I'm Acube a clone site of youtube", keywords "you-tube-clone") and refs to missing `/favicon.ico` and `/logo192.png` dropped; `.github/workflows/ci.yml` triggers fixed — it only fired on `pull_request` + push to two dead merged branches, so CI never ran on `main`; now `push` on `main` + `pull_request` (YAML validated); `apps/api/app.js` stale comment corrected ("CRA on 3000, Vite on 5173 in Phase 2" — web dev is `:3000`); the one cosmetic commented-out line in `apps/web/src/App.css:40` removed.
+- `apps/api/scripts/README.md` kept as-is (current, no `.env.example` mention).
+
+**Left in place, with reasons.**
+
+- `packages/shared/dist/` (12 committed build-output files) — `DEPLOYMENT.md` §3 depends on it (the Vercel web build does not need a prior shared build because `dist/` is committed); removing it risks breaking the Vercel build. Follow-up, not this PR.
+- `apps/web/src/utils/getUserLocation_time.js` — CORRECTION to the scout note: it is NOT imported by ThemeProvider. It is referenced only in two ThemeProvider comments, one of which states it "is now unused (left in place, not deleted)", and zero imports exist anywhere in the repo. Left in place per the task's explicit LEAVE instruction; it is a proven-dead file and a one-line follow-up deletion.
+- `apps/api/package.json` `ISC` licence field — noted, not changed (licences do not belong in a cleanup PR).
+- `SECRETKEY_CRYPTO` env var — still in code on `main` (chat encryption key); removal belongs to PR #18. It is listed in `DEPLOYMENT.md` §5a with a removal note, and omitted from the new `README.md` env table, which describes the decided state.
+- `PREMIUM_FREE_UNTIL` env var — exists only on PR #12's branch (default `2027-11-12`); not listed in the `README.md` env table, which follows the main-based variable list. It should be added to the table when PR #12 merges, or if this PR merges first.
+- `Videopage.tsx` does not exist — nothing to do (old page deleted in Phase 5; `/videopage/:vid` redirects to `/watch/:id`). Zero TODO/FIXME markers in code.
+
+**Still unproven — needs Arman / post-merge (NOT fixed by this cleanup).**
+1. **Live Render API** — the README/DEPLOYMENT state the API is live on Render at https://acube-h3lr.onrender.com (established in prior work); a fresh `/health` fetch from this VM timed out (Render free-tier cold start is the likely cause, not verified) — worth one click by Arman rather than another fetch.
+2. **Merge order** — this PR must merge after (or alongside) PRs #12 (premium ₹15) and #18 (remove chat/video calls); if it merges first, the README's premium/chat claims are briefly ahead of the code. It also touches `README.md`, `DEPLOYMENT.md` and `PHASE5_REPORT.md`, all three of which PR #12 also touches — expect a merge conflict if #12 lands first. (Outcome, 15 Nov 2026: merged after #18 only — #12 still open. The price claims were tempered in the merge commit to match `main`; see the merge-resolution note at the end of this section.)
+
+**Merge-resolution note (15 Nov 2026, merge of `origin/main` @ `1cc79ab` into this branch).** PR #18 merged first, so the no-chat/video-calls claims in the rewritten `README.md` / `DEPLOYMENT.md` now match `main`, and the `SECRETKEY_CRYPTO` row was dropped from `DEPLOYMENT.md` §5a in the merge (the variable is dead on `main` after #18). PR #12 is still open, so the premium claims were tempered in the merge commit to match `main`: the code default is ₹1000 (`packages/shared/src/constants.ts`, `PREMIUM_PRICE_INR = 1000`); ₹15 with free use until 12 Nov 2027 is decided but pending in PR #12, and `PREMIUM_FREE_UNTIL` does not exist on `main` — neither is documented as current in `README.md` / `DEPLOYMENT.md`. The §8.9.25 verification counts above were re-run on the merged branch; the merged-branch counts are recorded in `README.md` (Tests section).

@@ -37,7 +37,6 @@
 }
 video {
   background-color: var(--body_forground);
-  /* background-color: #080808a9; */
 }
 .dot {
   height: 4px;

@@ -4,7 +4,8 @@ Vite 7 + React 19 + React Router 8. TypeScript is strict and incremental
 (`src/tsconfig.json`, `allowJs` / `checkJs: false`): the store, query
 hooks, API layer, most pages/components, and (Phase 3c)
 `PaymentStatus` are `.ts`/`.tsx`. A few legacy files are still plain
-JS/JSX (`LoadingCard`, `Showvideo`, utils); converting them is
+JS/JSX (`LoadingCard`, `Showvideo`, `internetStatusContext`,
+`reportWebVitals`, `setupTests`, and some `utils`); converting them is
 separate work. (Phase 5 match-preview: the
 legacy Navbar / Leftsidebar / Searchbar / ProgressRing / WHL /
 Showvideolist components and the Likedvideo / Watchlater /
@@ -23,10 +24,13 @@ web ESLint flat config lives in
 
 ## Env
 
-Copy `.env.example` to `.env`. The client calls the API through an
-absolute base URL (`VITE_BACKEND_URL`, default http://localhost:5000),
-so there is no dev-server proxy. `VITE_*` vars are bundled into the
-JS sent to the browser — never put server secrets here.
+Create a local `.env` — there is no `.env.example` in the repo. The
+client calls the API through an absolute base URL (`VITE_BACKEND_URL`,
+default http://localhost:5000), so there is no dev-server proxy.
+`VITE_*` vars are bundled into the JS sent to the browser — never put
+server secrets here. See the repo-root `README.md` for the full list of
+variables (names only); values are set in the deployment dashboard or
+supplied by Arman.
 
 ## Notes
 
