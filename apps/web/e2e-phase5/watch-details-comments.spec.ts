@@ -34,8 +34,7 @@ import { fileURLToPath } from "node:url";
 const FAKE_USER_ID = "507f1f77bcf86cd799439012";
 // Read at runtime from the server file — never hardcode, never log.
 // (Tool output redacts secret values with a plausible-looking
-// placeholder; copying the displayed value mints 401s — see
-// PHASE5_REPORT.md §8.9.10.)
+// placeholder; copying the displayed value mints 401s.)
 function e2eJwtSecret(): string {
   const src = readFileSync(
     fileURLToPath(new URL("../../api/e2e-server.mjs", import.meta.url)),

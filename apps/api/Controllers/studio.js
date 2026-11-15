@@ -261,7 +261,7 @@ export const getAnalytics = async (req, res, next) => {
     // is stored anywhere (ViewEvent has no referrer/source field), so
     // a source split cannot be derived honestly from existing data —
     // the field is omitted (the client renders a "not tracked yet"
-    // empty state) rather than invented. Adding it needs Arman's
+    // empty state) rather than invented. Adding it needs a product
     // decision: record a referrer/source on ViewEvent first.
     const body = {
       range,

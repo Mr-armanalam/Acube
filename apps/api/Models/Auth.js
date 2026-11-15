@@ -7,7 +7,7 @@ const userschema = mongoose.Schema(
     // (Mongoose's old `require` spelling was a no-op typo; it is
     // `required` now.) If the production collection already holds
     // duplicate emails, the index build fails and must be resolved by
-    // hand — see docs/archive/PHASE3B_NOTES.md, "migration note". No data is dropped.
+    // hand. No data is dropped.
     email: { type: String, required: true, unique: true, index: true },
     // Deliberately NOT unique: username comes from the Google display
     // name, and two different people can share a display name. A

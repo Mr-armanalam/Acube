@@ -134,7 +134,7 @@ export const likeVideoSchema = z.object({
     action: z.enum(["like", "unlike"]),
 });
 export const videoIdParamSchema = z.object({ id: objectId });
-// Phase 5 — Creator Studio (see docs/archive/PHASE5_PLAN.md Reconciliation).
+// Phase 5 — Creator Studio (endpoints in apps/api/Routes/studio.js).
 // Visibility: public = in feeds/search; unlisted = direct link only;
 // private = owner only (other viewers get 404, not 403).
 // Phase 5 fix: "draft" joins the enum — a draft is visible to its owner

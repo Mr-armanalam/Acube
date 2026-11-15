@@ -251,7 +251,7 @@ h1, h2, h3, .display {
 
 /* ---- Porcelain light theme (13 Nov 2026, §8.9.23). The approved
  * preview's token set, adapted to the repo's existing body.white-theme
- * mechanism (no data-theme attribute — see §8.9.23). Dark values
+ * mechanism (no data-theme attribute). Dark values
  * above are untouched; this block only re-points the same names.
  * Acube Red deepens one step to #D93A22 so text/buttons pass on
  * white; bright #E8482F survives as --brand-bright for the player

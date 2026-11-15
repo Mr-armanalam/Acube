@@ -188,7 +188,8 @@ export interface VideoListEntry {
   durationSec?: number;
 }
 
-/** Phase 5 — Creator Studio + playlists (API contract, docs/archive/PHASE5_PLAN.md).
+/** Phase 5 — Creator Studio + playlists (API contract, as implemented
+ * by the backend — see apps/api/Routes/studio.js).
  * Shapes match the backend exactly: bestDay is an object (or null),
  * settings nest under `channel`; PATCH /studio/settings takes the full
  * shape (see StudioSettingsPatch). */

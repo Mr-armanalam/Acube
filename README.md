@@ -11,7 +11,7 @@ Live: [accube.vercel.app](https://accube.vercel.app/) · API on Render.
 Rebuilt from the original CRA + Express 4 codebase into a Turborepo +
 pnpm monorepo (Vite + React 19 + TypeScript client, Express 5 +
 Mongoose 9 API). The rebuild is merged to `main` and deployed; the
-old build it replaced is described in `docs/archive/PHASE0_BASELINE.md`.
+old build it replaced was the original CRA + Express 4 codebase.
 
 ## Features
 
@@ -88,8 +88,7 @@ packages/shared/   # @acube/shared — constants + Zod route schemas used
                    #   client (typed z.infer inputs). dist/ is committed
                    #   so the web build does not need a prior shared build.
 packages/config/   # @acube/config — shared ESLint / Prettier / tsconfig
-docs/archive/      # frozen phase reports (Phases 0–5) — history, not docs
-docs/screenshots/  # Phase 5 verification screenshots
+docs/screenshots/  # verification screenshots (see "Screenshots" below)
 ```
 
 ## Setup
@@ -108,7 +107,7 @@ pnpm dev                                  # api :5000 (nodemon) + web :3000 (Vit
 Never commit a real `.env`. There are **no `.env.example` files** in
 this repo: set variables in the deployment dashboards (Vercel for the
 web, the API host for the server) or in a local `.env` that is never
-committed. Values are supplied by Arman. Only names are listed here —
+committed. Values are set in the deployment dashboards. Only names are listed here —
 never a value.
 
 **Server — API host**
@@ -290,24 +289,15 @@ API on Render; all env vars set in the dashboards. The first deploy of
 the rebuild is done — rollback means redeploying the previous
 production deployment from the host dashboard.
 
-## Reports
+## Further reading
 
-- `docs/archive/PHASE0_BASELINE.md` — the original code as found.
-- `docs/archive/PHASE1_REPORT.md` — monorepo, Express 5 / Mongoose 9, hardening, API tests.
-- `docs/archive/PHASE2_REPORT.md` — Vite 7 / React 19 client, RTK + TanStack Query, bug fixes, client tests.
-- `docs/archive/PHASE3A_NOTES.md` — JWT rename, Google verification, Mongo OTP.
-- `docs/archive/PHASE3B_NOTES.md` — webhook-only premium, ownership, counters, pagination.
-- `docs/archive/PHASE3_REPORT.md` — Phase 3c polish: shared TS build, web lint, bundle split, TSX conversions, jest-dom fix, README/CI, Playwright smoke tests.
-- `docs/archive/PHASE4_REPORT.md` — Phase 4.
-- `docs/archive/PHASE5_PLAN.md` — Phase 5 plan (premium UI + Creator Studio).
-- `PHASE5_REPORT.md` — Phase 5 verification + finishing pass, incl. §§8.9.1–8.9.25 (per-PR verification notes).
 - `DEPLOYMENT.md` — deployment guide, env vars, verification checklist, rollback.
 - `apps/api/scripts/README.md` — demo seed + API syntax-check scripts.
 
 ## Contributing
 
-Work lands on feature branches and is merged by Arman — nothing is
-pushed directly to `main`, and Muse does not merge PRs. Each feature
+Work lands on feature branches and is merged by the repo owner — nothing is
+pushed directly to `main`, and the agent does not merge PRs. Each feature
 goes on its own branch with its own PR; keep PRs scoped and verify
 locally (`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`)
 before opening one.

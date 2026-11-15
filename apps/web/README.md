@@ -29,8 +29,7 @@ client calls the API through an absolute base URL (`VITE_BACKEND_URL`,
 default http://localhost:5000), so there is no dev-server proxy.
 `VITE_*` vars are bundled into the JS sent to the browser — never put
 server secrets here. See the repo-root `README.md` for the full list of
-variables (names only); values are set in the deployment dashboard or
-supplied by Arman.
+variables (names only); values are set in the deployment dashboard.
 
 ## Notes
 
