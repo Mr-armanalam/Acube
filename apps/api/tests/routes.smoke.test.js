@@ -69,29 +69,14 @@ vi.mock("stripe", () => ({
 // seeded video's channel is "test-channel", so a second video owned by
 // userA is used), and the 14 /studio/* routes are covered —
 // GET /studio/playlists/:id is the one public studio route.
-describe("route smoke test — all 63 endpoints", () => {
+describe("route smoke test — all 55 endpoints", () => {
   it("every route responds with its expected status", async () => {
     const userA = await createUser();
     const userB = await createUser();
     const video = await createVideo();
     const headersA = authHeader(userA);
 
-    // Seed a 1:1 message, a group, and two comments via the API itself.
-    const sent = await api
-      .post("/chat/send")
-      .set(headersA)
-      .send({ message: "smoke seed", recieverId: String(userB._id) });
-    expect(sent.status).toBe(201);
-    const messageId = sent.body._id;
-
-    const group = await api
-      .post("/chat/group_user")
-      .set(headersA)
-      .send({ GroupId: [String(userB._id)], GroupName: "Smoke Group" });
-    expect(group.status).toBe(200);
-    const listed = await api.get("/chat/group").set(headersA);
-    const groupId = listed.body.items[0]._id;
-
+    // Seed two comments via the API itself.
     const commentToEdit = await Comment.create({
       videoid: String(video._id),
       userid: String(userA._id),
@@ -133,14 +118,6 @@ describe("route smoke test — all 63 endpoints", () => {
       ["GET", "/user/getallchannel", null, null, 200],
       ["GET", `/channel/${uid}/playlists`, null, null, 200],
       ["POST", "/user/watch-complete", headersA, { videoid: vid }, 200],
-      ["POST", "/chat/chat_user", headersA, {}, 200],
-      ["GET", `/chat/message/${userB._id}`, headersA, null, 200],
-      ["PUT", "/chat/chat_message", headersA, { id: messageId }, 200],
-      ["POST", "/chat/send", headersA, { message: "smoke", recieverId: String(userB._id) }, 201],
-      ["POST", "/chat/group_user", headersA, { GroupId: [String(userB._id)], GroupName: "G2" }, 200],
-      ["GET", "/chat/group", headersA, null, 200],
-      ["GET", `/chat/group/${groupId}/messages`, headersA, null, 200],
-      ["POST", "/chat/group/messages", headersA, { content: "smoke", groupId }, 201],
       ["POST", "/comment/post", headersA, { commentbody: "smoke", videoid: vid }, 200],
       ["GET", "/comment/get", null, null, 200],
       ["POST", `/comment/${commentToEdit._id}/like`, headersA, null, 200],
@@ -192,8 +169,8 @@ describe("route smoke test — all 63 endpoints", () => {
       ["DELETE", `/video/${ownedVid}`, headersA, null, 200],
     ];
 
-    // 61 API routes + GET / + GET /health = 63 endpoints.
-    expect(table).toHaveLength(63);
+    // 53 API routes + GET / + GET /health = 55 endpoints.
+    expect(table).toHaveLength(55);
 
     for (const [method, path, headers, body, expected] of table) {
       let req = api[method.toLowerCase()](path);
@@ -215,7 +192,6 @@ describe("route smoke test — all 63 endpoints", () => {
 
   it("every auth-required route returns 401 without a token", async () => {
     const userA = await createUser();
-    const userB = await createUser();
     const video = await createVideo();
     const uid = String(userA._id);
     const vid = String(video._id);
@@ -225,14 +201,6 @@ describe("route smoke test — all 63 endpoints", () => {
       ["GET", "/user/me", null],
       ["PATCH", `/user/update/${uid}`, { name: "x" }],
       ["POST", "/user/watch-complete", { videoid: vid }],
-      ["POST", "/chat/chat_user", {}],
-      ["GET", `/chat/message/${userB._id}`, null],
-      ["PUT", "/chat/chat_message", { id: validId }],
-      ["POST", "/chat/send", { message: "x", recieverId: String(userB._id) }],
-      ["POST", "/chat/group_user", { GroupId: [String(userB._id)], GroupName: "G" }],
-      ["GET", "/chat/group", null],
-      ["GET", `/chat/group/${validId}/messages`, null],
-      ["POST", "/chat/group/messages", { content: "x", groupId: validId }],
       ["POST", "/comment/post", { commentbody: "x" }],
       ["POST", `/comment/${validId}/like`, null],
       ["POST", `/comment/${validId}/dislike`, null],
@@ -274,7 +242,7 @@ describe("route smoke test — all 63 endpoints", () => {
       ["DELETE", `/studio/library/saved/${vid}`, null],
     ];
 
-    expect(unauthenticated).toHaveLength(50);
+    expect(unauthenticated).toHaveLength(42);
 
     for (const [method, path, body] of unauthenticated) {
       let req = api[method.toLowerCase()](path);

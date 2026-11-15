@@ -5,13 +5,11 @@ import { useInternetStatus } from "./utils/internetStatusContext";
 import { useAppSelector } from "./store";
 import LoadingCard from "./Component/LoadingCard";
 
-// Phase 2b: routes are code-split with React.lazy — the player and the
-// StreamRoom (simple-peer + recordrtc) are the heavy chunks and no longer
-// ship in the initial bundle. Home stays eager so first paint is fast.
+// Phase 2b: routes are code-split with React.lazy — the player is
+// the heavy chunk and no longer ships in the initial bundle. Home stays
+// eager so first paint is fast.
 const Search = lazy(() => import("./Pages/Search/Search"));
 const Channel = lazy(() => import("./Pages/Channel/Channel"));
-const Chat = lazy(() => import("./Pages/chat/Chat"));
-const StreamRoom = lazy(() => import("./Pages/videostream/StreamRoom"));
 const OtpAuth = lazy(() => import("./Pages/Auth/OTP_Auth"));
 const PaymentStatus = lazy(() => import("./Component/PaymentStatus"));
 // Phase 5 — Creator Studio, rebuilt Watch, History/Library hub, Playlist.
@@ -163,22 +161,6 @@ const Allroutes = ({
               /studio/content. Old bookmarks to those URLs now 404. */}
             <Route path="/paymentstatus" element={<PaymentStatus />} />
             <Route path="/channel/:cid" element={<Channel />} />
-            <Route
-              path="/chat"
-              element={
-                <RequireAuth>
-                  <Chat />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/video-stream/:encryptId"
-              element={
-                <RequireAuth>
-                  <StreamRoom />
-                </RequireAuth>
-              }
-            />
             <Route path="/auth-verifier/:user" element={<OtpAuth />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

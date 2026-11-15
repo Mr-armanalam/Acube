@@ -1,6 +1,6 @@
 # Acube — Deployment Guide
 
-Branch: `main` (head `87e612b`, the PR #17 merge).
+Branch: `main` (head `1cc79ab`, the PR #18 merge).
 **Status: the rebuild is merged to `main` and deployed.** The live site,
 https://accube.vercel.app/, serves the rebuild (Vite client + Express 5
 API). This guide covers the live deployment: how it is configured, how
@@ -28,7 +28,7 @@ Cloudinary / Stripe / Twilio / Gmail SMTP ──► apps/api
 | Service | Host | Why |
 |---|---|---|
 | `apps/web` | **Vercel** (existing project already serves https://accube.vercel.app/) | Static Vite build; the project already exists, so this is a redeploy/repoint, not a new setup. See §3. |
-| `apps/api` | **Render** (Web Service) — live API at https://acube-h3lr.onrender.com | Long-running Node process with Socket.io; needs a persistent port and env vars. Railway, Fly.io, or a VPS would also work — no repo config exists for any of them (no `render.yaml`, `Procfile`, or `Dockerfile` in the repo; hosting config is dashboard-side). |
+| `apps/api` | **Render** (Web Service) — live API at https://acube-h3lr.onrender.com | Long-running Node process; needs a persistent port and env vars. Railway, Fly.io, or a VPS would also work — no repo config exists for any of them (no `render.yaml`, `Procfile`, or `Dockerfile` in the repo; hosting config is dashboard-side). |
 | Database | **MongoDB Atlas** | `DB_URL` is a standard `mongodb+srv://` connection string. |
 
 ### 3. Vercel (web) — redeploy / repoint
@@ -117,11 +117,10 @@ are listed here.
 | `STRIPE_WEBHOOK_SECRET` | **Required for premium** | Signing secret for the webhook endpoint (§6). Without it the webhook answers 500 and premium is never granted. |
 | `FRONTEND_URL` | **Required on deploy** | Public frontend origin for the CORS allowlist, e.g. `https://accube.vercel.app` (see §6). |
 | `PORT` | Optional (default `5000`) | Hosts usually inject this themselves. |
-| `PREMIUM_PRICE_INR` | Optional (default `15`) | Server-side price catalogue. Premium is **₹15, free until 12 Nov 2027** (decided 12 Nov 2026; PR #12). Change the price here, never in client code. |
+| `PREMIUM_PRICE_INR` | Optional (default `1000`) | Server-side price catalogue. The code default on `main` is ₹1000. ₹15 with free use until 12 Nov 2027 is decided and lives in open PR #12 — it is NOT the live price until #12 merges. Change the price here, never in client code. |
 | `CLOUDINARY_CLOUD_NAME` | Required for uploads | Cloudinary cloud name. |
 | `CLOUDINARY_API_KEY` | Required for uploads | Cloudinary API key. |
 | `CLOUDINARY_API_SECRET` | Required for uploads | Cloudinary API secret. |
-| `SECRETKEY_CRYPTO` | Required for chat | Shared server-side key for chat-message AES. Long random string. Note: this is **TLS + server-side encryption at rest, NOT end-to-end encryption** — the UI no longer claims otherwise. Chat is being removed (PR #18); this variable goes away with it. |
 | `ACCOUNT_SID` | Required for SMS OTP | Twilio account SID. |
 | `ACCOUNT_TOKEN` | Required for SMS OTP | Twilio auth token. |
 | `TWILIO_NUMBER` | Required for SMS OTP | Twilio phone number that sends SMS OTPs. |
@@ -270,8 +269,9 @@ Google account): Home feed renders → search → video page plays →
 premium upgrade via Stripe test Checkout → webhook grants premium
 (check `isPremium` / download works). Phase 5 verified the same flows
 locally with Playwright (see `PHASE5_REPORT.md` §8.9.23); the full
-live-browser click-through against the production deploy is still the
-last step before calling a production deploy done.
+live-browser click-through against the production deploy has **not**
+been done yet — do it on the preview/staging deploy before calling the
+production deploy done.
 
 Smoke checks for the webhook specifically: in Stripe Dashboard →
 Developers → Webhooks → the endpoint, confirm deliveries of
@@ -339,16 +339,17 @@ eyes open:
    `feat/acube-phase5-studio` (both dead merged branches), so CI never
    ran on `main`. The README-cleanup PR widened the push trigger to
    `main`.
-7. **Premium price — decided.** Premium is **₹15, free until
-   12 Nov 2027** (decided 12 Nov 2026; PR #12). The code default on
-   `main` is still 1000 until PR #12 merges — after it merges, confirm
-   the live price before taking real payments.
-8. **Known non-blockers:** 6 web lint warnings in untouched legacy
-   files (`ChatSearch`, `SidebarAllGroups`, `LibraryHub`,
-   `RoomContext`, `authSlice`); remaining unconverted `.jsx`/`.js`
-   files in the web app (`RoomContext`, `LoadingCard`, `Showvideo`,
-   `CreateButton`, `internetStatusContext`, utils, `reportWebVitals`,
-   `setupTests`); `apps/api/package.json` licence still says `ISC` vs
+7. **Premium price — ₹15 decided, not yet live.** Premium is **₹15,
+   free until 12 Nov 2027** (decided 12 Nov 2026; open PR #12). The
+   code default on `main` is still 1000
+   (`packages/shared/src/constants.ts`, `PREMIUM_PRICE_INR = 1000`) —
+   confirm the live price before taking real payments; after PR #12
+   merges, the default becomes ₹15.
+8. **Known non-blockers:** 2 web lint warnings in untouched legacy
+   files (`LibraryHub` and `authSlice`); remaining unconverted `.js`/`.jsx`
+   files in the web app (`LoadingCard`, `Showvideo`,
+   `internetStatusContext`, `reportWebVitals`, `setupTests`, utils);
+   `apps/api/package.json` licence still says `ISC` vs
    repo MIT.
 
 ## 10. Pre-deploy checklist (for redeploys / env changes)
@@ -361,7 +362,7 @@ eyes open:
       origins updated (§6).
 - [ ] `STRIPE_SK` + `STRIPE_WEBHOOK_SECRET` set; webhook endpoint
       created in Stripe Dashboard; test-mode Checkout verified first.
-- [ ] `PREMIUM_PRICE_INR` = 15; free until 12 Nov 2027 (PR #12).
+- [ ] `PREMIUM_PRICE_INR` confirmed before taking real payments — the code default on `main` is ₹1000; ₹15 + free until 12 Nov 2027 is pending in open PR #12, not live yet.
 - [ ] `FRONTEND_URL` = deployed Vercel URL; `VITE_BACKEND_URL` = deployed
       API URL.
 - [ ] `DB_URL` (Atlas), Cloudinary, Twilio, Gmail app password set.

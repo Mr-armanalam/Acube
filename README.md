@@ -32,9 +32,12 @@ old build it replaced is described in `docs/archive/PHASE0_BASELINE.md`.
   from the video (ffmpeg frame extraction).
 - **Downloads** — free users get 1 download per day (reset on login);
   premium users get unlimited downloads.
-- **Premium** — free until 12 Nov 2027, then ₹15, sold through Stripe
-  Checkout. Premium is granted only by Stripe (webhook, with a
-  verified-session fallback); the client never sends an amount.
+- **Premium** — sold through Stripe Checkout; the price is set
+  server-side (`PREMIUM_PRICE_INR`, currently defaults to ₹1000 on
+  `main`). ₹15 with free use until 12 Nov 2027 is decided and pending
+  in open PR #12 — it is not the live price until #12 merges. Premium
+  is granted only by Stripe (webhook, with a verified-session
+  fallback); the client never sends an amount.
 - **Points** — 5 points per completed watch, max 10 points per video
   per day (server-side rule — the client never sends a points number).
 - **Auth** — Google sign-in (ID token verified server-side) or
@@ -55,6 +58,25 @@ old build it replaced is described in `docs/archive/PHASE0_BASELINE.md`.
 | Services | MongoDB Atlas, Cloudinary (video/image storage), Stripe (Checkout + webhooks), Twilio (SMS OTP), Gmail SMTP (email OTP) |
 | Tests | Vitest 5.1.0 + Supertest 7.3.2 (API), Vitest + Testing Library + MSW (web), Playwright 1.65.0 (e2e) |
 | CI | GitHub Actions — lint → typecheck → test → build on every PR and every push to `main` |
+
+```text
+                    +------------------+
+                    |  apps/web (Vite) |  React 19 + TypeScript (strict)
+                    |  :3000 (dev)     |  RTK (client state) + TanStack
+                    +--------+---------+  Query (server state)
+                             |  axios, absolute VITE_BACKEND_URL
+                             |  (no dev-server proxy)
+                    +--------v---------+
+                    |  apps/api        |  Express 5 + Mongoose 9, ESM
+                    |  :5000           |  Zod validation, Helmet, CORS
+                    +--------+---------+  allowlist, rate limits, Pino
+                             |
+              +--------------+--------------+
+              |              |              |
+        MongoDB          Cloudinary     Stripe / Twilio / Gmail
+   (videos, users,   (video storage)  (Checkout + webhooks /
+    OTPs)                              SMS + email OTP)
+```
 
 ## Project structure
 
@@ -101,9 +123,9 @@ never a value.
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name (video/image uploads). |
 | `CLOUDINARY_API_KEY` | Cloudinary API key. |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret. |
-| `STRIPE_SK` | **Required for payments.** Stripe secret key, server-side only. |
+| `STRIPE_SK` | **Required for payments.** Stripe secret key, server-side only (`sk_test_…` / `sk_live_…`). |
 | `STRIPE_WEBHOOK_SECRET` | **Required for premium.** Signing secret from Stripe Dashboard → Developers → Webhooks → the endpoint's "Signing secret". Without it the webhook answers 500 and premium is never granted. |
-| `PREMIUM_PRICE_INR` | Premium price in INR (₹15). Change the price here, never in client code. |
+| `PREMIUM_PRICE_INR` | Premium price in INR, default `1000` on `main`. ₹15 with free use until 12 Nov 2027 is decided and pending in open PR #12 — not the live price until #12 merges. Change the price here, never in client code. |
 | `ACCOUNT_SID` | Twilio account SID (SMS OTP). |
 | `ACCOUNT_TOKEN` | Twilio auth token (SMS OTP). |
 | `TWILIO_NUMBER` | Twilio phone number that sends SMS OTPs. |
@@ -157,26 +179,30 @@ Per-app scripts: `pnpm --filter @acube/api test` /
 
 ## Tests
 
-Verified on this branch (14 Nov 2026, uncached, `pnpm test --force`):
+Verified on the merged branch (15 Nov 2026, uncached, `pnpm test --force`):
 
 - **API** (`apps/api/tests/`, Vitest + Supertest +
-  `mongodb-memory-server`): **340/340 passed (24 files)** — auth, OTP,
+  `mongodb-memory-server`): **326/326 passed (23 files)** — auth, OTP,
   video, comment, download/payments, history, feed, studio, routes
   smoke. No live MongoDB, Stripe, Twilio, or Cloudinary account is
   needed: one in-memory mongod for the run, Stripe and Cloudinary
   mocked, OTP senders mocked. First run on a fresh machine downloads
   the mongod binary (~128 MB) into `~/.cache/mongodb-binaries`.
 - **Web** (`apps/web/src/test/`, Vitest + Testing Library + MSW):
-  **312/313 passed (34 files)**. The one failure is the known
-  `studioPreview.test.tsx` flake ("Latest comments show a relative
-  time…", 5000 ms timeout under the full parallel run on a 1.5-CPU
-  VM) — the file re-run alone passes **15/15, exit 0**, with no code
-  changed; same flake documented in `PHASE5_REPORT.md` §§8.9.21–8.9.23.
+  **312/312 passed (33 files)**. The first full run showed 311/312 —
+  one timing failure in `settingsWatchPolish.test.tsx` ("has no
+  Banner/Profile picture URL inputs any more":
+  `findByLabelText("Channel name")` timed out while the settings page
+  was still showing its loading skeleton under the full parallel run
+  on this 1.5-CPU VM). Proven a flake, not a regression: the file
+  re-run alone passes 12/12, exit 0; the full web suite re-run passes
+  312/312, exit 0; and the full web suite on `origin/main` also
+  passes 312/312 — no code changed. The API is mocked with MSW; no live
+  backend needed. DOM assertions use jest-dom matchers (`toBeInTheDocument`,
+  `toHaveValue`, `toHaveTextContent`); see `src/test/jest-dom.d.ts`.
 - **Gates, all exit 0**: `pnpm typecheck --force` (3 tasks),
-  `pnpm lint --force` (0 errors, 6 warnings — all pre-existing, in
-  `ChatSearch`, `SidebarAllGroups`, `LibraryHub`, `RoomContext`,
-  `authSlice`; none in touched files), `pnpm build --force` (3 tasks,
-  web built in ~13 s; the API build is a syntax check, same
+  `pnpm lint --force` (0 errors, 2 warnings — both pre-existing, in `LibraryHub` and `authSlice`),
+  `pnpm build --force` (3 tasks; the API build is a syntax check, same
   "no output files" note as before).
 - **E2E** (`apps/web/e2e/` + `e2e-phase5/`, Playwright, Chromium,
   headless): smoke tests against `vite preview` plus a real API backed
@@ -218,6 +244,11 @@ Verified on this branch (14 Nov 2026, uncached, `pnpm test --force`):
   (`{ items, page, limit, total, totalPages }`, limit clamped to 50).
   Like/view counters move by atomic `$inc`; points are awarded
   server-side only (5 per completed watch, max 10 per video per day).
+- **Chat and video calls removed.** The 1:1/group chat and WebRTC
+  video-call features (and the `SECRETKEY_CRYPTO` chat-message
+  encryption) were removed; the `conversations` / `messages` / `groups`
+  collections are orphaned in existing databases — dropping them is an
+  ops decision, not code.
 - **Other hardening**: Helmet headers, CORS allowlist (never `*`),
   rate limits (300 req / 15 min global, 30 / 15 min on auth routes),
   central error handler (`{ error: { code, message } }`, no stack
