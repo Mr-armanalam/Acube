@@ -2881,3 +2881,30 @@ Counts vs §8.9.25: API 326 (not 340) and web 312 (not 312/313 with the flake) �
 5. **E2E specs not run** — Playwright (`e2e/`, `e2e-phase5/`) is outside the `pnpm test` (vitest) verification; no e2e file was touched, so no e2e regression is expected, but it was not executed here.
 
 **State left behind.** Worktree `~/workspace/acube-comment-docs-cleanup`, branch `feat/acube-comment-docs-cleanup`, base `main` @ `be073da`. Four commits: `003f103` (comments), `fee7522` (dead files), `4b5faa6` (this §8.9.26 report section), and this HEAD (verifier GO fix-up: 7 stale comments, §8.9.26 number corrections, 2 unreferenced screenshots). Nothing pushed, no PR created. `node_modules` installed in the worktree (`pnpm install --frozen-lockfile`, exit 0). `git status` clean. Verification logs live outside the repo at `~/workspace/.tmp-mongo/`: `test-api.log` (API 326/326), `test-web.log` (web 312/312), `test-baseline.log` (pristine-main turbo failure), `test-serial.log`, `test-turbo-api.log`, `lint.log`, `build.log`, plus the fix-up logs `fixup-typecheck.log`, `fixup-lint.log`, `fixup-test-api.log`, `fixup-test-web.log`, `fixup-build.log` and the recount script `count_comments.py`.
+
+#### 8.9.27 Studio Comments footnote — remove false "(no comment-like endpoint yet)" (15 Nov 2026, branch `feat/acube-comments-footnote-fix`, base `main` @ `5b5d8bd` — PR #20 merged)
+
+Numbering note: highest in the file on `main` is §8.9.26 (comment + docs cleanup, PR #20 merged 15 Nov 09:53 UTC as `5b5d8bd`), so this section is §8.9.27 — no collision. The task brief said base `be073da` and PR #20 still open — both stale: PR #20 merged before branching (verified live via the GitHub connector: `main` head `5b5d8bd`, "Merge pull request #20"), so this branch is based on `5b5d8bd`, not `be073da`. The brief's "merge after PR #20; if this lands first, renumber to §8.9.26" is moot — PR #20 is already on `main`.
+
+**What changed — one UI-text fix, no behaviour, API, UI-layout, theme, or dependency change.** One commit: `a1fc97f` (footnote, 1 file, 2 insertions / 2 deletions, line-neutral).
+
+- `apps/web/src/Pages/Studio/Comments.tsx:335–336` (footnote, `<p className="studio-note">`): deleted only the false parenthetical "(no comment-like endpoint yet)". Before: "Moderation rule: a creator can delete comments **only on their own videos** — enforced in the API, not just hidden in the UI. Hearts are session-only for now (no comment-like endpoint yet) and are not saved." After: "Moderation rule: a creator can delete comments **only on their own videos** — enforced in the API, not just hidden in the UI. Hearts are session-only for now and are not saved." Everything else verbatim.
+- Header comment (`Comments.tsx:5–8`): **no edit needed — already fixed on `main` by PR #20.** The brief expected the false "no backend endpoint" claim there, but PR #20's verifier fix-up commit reworded it first: it now reads "NOTE: POST /comment/:id/like|dislike exists, but the heart stays a session-local mark (aria-pressed) — this page does not call it yet, so it is labelled honestly below the table and is never persisted or counted server-side." Verified on `main` @ `5b5d8bd` before editing; this branch changes nothing there.
+
+**Why the parenthetical was false (re-verified on `main` @ `5b5d8bd`, not just taken from the scout).** The endpoint exists: `apps/web/src/Api/index.ts:377,379` (`likeComment`/`dislikeComment`, `POST /comment/:id/like|dislike`), mounted in `apps/api/Routes/comment.js:38–39`, and used by the Watch page via `useLikeComment`/`useDislikeComment` in `NestedComments.tsx`. The Studio heart is still session-local — `Comments.tsx:66` (`useState<Set<string>>`), the button (~lines 273–288) only toggles that local Set, imports (lines 23–27) are only `useDeleteComment, usePostComment, useStudioComments`, no like/dislike hook. The footnote's reason was wrong; the session-only fact itself is still true, and the new wording keeps it. The heart was deliberately NOT wired to the endpoint here — that is a behaviour change, out of scope (see follow-up below).
+
+**Verification — re-run uncached on this branch (`TMPDIR=$HOME/workspace/.tmp-mongo`, disk-backed; `/tmp` is a 512 MB tmpfs, see §8.9.26 environment note).**
+
+| Check | Command | Result |
+|---|---|---|
+| Install | `pnpm install --frozen-lockfile` | exit 0; lockfile untouched |
+| Typecheck (forced) | `pnpm typecheck --force` | exit 0, 3 tasks, 0 cached |
+| Web tests (4 files, direct) | `npx vitest run src/test/studioPreview.test.tsx src/test/studioCommentsActions.test.tsx src/test/studio.test.tsx src/test/phase5fix.test.tsx` in `apps/web` | exit 0, **4 files, 67/67 passed** — incl. `studioPreview.test.tsx` asserting `/Hearts are session-only/`, which the new wording keeps green |
+| Lint (forced) | `pnpm lint --force` | exit 0, **0 errors, 2 warnings** — both pre-existing, in untouched files (`Pages/Library/LibraryHub.tsx` useMemo dep, `store/slices/authSlice.ts` unused `state`); same 2 as §8.9.24/§8.9.26 |
+| Build (forced) | `pnpm build --force` | exit 0, 3 tasks, 0 cached |
+
+`git status` after the build shows only the one intended file modified — the build dirtied nothing. No e2e run (no e2e file touched; same reasoning as §8.9.26).
+
+**Follow-up (not this branch, needs Arman's approval).** The Studio heart is still session-local; wiring it to the existing `POST /comment/:id/like|dislike` endpoint is a separate behaviour change — it would persist hearts server-side and count them. Not done here by design.
+
+**State left behind.** Worktree `~/workspace/acube-comments-footnote-fix`, branch `feat/acube-comments-footnote-fix`, base `main` @ `5b5d8bd`. Two commits: `a1fc97f` (footnote fix) and this report section. `node_modules` installed in the worktree (`pnpm install --frozen-lockfile`, exit 0). Verification logs live outside the repo at `~/workspace/.tmp-mongo/footnote-fix/`: `install.log`, `typecheck.log`, `web-tests-4files.log`, `lint.log`, `build.log`.

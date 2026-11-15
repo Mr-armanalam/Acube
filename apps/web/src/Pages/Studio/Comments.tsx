@@ -332,8 +332,8 @@ export default function Comments() {
           <p className="studio-note">
             Moderation rule: a creator can delete comments{" "}
             <strong>only on their own videos</strong> — enforced in the API,
-            not just hidden in the UI. Hearts are session-only for now (no
-            comment-like endpoint yet) and are not saved.
+            not just hidden in the UI. Hearts are session-only for now
+            and are not saved.
           </p>
           <nav
             aria-label="Comments pages"
