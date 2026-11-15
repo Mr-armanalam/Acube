@@ -25,8 +25,8 @@ const CHANNEL_TABS = [
 type ChannelTab = (typeof CHANNEL_TABS)[number]["id"];
 
 // Playlists tab: real playlists from GET /channel/:id/playlists
-// (proposed endpoint — useChannelPlaylists falls back to the
-// owner-only list for the owner until the backend route lands);
+// (landed route — useChannelPlaylists tries it first and falls back
+// to the owner-only list for the owner only on failure);
 // honest empty state when the channel has none.
 const ChannelPlaylists = ({ cid }: { cid: string }) => {
   const { data, isLoading, isError } = useChannelPlaylists(cid);

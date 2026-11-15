@@ -113,7 +113,6 @@ export const uploadvideo = async (req, res) => {
         res.status(404).json({ message: "Uploader not found" });
         return;
       }
-      // console.log(req.file);
       const videoLocalPath = videoFile?.path;
       // A pasted thumbnailUrl is validated BEFORE the video upload
       // (fail fast — no point uploading a video for a request that
@@ -149,7 +148,6 @@ export const uploadvideo = async (req, res) => {
       let fileThumbnailUrl = null;
       if (isCloudinaryConfigured()) {
         const video = await uploadOnCloudinary(videoLocalPath);
-        //console.log(video);
         if (!video) {
           res
             .status(400)
@@ -265,9 +263,7 @@ export const uploadvideo = async (req, res) => {
         file.autoThumbnails[0] ??
         thumbnail ??
         null;
-      // console.log(file)
       await file.save();
-      // Phase 5: a new upload changes the creator's Studio totals.
       invalidateChannelCache(String(req.userid));
       // Phase 5 fix: return the created video id (JSON, not bare text)
       // so the upload wizard can link to the new video and PATCH it.
@@ -305,10 +301,9 @@ export const PUBLIC_FEED_FILTER = {
 };
 
 export const getallvideos = async (req, res) => {
-  // console.log("get all videos");
   try {
     // Phase 3b: paginated + lean. Response shape is now
-    // { items, page, limit, total, totalPages } (see PHASE3B_NOTES.md);
+    // { items, page, limit, total, totalPages } (see docs/archive/PHASE3B_NOTES.md);
     // items are in upload order (createdAt ascending), as before.
     const page = await paginate(
       videofile.find(PUBLIC_FEED_FILTER).sort({ createdAt: 1, _id: 1 }),

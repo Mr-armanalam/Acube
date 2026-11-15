@@ -13,7 +13,6 @@ function formatDuration(sec) {
 }
 
 const Showvideo = ({vid}) => {
-    // console.log(vid)
     let isloading = "loading"
     if (vid !== undefined) {
     isloading = null;

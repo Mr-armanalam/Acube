@@ -2,10 +2,10 @@
 // a TABLE — Comment / Video / When / Actions — with Reply · ♥ ·
 // Delete, Unreplied filter, timestamps, sort + pagination. A pinned
 // comment shows a "Pinned" badge when the backend provides
-// pinnedByCreator. NOTE: there is no backend endpoint for liking a
-// comment, so the heart is a session-local mark (aria-pressed) until
-// the backend adds one — it is labelled honestly below the table and
-// is never persisted or counted server-side.
+// pinnedByCreator. NOTE: POST /comment/:id/like|dislike exists, but
+// the heart stays a session-local mark (aria-pressed) — this page
+// does not call it yet, so it is labelled honestly below the table
+// and is never persisted or counted server-side.
 //
 // Actions are plain TEXT links on one row ("Reply · ♡ · Delete") — no
 // pill backgrounds, no red outline. Replies thread under their parent

@@ -85,9 +85,9 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  // No MSW handler answers GET /user/getallchannel yet, and the
-  // public GET /channel/:id/playlists endpoint is proposed (no
-  // backend route) — both are mocked here, scoped to this file.
+  // No MSW handler answers GET /user/getallchannel yet, so both
+  // it and the public GET /channel/:id/playlists endpoint (landed
+  // backend route) are mocked here, scoped to this file.
   server.use(
     http.get("*/user/getallchannel", () =>
       HttpResponse.json(pageOf(fixtureChannels)),

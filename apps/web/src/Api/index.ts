@@ -7,7 +7,7 @@ import { readStoredSession, type UploadVideoResponse } from "../types";
 // Phase 3c: request shapes come from @acube/shared — the same Zod schemas
 // the API validates at runtime. The client no longer re-declares them.
 // (Response/model shapes stay in ../types.ts: @acube/shared has no
-// response schemas, only route-input schemas — see PHASE3_REPORT.md.)
+// response schemas, only route-input schemas — see docs/archive/PHASE3_REPORT.md.)
 import type {
   CreatePaymentRequestInput,
   HandlePaymentStatusInput,
@@ -169,7 +169,7 @@ export const sendOtp = (authdata: SendOtpInput) =>
 export const verifyOtp = (authOtp: VerifyOtpInput) =>
   API.post("/auth/verify-otp", authOtp);
 
-// Phase 5 — Creator Studio (contract in PHASE5_PLAN.md Reconciliation).
+// Phase 5 — Creator Studio (contract in docs/archive/PHASE5_PLAN.md Reconciliation).
 // The backend is built to this exact contract; shapes live in types.ts.
 export const getStudioOverview = () => API.get("/studio/overview");
 export const getStudioAnalytics = (range: 7 | 28 | 90 = 28) =>
@@ -180,9 +180,9 @@ export const getStudioVideoAnalytics = (
   id: string,
   range: 7 | 28 | 90 = 28,
 ) => API.get(`/studio/videos/${id}/analytics`, { params: { range } });
-// Phase 5 fix: search + visibility filter + real pagination. The
-// backend worker is adding q/visibility to GET /studio/videos in
-// parallel; the client sends them and the MSW handlers answer them.
+// Phase 5 fix: search + visibility filter + real pagination —
+// q/visibility on GET /studio/videos (see apps/api/Controllers/studio.js);
+// the MSW handlers answer the same shape in tests.
 export const getStudioVideos = (
   page = 1,
   limit = 50,
@@ -200,8 +200,7 @@ export const getStudioSettings = () => API.get("/studio/settings");
 // settings shape (name, desc, handle, links, contactEmail, country,
 // language, bannerUrl, avatarUrl, channelPublic,
 // keepSubscriptionsPrivate, uploadDefaultVisibility,
-// uploadDefaultComments, watermarkEnabled). The backend worker is
-// building this; the old { name?, desc? }-only shape is superseded.
+// uploadDefaultComments, watermarkEnabled). The old { name?, desc? }-only shape is superseded.
 export const patchStudioSettings = (data: {
   name?: string;
   desc?: string;
@@ -218,10 +217,8 @@ export const patchStudioSettings = (data: {
   uploadDefaultComments?: boolean;
   watermarkEnabled?: boolean;
 }) => API.patch("/studio/settings", data);
-// Settings polish contract (backend worker, parallel — these routes
-// did not exist yet when the web work started; the client is built
-// against the fixed contract and the MSW handlers answer the same
-// shapes meanwhile):
+// Settings polish contract (the MSW handlers answer the same
+// shapes in tests):
 //   GET  /studio/handle/available?handle=… -> { available, reason? }
 //   POST /studio/banner  (multipart field "file", jpg/png ≤ 5 MB)
 //   POST /studio/avatar  (multipart field "file", jpg/png ≤ 5 MB)
@@ -326,15 +323,14 @@ export const patchVideo = (
   return API.patch(`/video/${id}`, filedata);
 };
 export const deleteVideo = (id: string) => API.delete(`/video/${id}`);
-// Phase 5 fix contract: soft-delete restore (backend worker, parallel).
+// Phase 5 fix contract: soft-delete restore.
 export const restoreVideo = (id: string) =>
   API.post(`/video/${id}/restore`);
 // Phase 5 fix contract: ranked suggestions with a reason per item.
 export const getWatchSuggestions = (id: string) =>
   API.get(`/watch/${id}/suggestions`);
-// Feed personalization — GET /feed?page&limit&tag? (agreed contract
-// with the API worker building the endpoint in parallel; the MSW
-// handlers answer the same shape meanwhile):
+// Feed personalization — GET /feed?page&limit&tag? (the MSW
+// handlers answer the same shape in tests):
 //   GET /feed -> { items: FeedVideo[] (each with reason?: { type,
 //   label } | null), page, limit, total, totalPages }
 // `tag` narrows the candidate pool server-side before ranking — the
@@ -351,8 +347,8 @@ export const getPersonalizedFeed = (
   API.get("/feed", {
     params: { page, limit, ...(tag ? { tag } : {}) },
   });
-// Watch-page subscribe contract (backend worker, parallel — the MSW handlers answer
-// the same shapes meanwhile):
+// Watch-page subscribe contract (the MSW handlers answer
+// the same shapes in tests):
 //   GET  /subscriptions/:channelId        -> { subscribed, subscriberCount }
 //   POST /subscriptions/:channelId/toggle -> { subscribed, subscriberCount }
 // 400 = own channel, 404 = unknown channel, unauthenticated POST = 401.
@@ -368,14 +364,13 @@ export const toggleSubscription = (channelId: string) =>
 // /studio/playlists list, so the showcase only rendered for the owner.
 export const getWatchPlaylists = (id: string) =>
   API.get(`/watch/${id}/playlists`);
-// Channel page Playlists tab — PROPOSED (no backend route yet; the
-// backend worker owns GET /channel/:id/playlists). Public read with
-// visibility rules server-side, mirroring GET /studio/playlists/:id.
+// Channel page Playlists tab — GET /channel/:id/playlists.
+// Public read with visibility rules server-side, mirroring GET /studio/playlists/:id.
 export const getChannelPlaylists = (id: string) =>
   API.get(`/channel/${id}/playlists`);
 // Phase 5 fix contract: creator pins a comment (creator only, server).
 export const pinComment = (id: string) => API.post(`/comment/${id}/pin`);
-// Watch comments contract (backend worker, parallel): toggling a
+// Watch comments contract: toggling a
 // comment reaction. POST /comment/:id/like toggles the like,
 // POST /comment/:id/dislike toggles the dislike; both return
 // { likes, dislikes, userReaction: "like" | "dislike" | null }.
@@ -389,10 +384,9 @@ export const addLibraryEntry = (videoid: string, kind: string) =>
   API.post("/studio/library", { videoid, kind });
 export const removeLibraryEntry = (kind: string, videoid: string) =>
   API.delete(`/studio/library/${kind}/${videoid}`);
-// Phase 5 fix contract — history pause flag + watch progress. These
-// two paths are PROPOSED (one Api function each, so a correction is a
-// one-line change): the backend worker owns the exact routes and the
-// MSW handlers below answer the same shapes meanwhile.
+// Phase 5 fix contract — history pause flag + watch progress (one Api
+// function each, so a correction is a one-line change; the MSW handlers
+// answer the same shapes in tests).
 //   PATCH /user/history-paused { paused: boolean }
 //   PATCH /video/history/:videoid/progress { progressSec: number }
 export const getHistoryPaused = () => API.get("/user/history-paused");

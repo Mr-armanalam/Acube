@@ -47,7 +47,6 @@ export const likedvideocontroller = async (req, res) => {
 }
 export const getalllikedvideo= async (req, res) => {
     try {
-        // Phase 3b: authed + scoped to the caller + paginated + lean.
         const page = await paginate(
             likedvideo.find({ viewer: String(req.userid) }).sort({ likedon: 1, _id: 1 }),
             paginationOf(req),

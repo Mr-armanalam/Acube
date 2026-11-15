@@ -9,7 +9,7 @@
 // at the e2e API and a dummy VITE_ENCRYPTED_KEY (used by the OTP
 // flow). No real credentials are involved: Google
 // sign-in, Stripe Checkout, Cloudinary upload, and actual video
-// playback with sound are NOT covered here — see PHASE3_REPORT.md.
+// playback with sound are NOT covered here — see docs/archive/PHASE3_REPORT.md.
 import { defineConfig } from "@playwright/test";
 
 export default defineConfig({

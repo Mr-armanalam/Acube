@@ -38,11 +38,6 @@
 body.white-theme .btn_nav_home:not(.active) { background-color: var(--bg-surface); }
 /* Light: reason lines are brand-strong, real reasons only (spec 10). */
 body.white-theme .home-video-reason { color: var(--brand-strong); }
-/* @media (max-width:768px) {
-    .navigation_Home::-webkit-scrollbar {
-        display: none;
-    }
-} */
 .navigation_Home::-webkit-scrollbar {
   display: none;
 }

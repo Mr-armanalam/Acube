@@ -6,7 +6,6 @@
 // inputs are the caller's ViewEvents, their History rows (watched set
 // only), and public video metadata (tags, views, createdAt).
 //
-// ── SCORING (exact formula, weights in the constants below) ──────────
 //   ageDays(t)    = max(0, (now - t) / 86_400_000)
 //   decay(t)      = exp(-ageDays(t) / 7)
 //                   1.00 for a watch today, ~0.37 at 7 days, ~0.014 at
@@ -29,7 +28,6 @@
 //   while freshness + popularity still order the cold-start feed and
 //   break ties between equal-affinity videos.
 //
-// ── Watch-time source ───────────────────────────────────────────────
 //   Affinity uses ViewEvent.createdAt. History.likedon was NOT used: a
 //   History row is one row per (viewer, video) whose likedon is only
 //   set on insert / progress update, so it cannot represent several
@@ -41,7 +39,6 @@
 //   video can be in history without a ViewEvent row (e.g. history
 //   added while the view call failed) and vice versa.
 //
-// ── Watched videos ──────────────────────────────────────────────────
 //   Deprioritised, never excluded: score *= 0.25. A watched video can
 //   still surface (e.g. the user re-watches a favourite), but an
 //   unwatched video with the same affinity outranks it. A re-surfaced
@@ -50,7 +47,6 @@
 //   came from a DIFFERENT watched video — the candidate itself is
 //   never its own reason) or "Trending now" / "Newest".
 //
-// ── Reasons (real, never invented) ───────────────────────────────────
 //   Each item carries `reason: { type, label }`:
 //     { type: "watched",  label: "Because you watched <title>" }
 //       — only when the candidate's tagScore is > 0 AND at least one
@@ -66,7 +62,6 @@
 //   affinity at all, so every reason is "Trending now" / "Newest" —
 //   never "Because you watched".
 //
-// ── Diversity ───────────────────────────────────────────────────────
 //   Cap: at most ceil(limit / 2) items per page window (10 of a 20-item
 //   page) may share the same capTag. capTag is the affinity-driving tag
 //   (the candidate's highest-affinity shared tag) for "watched" items,
@@ -81,7 +76,6 @@
 //   pages; `total` is always the full candidate-pool size, so totals
 //   stay consistent across pages.
 //
-// ── Candidate pool ──────────────────────────────────────────────────
 //   Same public-feed filter as GET /video/getvideos (public visibility
 //   or missing, deletedAt null). The pool fetch is bounded at
 //   FEED_MAX_CANDIDATES newest public videos — a catalogue larger than
@@ -90,7 +84,6 @@
 //   ranking (case-insensitive match on the video's tags; an unknown or
 //   empty tag matches nothing → an empty page, never an error).
 //
-// ── Response shape ──────────────────────────────────────────────────
 //   { items, page, limit, total, totalPages } — the same envelope as
 //   GET /video/getvideos, except each item is a video document with an
 //   added `reason` object (the getSuggestions { video, reason } shape,

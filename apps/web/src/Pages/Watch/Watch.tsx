@@ -27,7 +27,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { FaPlay, FaPlus } from "react-icons/fa";
 // FaShuffle / FaRepeat are Font Awesome 6 icons: they live in
 // react-icons/fa6, not react-icons/fa (which is FA5 — no Shuffle /
-// Repeat there). Precedent: StreamRoom imports FaRegCircleStop from fa6.
+// Repeat there).
 import { FaRepeat, FaShuffle } from "react-icons/fa6";
 import { useAppSelector } from "../../store";
 import { resolveApiMediaUrl } from "../../Api";
@@ -130,7 +130,6 @@ const Watch = () => {
   const lastProgressSent = useRef(0);
 
   const viewerId = currentuser?.result?._id;
-  // Persist the Autoplay preference whenever it changes.
   useEffect(() => {
     try {
       window.localStorage.setItem(

@@ -23,7 +23,7 @@ export const viewscontroller = async (req, res, next) => {
         // Phase 3b: atomic $inc — the old read-then-$set lost increments
         // under concurrent views. (Auth was also added to this route in
         // Phase 3b: view counts are now recorded for signed-in users
-        // only; logged-out views are not counted. See PHASE3B_NOTES.md.)
+        // only; logged-out views are not counted. See docs/archive/PHASE3B_NOTES.md.)
         const updateview = await videofile.findByIdAndUpdate(
             _id,
             { $inc: { views: 1 } },

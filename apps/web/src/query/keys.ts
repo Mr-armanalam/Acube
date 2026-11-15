@@ -33,7 +33,7 @@ export const queryKeys = {
   // Watch page: subscribe state for one channel.
   subscription: (channelId: string) =>
     ["subscriptions", channelId] as const,
-  // Channel page Playlists tab (public endpoint, proposed).
+  // Channel page Playlists tab (public endpoint).
   channelPlaylists: (id: string) => ["channel", id, "playlists"] as const,
   historyPaused: ["history", "paused"] as const,
 };

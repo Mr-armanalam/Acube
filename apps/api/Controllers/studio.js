@@ -56,7 +56,6 @@ async function ownVideoIds(channelId) {
   return ids;
 }
 
-// ---------------------------------------------------------------- overview
 
 export const getOverview = async (req, res, next) => {
   try {
@@ -198,7 +197,6 @@ export const getOverview = async (req, res, next) => {
   }
 };
 
-// --------------------------------------------------------------- analytics
 
 export const getAnalytics = async (req, res, next) => {
   try {
@@ -278,7 +276,6 @@ export const getAnalytics = async (req, res, next) => {
   }
 };
 
-// ------------------------------------------------------------ videos list
 
 // Per-video analytics (Content "View analytics" link target). The only
 // analytics endpoint before this was the channel-level
@@ -414,7 +411,6 @@ export const getStudioVideos = async (req, res, next) => {
   }
 };
 
-// ---------------------------------------------------------- comments list
 
 export const getStudioComments = async (req, res, next) => {
   try {
@@ -475,7 +471,6 @@ export const getStudioComments = async (req, res, next) => {
   }
 };
 
-// ---------------------------------------------------------------- settings
 
 export const getSettings = async (req, res, next) => {
   try {
@@ -590,7 +585,6 @@ export const updateSettings = async (req, res, next) => {
   }
 };
 
-// ------------------------------------------------------- handle availability
 
 // Settings polish: live handle check (GET /studio/handle/available).
 // Format is already validated by handleAvailabilityQuerySchema (the
@@ -628,7 +622,6 @@ export const checkHandleAvailable = async (req, res, next) => {
   }
 };
 
-// ------------------------------------------------- banner / avatar uploads
 
 // Settings polish: banner + avatar image uploads (POST /studio/banner,
 // POST /studio/avatar) and removal (POST /studio/banner/remove,
@@ -747,7 +740,6 @@ export const removeBanner = (req, res, next) =>
 export const removeAvatar = (req, res, next) =>
   removeChannelImage(req, res, next, "avatar");
 
-// --------------------------------------------------------------- playlists
 
 async function validatePlaylistVideos(videoIds, ownerId) {
   const deduped = [...new Set(videoIds)];
@@ -969,7 +961,6 @@ export const deletePlaylist = async (req, res, next) => {
   }
 };
 
-// ----------------------------------------------------------------- library
 
 // Library tabs read LibraryEntry rows, unioned with the legacy
 // Watchlater / Likedvideo collections (rows created before Phase 5 have

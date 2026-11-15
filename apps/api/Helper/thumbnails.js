@@ -48,7 +48,6 @@ export const FFPROBE_PATH = ffprobeStatic?.path;
 
 const execFileAsync = promisify(execFile);
 
-// ---------------------------------------------------------------- URL check
 
 const THUMBNAIL_URL_ERROR =
   "Thumbnail URL must point to a reachable image";
@@ -114,7 +113,6 @@ export async function validateThumbnailUrl(url, fetchFn = globalThis.fetch) {
     : { ok: false, message: THUMBNAIL_URL_ERROR };
 }
 
-// ------------------------------------------------------- local ffmpeg path
 
 // Duration in seconds, via the bundled ffprobe binary. Throws when
 // ffprobe cannot read the file or reports no usable duration — the
@@ -220,7 +218,6 @@ export async function extractLocalThumbnails({
   }
 }
 
-// -------------------------------------------- Cloudinary derivation (backfill)
 
 // Build the three frame URLs for a video ALREADY hosted on Cloudinary,
 // from its stored video URL — no re-upload, no network call, no SDK
