@@ -14,9 +14,11 @@
 //  - light theme: with theme=light every key page renders on the
 //    Porcelain tokens (body bg #f5f5f2, white-theme class, white
 //    surfaces, ink text, deepened brand #d93a22);
-//  - toggle: the TopBar button cycles System -> Light -> Dark ->
-//    System, persists the choice in localStorage, and the choice
-//    survives a reload;
+//  - theme control, one at a time: logged OUT the TopBar icon
+//    cycles System -> Light -> Dark -> System, persists the choice
+//    in localStorage, and the choice survives a reload; logged IN
+//    the icon hides and the account-menu segmented control does the
+//    same cycle instead;
 //  - system: with theme=auto (System) the effective theme follows
 //    prefers-color-scheme (emulated light/dark).
 //
@@ -82,6 +84,15 @@ async function signIn(page: Page, theme: "auto" | "light" | "dark") {
     },
     { token: mintE2EJwt(), mode: theme },
   );
+}
+
+/** Pin the theme mode WITHOUT signing in (logged-out state: no
+ * "Profile" in localStorage, so the TopBar icon is the theme
+ * control). */
+async function seedTheme(page: Page, theme: "auto" | "light" | "dark") {
+  await page.addInitScript((mode: string) => {
+    localStorage.setItem("theme", mode);
+  }, theme);
 }
 
 async function bodyBg(page: Page): Promise<string> {
@@ -202,11 +213,13 @@ test.describe("light theme", () => {
   });
 });
 
-test.describe("theme toggle + system", () => {
-  test("toggle cycles System -> Light -> Dark -> System and persists", async ({
+test.describe("theme control + system", () => {
+  test("TopBar toggle cycles System -> Light -> Dark -> System and persists (logged out)", async ({
     page,
   }) => {
-    await signIn(page, "auto");
+    // Logged out, the TopBar icon is the only theme control (no
+    // account menu exists), so it stays visible and cycles.
+    await seedTheme(page, "auto");
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/");
     await page.getByText("E2E Smoke Video").first().waitFor({ timeout: 15000 });
@@ -237,6 +250,57 @@ test.describe("theme toggle + system", () => {
     // page-scoped, so the new page does NOT re-seed "auto" the way a
     // reload of this page would — and the stored choice must load.
     await toggle.click();
+    expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("light");
+    const page2 = await page.context().newPage();
+    await page2.goto("/");
+    await page2.getByText("E2E Smoke Video").first().waitFor({ timeout: 15000 });
+    expect(await page2.evaluate(() => localStorage.getItem("theme"))).toBe("light");
+    expect(await hasWhiteTheme(page2)).toBe(true);
+    await page2.close();
+  });
+
+  test("account menu theme control cycles System -> Light -> Dark -> System and persists", async ({
+    page,
+  }) => {
+    await signIn(page, "auto");
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/");
+    await page.getByText("E2E Smoke Video").first().waitFor({ timeout: 15000 });
+    // The TopBar theme icon is removed: the cycle now runs through
+    // the account-menu segmented control. Clicking a segment closes
+    // the menu, so re-open it for each step.
+    const openMenu = () =>
+      page.getByRole("button", { name: "Account menu" }).click();
+    await expect(page.getByTestId("theme-toggle")).toHaveCount(0);
+
+    // System (auto) + dark OS = dark.
+    expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("auto");
+    expect(await hasWhiteTheme(page)).toBe(false);
+
+    // -> Light.
+    await openMenu();
+    await page.getByTestId("theme-menu-light").click();
+    expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("light");
+    expect(await hasWhiteTheme(page)).toBe(true);
+
+    // -> Dark.
+    await openMenu();
+    await page.getByTestId("theme-menu-dark").click();
+    expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("dark");
+    expect(await hasWhiteTheme(page)).toBe(false);
+
+    // -> System again.
+    await openMenu();
+    await page.getByTestId("theme-menu-auto").click();
+    expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("auto");
+
+    // Persistence across reload: click once more to Light (the app
+    // writes "light" to localStorage via the store subscriber), then
+    // open a fresh page in the same context — page.addInitScript is
+    // page-scoped, so the new page does NOT re-seed "auto" the way a
+    // reload of this page would — and the stored choice must load.
+    await openMenu();
+    await page.getByTestId("theme-menu-light").click();
     expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("light");
     const page2 = await page.context().newPage();
     await page2.goto("/");

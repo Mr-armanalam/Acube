@@ -225,6 +225,10 @@ test.describe("Feed personalization (real API, seeded demo data)", () => {
       ),
     ).toBe(true);
 
+    // Re-clicking the active chip toggles back to All (unfiltered feed).
+    await page.getByRole("button", { name: "frontend", exact: true }).click();
+    await expect(page.locator(".home-video-card")).toHaveCount(8);
+
     // Logged out: the same chip filters client-side — no /feed call.
     // A FRESH browser context is required here, not
     // page.context().newPage(): localStorage (and therefore the stored
@@ -246,6 +250,13 @@ test.describe("Feed personalization (real API, seeded demo data)", () => {
       "MongoDB Aggregations Deep Dive",
       "System Design: Caching Basics",
     ]);
+    expect(feedRequests(seenLoggedOut)).toHaveLength(0);
+    // Re-clicking the active chip toggles back to All (unfiltered
+    // feed), still with no /feed call.
+    await loggedOut
+      .getByRole("button", { name: "backend", exact: true })
+      .click();
+    await expect(loggedOut.locator(".home-video-card")).toHaveCount(8);
     expect(feedRequests(seenLoggedOut)).toHaveLength(0);
     expect(errors).toEqual([]);
     expect(loggedOutErrors).toEqual([]);

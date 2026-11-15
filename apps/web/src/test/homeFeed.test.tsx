@@ -359,6 +359,64 @@ describe("Home tag chips with the feed", () => {
     );
     expect(screen.getByText("Video 1")).toBeInTheDocument();
   });
+
+  it("signed in: re-clicking the active chip toggles back to All (?tag= dropped)", async () => {
+    useFeedHandler();
+    useGetvideosHandler();
+    localStorage.setItem("Profile", JSON.stringify(testSession));
+    const user = userEvent.setup();
+    renderWithProviders(<Home />, { session: testSession });
+    await screen.findByText("Video 20");
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    await screen.findByText("Video 21");
+    await user.click(screen.getByRole("button", { name: "react" }));
+    await screen.findByText("Video 40");
+    // Re-clicking "react" used to re-set the same tag and leave the
+    // feed narrowed; it now toggles back to the untagged feed.
+    await user.click(screen.getByRole("button", { name: "react" }));
+    await waitFor(() =>
+      expect(screen.queryByText("Video 40")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Video 1")).toBeInTheDocument();
+    expect(screen.getByText("Video 20")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All" })).toHaveClass("active");
+    // The toggle re-fetched the untagged page 1 (no ?tag=).
+    await waitFor(() =>
+      expect(
+        feedRequests[feedRequests.length - 1],
+      ).toMatchObject({ page: 1, tag: null }),
+    );
+    expect(getvideosRequests).toEqual([]);
+  });
+
+  it("logged out: re-clicking the active chip toggles back to All with no new request", async () => {
+    useFeedHandler();
+    useGetvideosHandler();
+    const user = userEvent.setup();
+    renderWithProviders(<Home />);
+    await screen.findByText("Video 20");
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+    await screen.findByText("Video 21");
+    expect(getvideosRequests).toHaveLength(2);
+    // "python" lives on page 1 only, so the client-side filter is
+    // observable after the tag change resets pagination to page 1.
+    await user.click(screen.getByRole("button", { name: "python" }));
+    await waitFor(() =>
+      expect(screen.queryByText("Video 6")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Video 1")).toBeInTheDocument();
+    // Re-clicking "python" toggles back to "All" — same client-side
+    // filter path, no new request, no /feed call.
+    await user.click(screen.getByRole("button", { name: "python" }));
+    await waitFor(() =>
+      expect(screen.getByText("Video 6")).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Video 1")).toBeInTheDocument();
+    expect(screen.getByText("Video 20")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All" })).toHaveClass("active");
+    expect(getvideosRequests).toHaveLength(2);
+    expect(feedRequests).toEqual([]);
+  });
 });
 
 describe("Home personalised feed pagination", () => {

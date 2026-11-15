@@ -88,6 +88,26 @@ describe("Home page", () => {
     expect(screen.getByText("Java for Beginners")).toBeInTheDocument();
   });
 
+  it("re-clicking the active chip toggles back to All (unfiltered feed)", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Home />);
+    await screen.findByText("Python Basics Tutorial");
+
+    await user.click(screen.getByRole("button", { name: "python" }));
+    expect(screen.getByText("Python Basics Tutorial")).toBeInTheDocument();
+    expect(
+      screen.queryByText("React Hooks Deep Dive"),
+    ).not.toBeInTheDocument();
+
+    // Re-clicking "python" used to re-set the same state and leave
+    // the filter stuck; it now toggles back to "All".
+    await user.click(screen.getByRole("button", { name: "python" }));
+    expect(screen.getByText("Python Basics Tutorial")).toBeInTheDocument();
+    expect(screen.getByText("React Hooks Deep Dive")).toBeInTheDocument();
+    expect(screen.getByText("Java for Beginners")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All" })).toHaveClass("active");
+  });
+
   it("has no Upload button in the chips row", async () => {
     renderWithProviders(<Home />);
     await screen.findByText("Python Basics Tutorial");

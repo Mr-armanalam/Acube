@@ -150,8 +150,11 @@ const Home = () => {
   // previously-visited tag's cache to page 1 so returning to a tag
   // restarts from page 1 instead of resuming at page 2+. Each reset
   // is a no-op for the feed the user is not on.
+  // Re-clicking the active chip toggles back to "All": a pure setter
+  // left the filter stuck, since the same state produced the same
+  // feed key / client filter.
   const handleTopic = (label: string) => {
-    setTopic(label);
+    setTopic(label === topic ? "All" : label);
     resetPagedVideosToFirstPage(queryClient);
     resetPersonalizedFeedToFirstPage(queryClient);
   };
