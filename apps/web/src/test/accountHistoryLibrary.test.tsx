@@ -58,6 +58,16 @@ describe("TopBar account menu", () => {
     // (Sign out is asserted before the click: clicking Create channel
     // closes the menu.)
     expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    // The theme choice lives in this menu once signed in (the
+    // TopBar icon hides after login): the System / Light / Dark
+    // segmented control stays.
+    const themeGroup = screen.getByRole("group", { name: "Theme" });
+    for (const mode of ["auto", "light", "dark"]) {
+      expect(
+        screen.getByTestId(`theme-menu-${mode}`),
+      ).toBeInTheDocument();
+    }
+    expect(themeGroup).toBeInTheDocument();
     await user.click(create);
     expect(seteditcreatechanelbtn).toHaveBeenCalledTimes(1);
     expect(seteditcreatechanelbtn).toHaveBeenCalledWith(true);

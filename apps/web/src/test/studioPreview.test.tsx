@@ -79,6 +79,9 @@ describe("Shell switch", () => {
     const upload = within(header).getByRole("link", { name: "+ Upload" });
     expect(upload).toHaveAttribute("href", "/studio/upload");
     expect(screen.queryByText("Your-Tube")).not.toBeInTheDocument();
+    // The TopBar theme icon hides once signed in (the account menu
+    // holds the theme choice instead).
+    expect(screen.queryByTestId("theme-toggle")).not.toBeInTheDocument();
     // TopBar search navigates to /search/:query.
     await user.type(screen.getByLabelText("Search videos"), "python");
     await user.click(screen.getByRole("button", { name: "Search" }));
@@ -87,11 +90,47 @@ describe("Shell switch", () => {
     ).toBeInTheDocument();
   });
 
-  it("TopBar offers sign-in when logged out", async () => {
+  it("TopBar offers sign-in when logged out — theme icon shown, no Studio or Upload", async () => {
     renderShell("/", null);
     expect(await screen.findByText("Python Basics Tutorial")).toBeInTheDocument();
     expect(screen.getByLabelText("Search videos")).toBeInTheDocument();
+    // Logged out, Studio + Upload must not render: they used to lead
+    // to RequireAuth, which silently redirected to "/" — a dead end.
+    const header = screen.getByRole("banner");
+    expect(
+      within(header).queryByRole("link", { name: "Studio" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(header).queryByRole("link", { name: "+ Upload" }),
+    ).not.toBeInTheDocument();
+    // But the theme icon IS the logged-out theme control (no account
+    // menu exists logged out), so it stays visible.
+    expect(within(header).getByTestId("theme-toggle")).toBeInTheDocument();
   });
+
+  it("clearing the search box and submitting returns to the home feed", async () => {
+    const user = userEvent.setup();
+    renderShell("/search/python", null);
+    // The box reflects the route it landed on. No wait for the lazy
+    // Search chunk itself — the TopBar renders immediately, and the
+    // submit below works whether or not the results have loaded.
+    // 10 s test timeout (default 5 s): the Home load after the
+    // submit can be slow under full-suite load on a 1.5-CPU VM.
+    const input = await screen.findByLabelText(
+      "Search videos",
+      {},
+      { timeout: 10000 },
+    );
+    expect(input).toHaveValue("python");
+    await user.clear(input);
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    // Back on the unfiltered home feed, not the stale /search/python.
+    expect(
+      await screen.findByText("React Hooks Deep Dive", {}, { timeout: 10000 }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Java for Beginners")).toBeInTheDocument();
+    expect(screen.getByLabelText("Search videos")).toHaveValue("");
+  }, 10000);
 });
 
 describe("Preview — Dashboard (image 9)", () => {

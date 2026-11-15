@@ -3,17 +3,24 @@
 // Acube Red, Plus Jakarta Sans + Manrope). This REPLACES the legacy
 // Your-Tube Navbar + drawer, which are deleted: no burger menu, no
 // "Your-Tube" wordmark, no notifications bell. Acube wordmark, search,
-// Studio + Upload, theme toggle, and the signed-in avatar menu
-// (Your account / Your channel / Create channel / Sign out). Google
-// sign-in is the same verified-ID-token flow the old Navbar used
-// (loginThunk with the credential); the session-expiry check on mount is
-// preserved too. "Your account" lands on the Library hub (the account
-// overview); "Create channel" opens the legacy Create/Edit-channel modal
-// (seteditcreatechanelbtn) — channel creation lives there (it PATCHes the
-// user record, which IS the channel; Studio Settings is edit-only), so the
-// menu must not route it to /studio/settings.
+// Studio + Upload (signed in only), and the signed-in avatar menu
+// (Your account / Your channel / Create channel / Sign out, plus the
+// theme choice). Google sign-in is the same verified-ID-token flow
+// the old Navbar used (loginThunk with the credential); the
+// session-expiry check on mount is preserved too. "Your account"
+// lands on the Library hub (the account overview); "Create channel"
+// opens the legacy Create/Edit-channel modal (seteditcreatechanelbtn)
+// — channel creation lives there (it PATCHes the user record, which
+// IS the channel; Studio Settings is edit-only), so the menu must not
+// route it to /studio/settings.
+//
+// One theme control at a time: the TopBar icon is the LOGGED-OUT
+// control (logged-out users have no account menu), and it hides once
+// signed in, when the account menu's System/Light/Dark control
+// exists — two places to manage theme would be redundant. Studio +
+// Upload are the mirror image: hidden logged out, shown signed in.
 import React, { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { GoogleLogin, googleLogout, type CredentialResponse } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 import { useAppDispatch, useAppSelector } from "../../store";
@@ -47,6 +54,7 @@ export default function TopBar({
 }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const currentuser = useAppSelector((s) => s.auth.session);
   const themeMode = useAppSelector((s) => s.theme.mode);
   const [query, setQuery] = useState("");
@@ -101,10 +109,29 @@ export default function TopBar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep the box in sync with the route: on /search/<q> it shows
+  // <q>, anywhere else it is empty. Depends on the pathname only, so
+  // typing never gets clobbered mid-keystroke.
+  useEffect(() => {
+    const match = location.pathname.match(/^\/search\/(.+)$/);
+    if (!match) {
+      setQuery("");
+      return;
+    }
+    try {
+      setQuery(decodeURIComponent(match[1]));
+    } catch {
+      setQuery(match[1]);
+    }
+  }, [location.pathname]);
+
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const q = query.trim();
+    // An empty submit used to be a silent no-op that left the stale
+    // /search/<old query> in the URL; it now returns to the feed.
     if (q) navigate(`/search/${encodeURIComponent(q)}`);
+    else navigate("/");
   };
 
   const initial = (
@@ -134,20 +161,32 @@ export default function TopBar({
         </button>
       </form>
       <nav className="topbar-nav" aria-label="Primary">
-        <Link to="/studio">Studio</Link>
-        <Link to="/studio/upload" className="acube-btn topbar-upload">
-          + Upload
-        </Link>
-        <button
-          type="button"
-          className="topbar-icon-btn"
-          data-testid="theme-toggle"
-          aria-label={`Theme: ${THEME_LABEL[themeMode]} — switch to ${THEME_LABEL[THEME_CYCLE[themeMode]]}`}
-          title={`Theme: ${THEME_LABEL[themeMode]}`}
-          onClick={() => dispatch(setMode(THEME_CYCLE[themeMode]))}
-        >
-          {THEME_ICON[themeMode]}
-        </button>
+        {/* Studio + Upload are signed-in only: logged out they led to
+            RequireAuth, which silently redirected to "/" — a dead end
+            with no explanation. */}
+        {currentuser ? (
+          <>
+            <Link to="/studio">Studio</Link>
+            <Link to="/studio/upload" className="acube-btn topbar-upload">
+              + Upload
+            </Link>
+          </>
+        ) : null}
+        {/* One theme control at a time: the icon is the logged-out
+            control (no account menu exists logged out); once signed
+            in the account menu holds the theme choice instead. */}
+        {!currentuser ? (
+          <button
+            type="button"
+            className="topbar-icon-btn"
+            data-testid="theme-toggle"
+            aria-label={`Theme: ${THEME_LABEL[themeMode]} — switch to ${THEME_LABEL[THEME_CYCLE[themeMode]]}`}
+            title={`Theme: ${THEME_LABEL[themeMode]}`}
+            onClick={() => dispatch(setMode(THEME_CYCLE[themeMode]))}
+          >
+            {THEME_ICON[themeMode]}
+          </button>
+        ) : null}
         {currentuser ? (
           <div className="topbar-user">
             <button
@@ -186,8 +225,9 @@ export default function TopBar({
                   Sign out
                 </button>
                 {/* Theme row (Porcelain light theme, §8.9.23): the same
-                    System / Light / Dark choice as the TopBar toggle
-                    and Studio Settings Appearance. */}
+                    System / Light / Dark choice as Studio Settings
+                    Appearance. This is the signed-in theme control —
+                    the TopBar icon hides once signed in. */}
                 <div className="topbar-menu-theme">
                   <span className="topbar-menu-theme-label" aria-hidden="true">
                     Theme

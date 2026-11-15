@@ -119,6 +119,27 @@ test.describe("Acube click-through", () => {
     await page.screenshot({ path: shot("search.png") });
   });
 
+  test("2b. Clearing the search box and submitting returns to the home feed", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(page.getByText(SEEDED_VIDEO_TITLE).first()).toBeVisible();
+    await page.getByPlaceholder("Search").fill("E2E Smoke");
+    await page
+      .getByRole("button", { name: "Search", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/search\/E2E%20Smoke$/);
+    // Clearing the box and submitting used to be a silent no-op that
+    // left the stale /search/<old query> in the URL; it now returns
+    // to the unfiltered home feed.
+    await page.getByPlaceholder("Search").fill("");
+    await page
+      .getByRole("button", { name: "Search", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByText(SEEDED_VIDEO_TITLE).first()).toBeVisible();
+  });
+
   test("3. Video page: play toggle, logged-out like, comments", async ({
     page,
   }) => {
@@ -284,38 +305,24 @@ test.describe("Acube click-through", () => {
     await page.goto("/");
     await expect(page.getByText(SEEDED_VIDEO_TITLE).first()).toBeVisible();
     // Match-preview: the legacy ThemeBox (.themeContainer/.theme_box)
-    // is deleted with the Navbar; the TopBar has one toggle button that
-    // flips light ↔ dark. The starting mode is not assumed — assert the
-    // body class flips, then flips back.
+    // is deleted with the Navbar; the TopBar has one toggle button.
+    // Since §8.9.23 it cycles System -> Light -> Dark -> System and
+    // its label reads "Theme: <current> — switch to <next>", so the
+    // test drives by the label instead of assuming the start mode:
+    // at most three clicks land on Light (white body), one more
+    // click lands on Dark (dark body) for the screenshot.
     const body = page.locator("body");
-    const initiallyLight = await body.evaluate((b) =>
-      b.classList.contains("white-theme"),
-    );
     const toggle = page.getByRole("button", {
-      name: /Switch to (light|dark) theme/,
+      name: /switch to (System|Light|Dark)/i,
     });
+    await expect(toggle).toBeVisible();
+    for (let i = 0; i < 3; i++) {
+      const label = (await toggle.getAttribute("aria-label")) ?? "";
+      await toggle.click();
+      if (label.includes("switch to Light")) break;
+    }
+    await expect(body).toHaveClass(/white-theme/);
     await toggle.click();
-    if (initiallyLight) {
-      await expect(body).not.toHaveClass(/white-theme/);
-    } else {
-      await expect(body).toHaveClass(/white-theme/);
-    }
-    await toggle.click();
-    if (initiallyLight) {
-      await expect(body).toHaveClass(/white-theme/);
-    } else {
-      await expect(body).not.toHaveClass(/white-theme/);
-    }
-    // Drive to dark explicitly for the theme-dark screenshot.
-    if (
-      await page
-        .getByRole("button", { name: "Switch to dark theme" })
-        .count()
-    ) {
-      await page
-        .getByRole("button", { name: "Switch to dark theme" })
-        .click();
-    }
     await expect(body).not.toHaveClass(/white-theme/);
     await page.screenshot({ path: shot("theme-dark.png") });
   });
