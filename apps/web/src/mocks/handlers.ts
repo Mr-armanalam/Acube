@@ -592,7 +592,7 @@ export const handlers = [
       currency: "INR",
     });
   }),
-  // Phase 5 — Creator Studio contract (docs/archive/PHASE5_PLAN.md Reconciliation).
+  // Phase 5 — Creator Studio (mirrors the real GET /studio/overview).
   // The overview carries the mock avatar, like the real endpoint
   // (GET /studio/overview returns avatarUrl falling back to picture),
   // so an avatar upload visibly reaches the Studio identity header.

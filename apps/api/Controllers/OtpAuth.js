@@ -3,7 +3,7 @@
 // hashes, expire after 10 minutes, allow at most 5 verify attempts, and
 // enforce a 60 s resend cooldown. Delivery is awaited — a failed send
 // answers 500 {error:{code:"OTP_SEND_FAILED"}} instead of a silent 200
-// (see docs/archive/PHASE3A_NOTES.md: this changes the old behaviour pinned by the
+// (this changes the old behaviour pinned by the
 // Phase 1 tests, and the 3b-owned smoke test's send-otp expectation).
 // Both routes are additionally behind the existing auth rate limiter
 // (app.js mounts /auth under authLimiter: 30 req / 15 min in production).

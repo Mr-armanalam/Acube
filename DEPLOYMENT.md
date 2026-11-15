@@ -1,6 +1,6 @@
 # Acube — Deployment Guide
 
-Branch: `main` (head `1cc79ab`, the PR #18 merge).
+Branch: `main` (head `7aefccb`, the PR #21 merge).
 **Status: the rebuild is merged to `main` and deployed.** The live site,
 https://accube.vercel.app/, serves the rebuild (Vite client + Express 5
 API). This guide covers the live deployment: how it is configured, how
@@ -38,12 +38,12 @@ below is the recorded live setup (confirm against the dashboard if
 anything drifts):
 
 1. `main` is the production branch — Vercel deploys it on every merge
-   (Arman merges PRs himself; see §9 — do not deploy a feature branch
-   directly unless Arman explicitly wants a preview deployment).
+   (the repo owner merges PRs; see §9 — do not deploy a feature branch
+   directly unless a preview deployment is requested).
 2. In the Vercel project settings, the deployment points at the rebuilt
    code:
-   - **Root Directory:** `apps/web` — **confirmed** (Arman confirmed
-     13 Nov 2026; `apps/web/vercel.json` exists and provides the SPA
+   - **Root Directory:** `apps/web` — **confirmed** (13 Nov 2026;
+     `apps/web/vercel.json` exists and provides the SPA
      fallback rewrite to `/index.html`).
    - **Framework preset:** Vite.
    - **Install command:** `pnpm install --frozen-lockfile`
@@ -59,7 +59,7 @@ anything drifts):
 4. Redeploy. Verify with §7.
 
 **Preview deployments:** Vercel can also build the PR branch as a preview
-URL — useful for Arman to click through before merging. A preview URL is a
+URL — useful for the reviewer to click through before merging. A preview URL is a
 *different origin* from `https://accube.vercel.app`, so the API's CORS
 allowlist must include it (set `FRONTEND_URL` to the preview origin, §6) or
 API calls from the preview will 403.
@@ -85,8 +85,8 @@ Generic setup — adapt to the chosen host's dashboard:
 
 **VPS alternative:** same commands on the server (`pnpm install
 --frozen-lockfile`, `pnpm --filter @acube/api start`), behind a process
-manager (e.g. `systemd` / `pm2` — **to confirm** which, if any, Arman
-uses) and a reverse proxy. The reverse proxy must **not** parse or
+manager (e.g. `systemd` / `pm2` — **to confirm** which, if any, is used
+in production) and a reverse proxy. The reverse proxy must **not** parse or
 re-serialise request bodies for `POST /download/webhook` — Stripe's
 signature verification needs the exact raw body (the app registers
 `express.raw()` before `express.json()` for this route; a proxy that
@@ -103,8 +103,8 @@ relying on it (**to confirm**).
 
 Never commit a real `.env`. There are no `.env.example` files in this
 repo — set every variable in the host dashboards (Vercel for the web,
-the API host for the server). Values are supplied by Arman; only names
-are listed here.
+the API host for the server). Values are set in the deployment
+dashboards; only names are listed here.
 
 ### 5a. API — set on the API host (Render / Railway / Fly.io / VPS)
 
@@ -143,8 +143,7 @@ are listed here.
 
 ### 5c. ⚠️ JWT_SECRET rename — breaking change
 
-Phase 3a renamed the JWT secret **`JWT_SECERT` → `JWT_SECRET`**
-(`docs/archive/PHASE3A_NOTES.md`, `docs/archive/PHASE3_REPORT.md` §1).
+Phase 3a renamed the JWT secret **`JWT_SECERT` → `JWT_SECRET`**.
 There is **no fallback** to the old spelling: a deployment still
 setting `JWT_SECERT` will sign/verify with `undefined` and fail.
 
@@ -202,8 +201,8 @@ in trial mode (trial accounts can only SMS verified numbers).
   password**, never the account password.
 - App passwords require 2-Step Verification on the Google account; create
   one at Google Account → Security → App passwords (16-character code,
-  no spaces when pasted). **To confirm:** which Gmail account Arman wants
-  OTP mail sent from.
+  no spaces when pasted). **To confirm:** which Gmail account OTP mail
+  is sent from.
 - OTP senders now **throw** on failure instead of swallowing the error:
   a real send failure answers `500 OTP_SEND_FAILED` and stores nothing.
 
@@ -268,7 +267,7 @@ Google account): Home feed renders → search → video page plays →
 `/Library` redirects to Home when logged out → sign in → upload a video →
 premium upgrade via Stripe test Checkout → webhook grants premium
 (check `isPremium` / download works). Phase 5 verified the same flows
-locally with Playwright (see `PHASE5_REPORT.md` §8.9.23); the full
+locally with Playwright; the full
 live-browser click-through against the production deploy has **not**
 been done yet — do it on the preview/staging deploy before calling the
 production deploy done.
@@ -297,7 +296,7 @@ Developers → Webhooks → the endpoint, confirm deliveries of
   verified (§7); do not delete the old Vercel deployment or API service
   on day one.
 
-## 9. Outstanding items that affect deployment (from `docs/archive/PHASE3_REPORT.md` §9)
+## 9. Outstanding items that affect deployment
 
 These are known limitations on `main` — not blockers, but deploy with
 eyes open:
@@ -354,7 +353,7 @@ eyes open:
 
 ## 10. Pre-deploy checklist (for redeploys / env changes)
 
-- [ ] Change reviewed and merged by Arman (Muse does not merge).
+- [ ] Change reviewed and merged by the repo owner (the agent does not merge).
 - [ ] `JWT_SECRET` set on the API host (new name); no `JWT_SECERT` anywhere.
 - [ ] Production data deduped for the unique indexes (§9.1) — or
       accepted that the indexes will be absent on first boot.
@@ -372,9 +371,7 @@ eyes open:
 
 ## 11. Sources (all verified from the repo)
 
-- `README.md` (setup, env tables, scripts), `docs/archive/PHASE3_REPORT.md` §1–§9,
-  `docs/archive/PHASE3A_NOTES.md`, `docs/archive/PHASE3B_NOTES.md` §5 (indexes +
-  migration note), `apps/api/app.js` (CORS allowlist, webhook registration),
+- `README.md` (setup, env tables, scripts), `apps/api/app.js` (CORS allowlist, webhook registration),
   `apps/api/Controllers/downloadVideo/webhook.js`,
   `apps/api/index.js` (boot order, `PORT`), `.github/workflows/ci.yml`.
 - Anything marked **to confirm** above could not be verified from the

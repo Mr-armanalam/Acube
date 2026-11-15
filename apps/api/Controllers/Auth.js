@@ -110,7 +110,7 @@ export const login = async (req, res) => {
 
 // Phase 5 match-preview: demo sign-in (POST /auth/demo-login).
 // TEST-ONLY, for the seeded demo data (scripts/seedDemo.js) — the demo
-// users have no Google account and no OTP, so without this Arman sees
+// users have no Google account and no OTP, so without this, the demo user sees
 // nothing after seeding. It is env-gated TWICE, checked on every call:
 //   * DEMO_LOGIN_ENABLED must be exactly "1", AND
 //   * NODE_ENV must not be "production".
@@ -123,7 +123,7 @@ export const login = async (req, res) => {
 // JWT (same shape/expiry as login) — the demo user then uses every
 // authed endpoint as themselves. There is NO .env.example in the repo
 // (removed from main in f37c013 — do not re-add); the flag is
-// documented in PHASE5_REPORT.md §8.8 instead.
+// documented in the env tables in README.md instead.
 export const demoLogin = async (req, res) => {
   if (
     process.env.DEMO_LOGIN_ENABLED !== "1" ||

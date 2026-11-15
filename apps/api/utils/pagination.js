@@ -1,6 +1,6 @@
 // Phase 3b: shared pagination for every list endpoint.
 //
-// Shape (breaking change from the old bare arrays — see docs/archive/PHASE3B_NOTES.md):
+// Shape (breaking change from the old bare arrays):
 //   { items, page, limit, total, totalPages }
 // `page` is 1-based, `limit` is capped at MAX_PAGE_LIMIT by the Zod
 // schema (middleware/validate.js validateQuery). Lists are sorted by

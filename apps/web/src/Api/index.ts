@@ -7,7 +7,7 @@ import { readStoredSession, type UploadVideoResponse } from "../types";
 // Phase 3c: request shapes come from @acube/shared — the same Zod schemas
 // the API validates at runtime. The client no longer re-declares them.
 // (Response/model shapes stay in ../types.ts: @acube/shared has no
-// response schemas, only route-input schemas — see docs/archive/PHASE3_REPORT.md.)
+// response schemas, only route-input schemas.)
 import type {
   CreatePaymentRequestInput,
   HandlePaymentStatusInput,
@@ -169,8 +169,8 @@ export const sendOtp = (authdata: SendOtpInput) =>
 export const verifyOtp = (authOtp: VerifyOtpInput) =>
   API.post("/auth/verify-otp", authOtp);
 
-// Phase 5 — Creator Studio (contract in docs/archive/PHASE5_PLAN.md Reconciliation).
-// The backend is built to this exact contract; shapes live in types.ts.
+// Phase 5 — Creator Studio (endpoints in apps/api/Routes/studio.js;
+// shapes live in types.ts).
 export const getStudioOverview = () => API.get("/studio/overview");
 export const getStudioAnalytics = (range: 7 | 28 | 90 = 28) =>
   API.get("/studio/analytics", { params: { range } });
