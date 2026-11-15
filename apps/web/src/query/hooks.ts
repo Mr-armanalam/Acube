@@ -1113,8 +1113,10 @@ export function usePinComment() {
 // the like, POST /comment/:id/dislike toggles the dislike; both return
 // { likes, dislikes, userReaction: "like" | "dislike" | null }. The
 // counts shown are always the server's (or the optimistic toggle of
-// them) — never invented. This is NOT the Studio heart: that one is
-// session-local useState; Watch reactions persist server-side.
+// them) — never invented. Shared by Watch (NestedComments) and Studio
+// (Comments): the optimistic patch covers both the Watch ["comments"]
+// lists and the Studio ["studio", "comments"] pages, so a heart in
+// either place persists server-side and survives a reload.
 
 /** One cached comment list, snapshotted for rollback. */
 interface CommentListSnapshot {
@@ -1178,6 +1180,36 @@ function patchCachedComment(
   return taken;
 }
 
+/** One cached Studio comments page, snapshotted for rollback. The
+ * Studio list is a PagedResult, not a bare array like Watch's. */
+interface StudioCommentListSnapshot {
+  key: QueryKey;
+  data: PagedResult<CommentItem> | undefined;
+}
+
+/** Apply a function to one comment id in every cached
+ * ["studio", "comments", …] page (Studio fetches per page / filter /
+ * sort, so there can be several). */
+function patchCachedStudioComments(
+  queryClient: ReturnType<typeof useQueryClient>,
+  id: string,
+  patch: (comment: CommentItem) => CommentItem,
+): StudioCommentListSnapshot[] {
+  const snapshots = queryClient.getQueriesData<PagedResult<CommentItem>>({
+    queryKey: ["studio", "comments"],
+  });
+  const taken: StudioCommentListSnapshot[] = [];
+  for (const [key, page] of snapshots) {
+    taken.push({ key, data: page });
+    if (!page) continue;
+    queryClient.setQueryData<PagedResult<CommentItem>>(key, {
+      ...page,
+      items: page.items.map((c) => (c._id === id ? patch(c) : c)),
+    });
+  }
+  return taken;
+}
+
 function useCommentReaction(reaction: CommentReaction) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -1190,24 +1222,35 @@ function useCommentReaction(reaction: CommentReaction) {
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.comments });
+      await queryClient.cancelQueries({ queryKey: ["studio", "comments"] });
       const snapshots = patchCachedComment(queryClient, id, (c) =>
         toggleCommentReaction(c, reaction),
       );
-      return { snapshots };
+      const studioSnapshots = patchCachedStudioComments(
+        queryClient,
+        id,
+        (c) => toggleCommentReaction(c, reaction),
+      );
+      return { snapshots, studioSnapshots };
     },
     onError: (_error, _id, context) => {
       for (const snapshot of context?.snapshots ?? []) {
         queryClient.setQueryData(snapshot.key, snapshot.data);
       }
+      for (const snapshot of context?.studioSnapshots ?? []) {
+        queryClient.setQueryData(snapshot.key, snapshot.data);
+      }
     },
     // Authoritative server counts win over the optimistic guess.
     onSuccess: (result, id) => {
-      patchCachedComment(queryClient, id, (c) => ({
+      const applyResult = (c: CommentItem): CommentItem => ({
         ...c,
         likes: result.likes,
         dislikes: result.dislikes,
         userReaction: result.userReaction,
-      }));
+      });
+      patchCachedComment(queryClient, id, applyResult);
+      patchCachedStudioComments(queryClient, id, applyResult);
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.comments });

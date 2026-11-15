@@ -10,7 +10,9 @@
 // Tests run in declaration order (workers: 1, fullyParallel: false).
 // The last test intentionally deletes the seeded oldest comment — it
 // must stay last: every earlier test creates its own data and cleans
-// up after itself, so the seed counts hold until then.
+// up after itself, so the seed counts hold until then. The heart is
+// server-persisted (POST /comment/:id/like), so test 3 unlikes at the
+// end — a liked first row would otherwise leak into test 7.
 import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
 import { createHmac } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
@@ -182,6 +184,15 @@ test.describe("Studio Comments actions + pagination e2e", () => {
     const heartAgain = page.locator("table tbody tr").first().getByRole("button", { name: /Heart comment by/ });
     await expect(heartAgain).toHaveAttribute("aria-pressed", "true");
     await expect(heartAgain).toHaveText("♥");
+    // Clean up: unlike the comment. The heart persists server-side in
+    // the shared in-memory e2e DB (unlike the old session-local mark),
+    // so leaving it liked would leak into test 7, which expects an
+    // un-hearted first row. Waiting for the button to re-enable proves
+    // the unlike POST landed before this test ends.
+    await heartAgain.click();
+    await expect(heartAgain).toHaveAttribute("aria-pressed", "false");
+    await expect(heartAgain).toHaveText("♡");
+    await expect(heartAgain).toBeEnabled();
     expect(errors).toEqual([]);
   });
 
