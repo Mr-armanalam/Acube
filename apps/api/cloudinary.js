@@ -140,8 +140,6 @@ const uploadOnCloudinary = async (
         resource_type: resourceType,
       });
     }
-    // console.log("file is uploaded on cloudinary");
-    // console.log(response.url);
     removeLocalFile(localFilePath);
     return response;
   } catch (error) {

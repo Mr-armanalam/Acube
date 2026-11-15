@@ -56,7 +56,6 @@ function unwrapPage<T>(value: unknown): T[] {
   return [];
 }
 
-// ---------------------------------------------------------------- videos
 export function useVideos() {
   return useQuery({
     queryKey: queryKeys.videos,
@@ -243,7 +242,6 @@ export function useWatchComplete() {
   });
 }
 
-// -------------------------------------------------------------- channels
 export function useChannels() {
   return useQuery({
     queryKey: queryKeys.channels,
@@ -278,7 +276,6 @@ export function useUpdateChannel() {
   });
 }
 
-// -------------------------------------------------------------- comments
 // Watch fix: comments are fetched per video (?videoid= — the API
 // supports it; see apps/api/tests/comment.test.js "GET /comment/get
 // filters by ?videoid=") and newest-first (?sort=newest). The old
@@ -410,7 +407,6 @@ export function useDeleteComment() {
   });
 }
 
-// ------------------------------------------- history / liked / watch-later
 function useCurrentUserId(): string | undefined {
   return useAppSelector((s) => s.auth.session?.result._id);
 }
@@ -638,7 +634,6 @@ export function useDeleteWatchLater() {
   });
 }
 
-// ------------------------------------------------------- Phase 5: Studio
 
 export function useStudioOverview() {
   return useQuery({
@@ -761,7 +756,6 @@ export function useUpdateStudioSettings() {
   });
 }
 
-// ------------------------------------------- Settings polish: handle check
 // Debounced as-you-type availability (the component debounces the
 // input; this hook only fires when `enabled` and the handle is set).
 // Save is never blocked on it — the server still enforces uniqueness
@@ -779,7 +773,6 @@ export function useHandleAvailable(handle: string, enabled: boolean) {
   });
 }
 
-// ----------------------------------- Settings polish: banner/avatar images
 // The upload/remove responses carry the new URL either top-level
 // ({ bannerUrl } / { avatarUrl }) or nested under `channel` — read
 // either, so the Settings preview can update from the response
@@ -879,14 +872,12 @@ export function useStudioPlaylists() {
 }
 
 // Channel page Playlists tab: the channel's public playlists.
-// GET /channel/:id/playlists is PROPOSED — no backend route exists
-// yet (GET /studio/playlists is owner-only; GET /watch/:id/playlists
-// lists the playlists containing one video). Until the backend route
-// lands, the query falls back to the owner-only list when the viewer
-// IS the channel owner, so the owner's own tab still shows real
-// playlists; any other viewer gets an honest load error instead of a
-// faked empty list. The fallback shows public playlists only — a
-// private playlist never appears on the public channel page.
+// GET /channel/:id/playlists is the public read. On failure the query
+// falls back to the owner-only list when the viewer IS the channel
+// owner, so the owner's own tab still shows real playlists; any other
+// viewer gets an honest load error instead of a faked empty list. The
+// fallback shows public playlists only — a private playlist never
+// appears on the public channel page.
 export function useChannelPlaylists(id: string | undefined) {
   const session = useAppSelector((s) => s.auth.session);
   const isOwner = !!id && session?.result._id === id;
@@ -1072,7 +1063,6 @@ export function useDeleteVideo() {
   });
 }
 
-// ------------------------------------------------------- Phase 5 fix: new hooks
 
 /** Ranked "Up next" from GET /watch/:id/suggestions, with a reason. */
 export function useWatchSuggestions(id: string | undefined) {
@@ -1119,8 +1109,7 @@ export function usePinComment() {
   });
 }
 
-// ------------------------------------------- Watch comments: reactions
-// Contract (backend worker, parallel): POST /comment/:id/like toggles
+// Contract: POST /comment/:id/like toggles
 // the like, POST /comment/:id/dislike toggles the dislike; both return
 // { likes, dislikes, userReaction: "like" | "dislike" | null }. The
 // counts shown are always the server's (or the optimistic toggle of
@@ -1309,7 +1298,7 @@ export function useSetHistoryPaused() {
 
 /** Persist watch position (PATCH /video/history/:videoid/progress).
  * Path is the single Api function patchHistoryProgress — correct it
- * there if the backend worker lands a different route. */
+ * there if the backend ever changes the route. */
 export function useUpdateVideoProgress() {
   return useMutation({
     mutationFn: async (input: { videoid: string; progressSec: number }) => {

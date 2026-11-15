@@ -49,8 +49,9 @@ export const updatechaneldata=async(req,res)=>{
 export const getallchanels=async(req,res)=>{
     try {
         // Phase 3b: paginated + lean. Response shape is now
-        // { items, page, limit, total, totalPages }; each item keeps the
-        // old {_id, name, email, desc} projection. The list stays public
+        // { items, page, limit, total, totalPages }; each item carries
+        // the channel fields below (handle, username, avatar/banner,
+        // subscriberCount, subscribed). The list stays public
         // (it is the channel directory) — the route uses optionalAuth,
         // so anonymous callers still read it and `subscribed` is
         // simply false for them.

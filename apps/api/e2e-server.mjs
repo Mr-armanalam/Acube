@@ -9,7 +9,7 @@
 // No real credentials, no real MongoDB, no real Stripe/Twilio/
 // Cloudinary: every secret below is a dummy test value. The seeded
 // video's filepath is intentionally NOT a playable file — actual video
-// playback with sound is NOT verified here (see PHASE3_REPORT.md).
+// playback with sound is NOT verified here (see docs/archive/PHASE3_REPORT.md).
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import { cleanStaleMongoTmp } from "./tests/mongoTmpCleanup.js";

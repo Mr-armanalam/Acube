@@ -41,10 +41,10 @@ export type VideoVisibility = "public" | "unlisted" | "private" | "draft";
 
 /** POST /video/uploadvideo response (Phase 5 fix): the created video's
  * id + persisted details, so the wizard can link straight to it.
- * Auto-thumbnails (backend contract, parallel worker): `thumbnailUrl`
+ * Auto-thumbnails (backend contract): `thumbnailUrl`
  * is the chosen frame; `autoThumbnails` lists the server-generated
- * candidate frame URLs (possibly empty — e.g. local fallback before
- * the backend lands frame generation). */
+ * candidate frame URLs (possibly empty — e.g. local fallback when
+ * frame generation produced none). */
 export interface UploadVideoResponse {
   message: string;
   video: {
@@ -58,9 +58,9 @@ export interface UploadVideoResponse {
   };
 }
 
-/** A real chapter, from the server. No chapter data exists yet, so the
- * player renders NO chapter ticks until the backend returns chapters —
- * never fake ones (Phase 5 fix audit). */
+/** A real chapter, from the server. The player renders NO chapter
+ * ticks until the backend returns chapters — never fake ones
+ * (Phase 5 fix audit). */
 export interface VideoChapter {
   title: string;
   startSec: number;
@@ -97,7 +97,7 @@ export interface Video {
   deletedAt?: string | null;
   /** Real chapters only — absent means "no chapters", never fake ticks. */
   chapters?: VideoChapter[];
-  /** Watch-page subscribe contract (backend worker): the channel's
+  /** Watch-page subscribe contract: the channel's
    * real subscriber count and whether the viewer is subscribed
    * (false when anonymous). Absent = unknown, never invented. */
   subscriberCount?: number;
@@ -109,11 +109,11 @@ export interface Channel {
   name?: string;
   username?: string;
   // Settings polish: a handle exists on the user record (sparse,
-  // unique) and Studio Settings edits it, but GET /user/getallchannel
-  // does not project it yet — the header renders @handle only when
-  // present and falls back to @username.
+  // unique) and Studio Settings edits it; GET /user/getallchannel
+  // projects it (see Controllers/channel.js), so the header renders
+  // @handle when present and falls back to @username.
   handle?: string;
-  /** Watch-page subscribe contract (backend worker): the channel's
+  /** Watch-page subscribe contract: the channel's
    * real subscriber count and whether the viewer is subscribed
    * (false when anonymous). Absent = unknown, never invented. */
   subscriberCount?: number;
@@ -188,10 +188,10 @@ export interface VideoListEntry {
   durationSec?: number;
 }
 
-/** Phase 5 — Creator Studio + playlists (API contract, PHASE5_PLAN.md).
+/** Phase 5 — Creator Studio + playlists (API contract, docs/archive/PHASE5_PLAN.md).
  * Shapes match the backend exactly: bestDay is an object (or null),
- * settings nest under `channel`, PATCH /studio/settings takes
- * { name?, desc? } — there are no handle/links fields on the server. */
+ * settings nest under `channel`; PATCH /studio/settings takes the full
+ * shape (see StudioSettingsPatch). */
 export interface StudioOverview {
   channel?: {
     _id: string;
@@ -278,9 +278,8 @@ export interface HandleAvailability {
 }
 
 /** Phase 5 fix contract — GET/PATCH /studio/settings, full shape.
- * The backend worker is building this in parallel; until it lands the
- * MSW handlers answer the same shape. No subscribe/follower field
- * exists anywhere: there is no follow system, so none is rendered. */
+ * The MSW handlers answer the same shape in tests. No subscribe/follower
+ * field exists anywhere: there is no follow system, so none is rendered. */
 export interface StudioSettings {
   channel: {
     _id: string;

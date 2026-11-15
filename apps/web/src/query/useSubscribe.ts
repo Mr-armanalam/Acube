@@ -9,8 +9,8 @@
 // for the channel owner and is disabled when logged out (never a
 // faked subscription). A failed toggle (e.g. 404/500) rolls the
 // button + count back to the last server-confirmed state.
-// This file is separate from query/hooks.ts on purpose (another worker
-// owns hooks.ts); it follows the same useMutation/useQuery patterns.
+// This file is separate from query/hooks.ts on purpose (subscription
+// state + toggle live here); it follows the same query patterns.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as api from "../Api";
 import { queryKeys } from "./keys";

@@ -95,7 +95,6 @@ export const updateHistoryProgress = async (req, res) => {
 
 export const getallhistorycontroller=async(req,res)=>{
     try {
-        // Phase 3b: authed + scoped to the caller + paginated + lean.
         // Phase 5 fix: each row also carries durationSec (the video's
         // durationSec ?? duration) so the client can render progress
         // as a fraction; progressSec is stored on the row itself.

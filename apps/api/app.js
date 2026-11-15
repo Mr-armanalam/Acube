@@ -121,16 +121,11 @@ app.get("/health", (req, res) => {
 // Stricter rate limit on the OTP/auth surface (see middleware/rateLimit.js).
 app.use("/auth", authLimiter, Otpauth);
 app.use("/user", userroutes);
-// Public channel-page routes (GET /channel/:id/playlists).
 app.use("/channel", channelroutes);
-// Watch page: subscription toggle + status (see Routes/subscriptions.js).
 app.use("/subscriptions", subscriptionroutes);
 app.use("/video", videoroutes);
-// Personalised feed (GET /feed — optionalAuth, cold start when anonymous).
 app.use("/feed", feedroutes);
-// Phase 5 fix: watch-page routes (GET /watch/:id/suggestions).
 app.use("/watch", watchroutes);
-// Phase 5: Creator Studio (see Routes/studio.js).
 app.use("/studio", studioroutes);
 app.use("/comment", commentroutes);
 app.use("/download", downloadVid);

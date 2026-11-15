@@ -276,7 +276,7 @@ export const fixtureNestedComments = [
   },
 ];
 
-/** Watch-page subscribe contract (backend worker): mutable mock
+/** Watch-page subscribe contract: mutable mock
  * subscription state per channel — the GET reads it, the POST toggle
  * flips it, so a toggle visibly persists across the refetch the hook
  * triggers. resetCaptured() restores the defaults between tests. */
@@ -432,8 +432,8 @@ export function withMockCommentReaction<T extends {
 
 export const handlers = [
   http.get("*/video/getvideos", () => json(pageOf(fixtureVideos))),
-  // Feed personalization (GET /feed, agreed contract with the API
-  // worker): the default answers the fixture videos as one page with
+  // Feed personalization (GET /feed, landed backend route): the
+  // default answers the fixture videos as one page with
   // no reasons, like the logged-out feed — tests that need reasons,
   // paging or ?tag= narrow it with server.use overrides.
   http.get("*/feed", () => json(pageOf(fixtureVideos))),
@@ -592,7 +592,7 @@ export const handlers = [
       currency: "INR",
     });
   }),
-  // Phase 5 — Creator Studio contract (PHASE5_PLAN.md Reconciliation).
+  // Phase 5 — Creator Studio contract (docs/archive/PHASE5_PLAN.md Reconciliation).
   // The overview carries the mock avatar, like the real endpoint
   // (GET /studio/overview returns avatarUrl falling back to picture),
   // so an avatar upload visibly reaches the Studio identity header.
@@ -798,7 +798,7 @@ export const handlers = [
     captured.videoSuggestionCalls.push(String(params.id));
     return json(fixtureWatchSuggestions);
   }),
-  // Watch-page subscribe contract (backend worker, commit 0437c5f):
+  // Watch-page subscribe contract (landed backend, commit 0437c5f):
   // GET /subscriptions/:channelId -> { subscribed, subscriberCount };
   // POST /subscriptions/:channelId/toggle flips it. Unknown OR
   // malformed channel id is 404 { error: { code: "NOT_FOUND" } }
@@ -874,7 +874,7 @@ export const handlers = [
     captured.videoRestores.push(String(params.id));
     return json({ _id: String(params.id), deletedAt: null });
   }),
-  // Phase 5 fix contract (proposed paths — see Api/index.ts):
+  // Phase 5 fix contract (landed routes — see Api/index.ts):
   // history-pause flag + watch-progress persistence.
   http.get("*/user/history-paused", () => json(fixtureHistoryPaused)),
   http.patch("*/user/history-paused", async ({ request }) => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-// Videos query hooks (underpin Home / Search / Videopage): the list loads
+// Videos query hooks (underpin Home / Search / Watch): the list loads
 // from the API, the by-id map resolves in O(1), and the newest-first
 // helper returns a reversed COPY — it must never mutate the cached array.
 import { renderHook, waitFor } from "@testing-library/react";

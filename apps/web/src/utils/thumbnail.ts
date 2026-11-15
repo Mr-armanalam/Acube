@@ -5,10 +5,10 @@
 // a chosen local image file wins over a pasted URL; the URL wins over
 // an auto-generated frame; with nothing chosen the server generates
 // the thumbnail after upload (Cloudinary eager frames / ffmpeg
-// fallback — the backend worker's part). Never invent a thumbnail URL.
+// fallback — the server's part). Never invent a thumbnail URL.
 //
-// Contract with the backend (landed on this branch — see
-// apps/api/Controllers/video.js + Routes/video.js): the upload
+// Contract with the backend (see apps/api/Controllers/video.js +
+// Routes/video.js): the upload
 // endpoint accepts a second multipart file part named "thumbnail"
 // (jpg/png, ≤ 5 MB) alongside the video "file" part, and the upload
 // response carries `thumbnailUrl` (chosen frame) + `autoThumbnails`

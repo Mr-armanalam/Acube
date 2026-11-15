@@ -4,13 +4,13 @@
 // BEHAVIOUR CHANGE (13 Nov 2026, §8.9.23 — Porcelain light theme):
 // "auto" (System) used to follow a legacy region/time rule — light in
 // South India 10:00–12:00 via an ipapi.co lookup
-// (utils/getUserLocation_time.js). It now means the OS preference:
+// (the legacy region/time helper, since deleted). It now means the OS preference:
 // prefers-color-scheme: light, live-tracked while the mode is auto.
 // Dark stays the default: a fresh install (no stored "theme") is auto,
 // and auto is dark unless the OS says light. Explicit light/dark win
 // over the OS. The pre-paint init in index.html mirrors this logic so
-// there is no flash of the wrong theme; utils/getUserLocation_time.js
-// is now unused (left in place, not deleted).
+// there is no flash of the wrong theme; the legacy region/time helper
+// was deleted in the §8.9.26 cleanup (it had zero imports).
 import React, { createContext, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../store";
 import { setMode, type ThemeMode } from "../store/slices/themeSlice";
