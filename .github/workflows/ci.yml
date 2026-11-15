@@ -4,8 +4,8 @@
 #
 # NOTE: this workflow is NOT verified live from this environment — CI
 # runs on GitHub, not locally. The same commands are verified locally
-# in PHASE5_REPORT.md (pnpm install --frozen-lockfile, pnpm lint,
-# pnpm typecheck, pnpm test, pnpm build, all exit 0).
+# (pnpm install --frozen-lockfile, pnpm lint, pnpm typecheck,
+# pnpm test, pnpm build, all exit 0).
 name: CI
 
 on:
