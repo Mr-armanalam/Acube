@@ -1,4 +1,4 @@
-// Account-menu hover overflow (Arman screenshot 11 Nov 2026) — the
+// Account-menu hover overflow (reported 11 Nov 2026 via screenshot) — the
 // hovered item's background painted outside the menu container on the
 // right. Regression check: every menu item's border box must stay
 // inside the .topbar-menu border box, on hover AND on keyboard focus,

@@ -9,9 +9,10 @@ export const OTP_LENGTH = 6;
 export const SUPPORTED_VIDEO_MIMETYPES = ["video/mp4"];
 // Phase 3b: server-side premium price catalogue. The premium price lives
 // HERE (overridable by the PREMIUM_PRICE_INR env var) — never in a client
-// request. Any client-supplied amount is ignored. Arman must confirm the
-// price: the default 1000 INR matches what the old client sent before
-// Phase 3b removed the client amount entirely.
+// request. Any client-supplied amount is ignored. The default 1000 INR
+// matches what the old client sent before Phase 3b removed the client
+// amount entirely; a ₹15 price (free until 12 Nov 2027) is pending in
+// open PR #12.
 export const PREMIUM_PRICE_INR = 1000;
 export const PREMIUM_CURRENCY = "INR";
 export const PREMIUM_PRODUCT_NAME = "Acube Premium";

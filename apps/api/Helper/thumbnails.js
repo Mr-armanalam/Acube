@@ -11,8 +11,8 @@
 //      ffprobe-static for the duration, ffmpeg-static for three JPG
 //      frames at 5% / 50% / 90%. ffmpeg-static ships ffmpeg only, so
 //      ffprobe-static is a separate dependency (both are bundled
-//      binaries — the system ffmpeg in this VM and Arman's Windows
-//      machine are never relied on, and prod has neither).
+//      binaries — the system ffmpeg in this VM and on a Windows machine
+//      are never relied on, and prod has neither).
 //   3. deriveCloudinaryThumbnailUrls() — backfill only: build the
 //      three frame URLs for an already-hosted Cloudinary video from
 //      its stored video URL (cloud name + public id parsed out of the

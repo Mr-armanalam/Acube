@@ -1,6 +1,6 @@
 // Phase 5 match-preview: env-gated demo sign-in (POST /auth/demo-login).
 // The seeded demo users (scripts/seedDemo.js) have no Google account and
-// no OTP, so without this route Arman sees nothing after seeding. The
+// no OTP, so without this route the demo user sees nothing after seeding. The
 // route is refused (404) unless DEMO_LOGIN_ENABLED=1 AND NODE_ENV is not
 // "production". Nothing here touches apps/web.
 import { describe, expect, it, beforeEach, afterEach } from "vitest";

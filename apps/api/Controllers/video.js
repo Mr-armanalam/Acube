@@ -303,7 +303,7 @@ export const PUBLIC_FEED_FILTER = {
 export const getallvideos = async (req, res) => {
   try {
     // Phase 3b: paginated + lean. Response shape is now
-    // { items, page, limit, total, totalPages } (see docs/archive/PHASE3B_NOTES.md);
+    // { items, page, limit, total, totalPages };
     // items are in upload order (createdAt ascending), as before.
     const page = await paginate(
       videofile.find(PUBLIC_FEED_FILTER).sort({ createdAt: 1, _id: 1 }),

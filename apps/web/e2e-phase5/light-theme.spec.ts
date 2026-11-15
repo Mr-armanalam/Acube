@@ -4,7 +4,7 @@
 // production build on :4173 + PHASE5_SEED=1 API on :5000.
 //   pnpm exec playwright test -c playwright.phase5.config.ts e2e-phase5/light-theme.spec.ts
 // (TMPDIR=$HOME/workspace/.tmp-mongo — /tmp is a 512 MB tmpfs and
-// mongod needs the room; see §8.9.21.)
+// mongod needs the room.)
 //
 // What it proves:
 //  - dark baseline: with theme=dark the shipped Obsidian palette is

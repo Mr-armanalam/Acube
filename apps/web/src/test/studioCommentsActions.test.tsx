@@ -147,8 +147,8 @@ function rowTexts() {
 async function openComments(list: MockComment[]) {
   installCommentList(list);
   renderRoutes("/studio/comments", testSession);
-  // 5 s wait (repo precedent: settingsWatchPolish.test.tsx,
-  // PHASE5_REPORT.md §8.9.4): the 1 s default expires under
+  // 5 s wait (repo precedent: settingsWatchPolish.test.tsx):
+  // the 1 s default expires under
   // full-suite parallel load on a small box.
   expect(
     await screen.findByText("Comment 1", {}, { timeout: 5000 }),

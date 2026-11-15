@@ -71,7 +71,7 @@ export const getcomment = async (req, res) => {
         // Phase 3b: paginated + lean, shape { items, page, limit, total,
         // totalPages }. PUBLIC READ BY DESIGN: the comment list is shown
         // on a video page to logged-out visitors, so this route stays
-        // unauthenticated (recorded decision — see docs/archive/PHASE3B_NOTES.md).
+        // unauthenticated by design.
         // Optional ?videoid= filter so clients need not fetch everything.
         // Phase 5: ?parentId=<id> fetches one thread's direct replies;
         // every item carries parentId (null = top-level), so clients can
