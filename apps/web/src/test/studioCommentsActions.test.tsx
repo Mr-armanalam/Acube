@@ -5,8 +5,9 @@
 //   invalidates ["studio", "comments"]) and never leaves an empty page
 //   while rows remain — deleting the only row of page 2 falls back to
 //   page 1.
-// * Heart toggles the ♡/♥ glyph + aria-pressed and survives a page
-//   change within the session (it already worked; this pins it).
+// * Heart calls POST /comment/:id/like (useLikeComment, the same hook
+//   + endpoint as Watch) — the glyph + aria-pressed reflect the
+//   server's saved reaction and survive a page change and a reload.
 // * Reply posts with parentId and appears threaded under its parent;
 //   a failed post keeps the composer open with the server's message.
 // * Restyle: actions are plain text ("Reply · ♡ · Delete") — no pill
@@ -23,6 +24,7 @@ import userEvent from "@testing-library/user-event";
 import { screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
+import { captured, withMockCommentReaction } from "../mocks/handlers";
 import { renderWithProviders, testSession } from "./testUtils";
 import { InternetStatusProvider } from "../utils/internetStatusContext";
 import Allroutes from "../Allroutes";
@@ -81,8 +83,12 @@ function installCommentList(list: MockComment[]) {
       );
       const totalPages = Math.max(1, Math.ceil(items.length / limit));
       const slice = items.slice((page - 1) * limit, page * limit);
+      // The real server returns likes / dislikes / userReaction on every
+      // studio list item (reactionFields) — overlay the mock reaction
+      // state so a refetch after a heart returns the saved reaction
+      // instead of wiping it.
       return HttpResponse.json({
-        items: slice,
+        items: slice.map(withMockCommentReaction),
         page,
         limit,
         total: items.length,
@@ -170,7 +176,7 @@ describe("Studio Comments actions", () => {
     expect(row.textContent).toContain("Reply·♡·Delete");
   });
 
-  it("heart toggles the glyph + aria-pressed and survives a page change", async () => {
+  it("heart calls the like endpoint and survives a page change", async () => {
     const user = userEvent.setup();
     await openComments(makeComments(11));
     const heart = screen.getByLabelText("Heart comment by viewer1");
@@ -179,6 +185,11 @@ describe("Studio Comments actions", () => {
     await user.click(heart);
     expect(heart).toHaveAttribute("aria-pressed", "true");
     expect(heart.textContent).toBe("♥");
+    await waitFor(() =>
+      expect(captured.commentReactions).toEqual([
+        { id: "c01", reaction: "like" },
+      ]),
+    );
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(await screen.findByText("Page 2 of 2")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Previous" }));

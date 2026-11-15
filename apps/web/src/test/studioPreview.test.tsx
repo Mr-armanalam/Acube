@@ -9,6 +9,7 @@ import { http, HttpResponse } from "msw";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { server } from "../mocks/server";
 import {
+  captured,
   fixtureStudioComments,
   fixtureStudioOverview,
   fixtureVideos,
@@ -334,7 +335,7 @@ describe("Preview — Comments (image 13)", () => {
       .getAllByRole("columnheader")
       .map((h) => (h.textContent ?? "").trim());
     expect(headers).toEqual(["Comment", "Video", "When", "Actions"]);
-    expect(screen.getByText(/Hearts are session-only/)).toBeInTheDocument();
+    expect(screen.getByText(/Hearts are saved/)).toBeInTheDocument();
   });
 
   it("shows the Pinned badge when the backend provides pinnedByCreator", async () => {
@@ -358,6 +359,83 @@ describe("Preview — Comments (image 13)", () => {
     renderRoutes("/studio/comments", testSession);
     expect(await screen.findByText("Great tutorial!")).toBeInTheDocument();
     expect(screen.getByText(/Pinned/)).toBeInTheDocument();
+  });
+});
+
+describe("Preview — Comments heart (persisted, same endpoint as Watch)", () => {
+  const heartFor = (author: string) =>
+    screen.getByRole("button", { name: `Heart comment by ${author}` });
+
+  it("heart calls POST /comment/:id/like and toggles on then off", async () => {
+    const user = userEvent.setup();
+    renderRoutes("/studio/comments", testSession);
+    expect(await screen.findByText("Great tutorial!")).toBeInTheDocument();
+    const heart = heartFor("carol");
+    expect(heart).toHaveAttribute("aria-pressed", "false");
+    expect(heart.textContent).toBe("♡");
+
+    await user.click(heart);
+    await waitFor(() =>
+      expect(captured.commentReactions).toEqual([
+        { id: "c1", reaction: "like" },
+      ]),
+    );
+    expect(heart).toHaveAttribute("aria-pressed", "true");
+    expect(heart.textContent).toBe("♥");
+
+    // The button is disabled while the mutation is pending — wait for
+    // it to settle before the second click, or the toggle is swallowed.
+    await waitFor(() => expect(heart).not.toBeDisabled());
+    await user.click(heart);
+    await waitFor(() =>
+      expect(captured.commentReactions).toHaveLength(2),
+    );
+    expect(heart).toHaveAttribute("aria-pressed", "false");
+    expect(heart.textContent).toBe("♡");
+  });
+
+  it("heart persists across a reload — a fresh mount shows the saved reaction", async () => {
+    const user = userEvent.setup();
+    const first = renderRoutes("/studio/comments", testSession);
+    expect(await screen.findByText("Great tutorial!")).toBeInTheDocument();
+    await user.click(heartFor("carol"));
+    await waitFor(() =>
+      expect(captured.commentReactions).toHaveLength(1),
+    );
+    expect(heartFor("carol")).toHaveAttribute("aria-pressed", "true");
+    first.unmount();
+
+    // Fresh mount, fresh QueryClient: nothing session-local survives —
+    // the heart must come back pressed from the server's list response.
+    renderRoutes("/studio/comments", testSession);
+    expect(await screen.findByText("Great tutorial!")).toBeInTheDocument();
+    const heart = heartFor("carol");
+    expect(heart).toHaveAttribute("aria-pressed", "true");
+    expect(heart.textContent).toBe("♥");
+  });
+
+  it("a failed heart rolls the optimistic toggle back", async () => {
+    const user = userEvent.setup();
+    const attempts: string[] = [];
+    server.use(
+      http.post("*/comment/:id/like", ({ params }) => {
+        attempts.push(String(params.id));
+        return HttpResponse.json(
+          { error: { code: "NOT_FOUND", message: "Comment not found" } },
+          { status: 404 },
+        );
+      }),
+    );
+    renderRoutes("/studio/comments", testSession);
+    expect(await screen.findByText("Great tutorial!")).toBeInTheDocument();
+    const heart = heartFor("carol");
+    await user.click(heart);
+    // The endpoint was attempted, and the optimistic press did not stick.
+    await waitFor(() => expect(attempts).toEqual(["c1"]));
+    await waitFor(() =>
+      expect(heart).toHaveAttribute("aria-pressed", "false"),
+    );
+    expect(heart.textContent).toBe("♡");
   });
 });
 

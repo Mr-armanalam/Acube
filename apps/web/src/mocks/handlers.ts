@@ -662,7 +662,16 @@ export const handlers = [
     );
     const totalPages = Math.max(1, Math.ceil(items.length / limit));
     const slice = items.slice((page - 1) * limit, page * limit);
-    return json({ items: slice, page, limit, total: items.length, totalPages });
+    // The real list carries the current reaction state (reactionFields
+    // in Controllers/studio.js) — overlay the mock state so a refetch
+    // after a heart keeps the persisted reaction, like Watch's list.
+    return json({
+      items: slice.map(withMockCommentReaction),
+      page,
+      limit,
+      total: items.length,
+      totalPages,
+    });
   }),
   http.get("*/studio/settings", () =>
     // Phase 5 fix contract: full settings shape under `channel`.

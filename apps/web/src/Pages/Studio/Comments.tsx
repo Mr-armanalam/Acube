@@ -2,10 +2,10 @@
 // a TABLE — Comment / Video / When / Actions — with Reply · ♥ ·
 // Delete, Unreplied filter, timestamps, sort + pagination. A pinned
 // comment shows a "Pinned" badge when the backend provides
-// pinnedByCreator. NOTE: POST /comment/:id/like|dislike exists, but
-// the heart stays a session-local mark (aria-pressed) — this page
-// does not call it yet, so it is labelled honestly below the table
-// and is never persisted or counted server-side.
+// pinnedByCreator. The heart calls POST /comment/:id/like — the same
+// endpoint + hook as Watch (useLikeComment) — so it persists
+// server-side with the server's counts, and a reload shows the saved
+// reaction; there is no session-only behaviour left on this page.
 //
 // Actions are plain TEXT links on one row ("Reply · ♡ · Delete") — no
 // pill backgrounds, no red outline. Replies thread under their parent
@@ -22,6 +22,7 @@ import {
 } from "./components";
 import {
   useDeleteComment,
+  useLikeComment,
   usePostComment,
   useStudioComments,
 } from "../../query/hooks";
@@ -58,12 +59,12 @@ export default function Comments() {
   });
   const deleteMutation = useDeleteComment();
   const postMutation = usePostComment();
+  const likeMutation = useLikeComment();
   const currentuser = useAppSelector((s) => s.auth.session);
   const [replyingId, setReplyingId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyError, setReplyError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [hearted, setHearted] = useState<Set<string>>(new Set());
 
   const totalPages = comments.data?.totalPages ?? 1;
   const total = comments.data?.total ?? 0;
@@ -273,18 +274,17 @@ export default function Comments() {
                           <button
                             type="button"
                             style={textActionStyle}
-                            aria-pressed={hearted.has(c._id)}
+                            aria-pressed={c.userReaction === "like"}
                             aria-label={`Heart comment by ${c.usercommented ?? "viewer"}`}
-                            onClick={() => {
-                              setHearted((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(c._id)) next.delete(c._id);
-                                else next.add(c._id);
-                                return next;
-                              });
-                            }}
+                            title={
+                              currentuser
+                                ? "Heart this comment"
+                                : "Sign in to heart this comment"
+                            }
+                            disabled={!currentuser || likeMutation.isPending}
+                            onClick={() => likeMutation.mutate(c._id)}
                           >
-                            {hearted.has(c._id) ? "♥" : "♡"}
+                            {c.userReaction === "like" ? "♥" : "♡"}
                           </button>
                           <span aria-hidden="true">·</span>
                           <button
@@ -332,8 +332,8 @@ export default function Comments() {
           <p className="studio-note">
             Moderation rule: a creator can delete comments{" "}
             <strong>only on their own videos</strong> — enforced in the API,
-            not just hidden in the UI. Hearts are session-only for now
-            and are not saved.
+            not just hidden in the UI. Hearts are saved — they call the same
+            POST /comment/:id/like endpoint as Watch.
           </p>
           <nav
             aria-label="Comments pages"
