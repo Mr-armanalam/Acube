@@ -94,24 +94,6 @@ export const commentListQuerySchema = paginationQuerySchema.extend({
     // invisible after refetch even though the post succeeded.
     sort: z.enum(["oldest", "newest"]).default("oldest"),
 });
-export const chatUserSchema = z.object({
-    searchquery: z.string().optional(),
-});
-export const messageIdParamSchema = z.object({ id: objectId });
-export const deleteChatMessageSchema = z.object({ id: objectId });
-export const sendMessageSchema = z.object({
-    message: nonEmptyString,
-    recieverId: objectId,
-});
-export const createGroupSchema = z.object({
-    GroupId: z.array(objectId).min(1, "at least one member is required"),
-    GroupName: nonEmptyString,
-});
-export const groupIdParamSchema = z.object({ groupId: objectId });
-export const sendGroupMessageSchema = z.object({
-    content: nonEmptyString,
-    groupId: objectId,
-});
 export const postCommentSchema = z.object({
     videoid: z.string().optional(),
     userid: z.string().optional(),

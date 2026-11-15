@@ -314,7 +314,6 @@ export const captured = {
   }>,
   paymentStatus: [] as unknown[],
   paymentRequests: [] as unknown[],
-  chatSend: [] as unknown[],
   comments: [] as unknown[],
   points: [] as unknown[],
   // Phase 5: Studio video edits / deletes and playlist creates.
@@ -593,16 +592,6 @@ export const handlers = [
       currency: "INR",
     });
   }),
-  http.get("*/chat/message/:id", () => json(pageOf([]))),
-  http.get("*/chat/group/:groupId/messages", () => json(pageOf([]))),
-  http.get("*/chat/group", () => json(pageOf([]))),
-  http.post("*/chat/send", async ({ request }) => {
-    captured.chatSend.push(await request.json());
-    return json({});
-  }),
-  http.post("*/chat/chat_user", () =>
-    json({ filteredUsers: [], currentMessages: [] }),
-  ),
   // Phase 5 — Creator Studio contract (PHASE5_PLAN.md Reconciliation).
   // The overview carries the mock avatar, like the real endpoint
   // (GET /studio/overview returns avatarUrl falling back to picture),

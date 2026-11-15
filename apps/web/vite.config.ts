@@ -12,9 +12,9 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 export default defineConfig({
   plugins: [
     react(),
-    // simple-peer (StreamRoom) depends on Node built-ins (buffer, stream,
-    // process) via readable-stream. Vite does not polyfill those; this
-    // plugin provides them. Revisit if simple-peer is ever replaced.
+    // crypto-js (src/utils/toEncrypt.js) and react-dom need Node
+    // built-in shims (buffer, stream, process, global); this plugin
+    // provides them.
     //
     // The `crypto` override is Phase 3c (see src/shims/crypto-shim.ts):
     // crypto-js only needs crypto.getRandomValues / randomBytes, but the
@@ -39,42 +39,28 @@ export default defineConfig({
   // and the entry chunk holds app code only.
   //
   // modulePreload is OFF on purpose: Vite's default preload list
-  // includes the dependencies of lazy routes, which would pull the
-  // simple-peer chunk (peer-polyfills) into the initial load and
-  // erase the split. With it off, the initial load is only the
-  // entry's static imports; lazy chunks and their deps load when the
-  // route is visited.
+  // includes the dependencies of lazy routes, which would pull them
+  // into the initial load and erase the split. With it off, the
+  // initial load is only the entry's static imports; lazy chunks and
+  // their deps load when the route is visited.
   //
   // Chunking rule (learned the hard way): there is NO catch-all
   // bucket. A catch-all swallowed every small shared library
   // (react-router's @remix-run/route-pattern + cookie-es, redux-thunk,
-  // the whole crypto-browserify tree behind crypto-js,
-  // engine.io-parser, ...), so every initial vendor chunk depended on
-  // it and Rollup hoisted it into the entry chunk's static imports —
-  // the "split" changed nothing. Shared low-level modules are
-  // therefore routed to the INITIAL family that needs them, so the
-  // lazy chunk imports the initial chunk (already loaded), never the
-  // reverse. That includes readable-stream: it looks lazy-only, but
-  // the crypto tree's hash-base / browserify-sign import it too, so
-  // keeping it in the lazy chunk created a circular chunk warning.
+  // the whole crypto-browserify tree behind crypto-js, ...), so every
+  // initial vendor chunk depended on it and Rollup hoisted it into
+  // the entry chunk's static imports — the "split" changed nothing.
+  // Shared low-level modules are therefore routed to the INITIAL
+  // family that needs them, so the lazy chunk imports the initial
+  // chunk (already loaded), never the reverse. That includes
+  // readable-stream: it looks lazy-only, but the crypto tree's
+  // hash-base / browserify-sign import it too, so keeping it in the
+  // lazy chunk created a circular chunk warning.
   build: {
     modulePreload: false,
     rollupOptions: {
       output: {
         manualChunks(id: string): string | undefined {
-          if (!id.includes("node_modules")) return undefined;
-          // Modules used ONLY by the lazy StreamRoom route:
-          // simple-peer + recordrtc (+ get-browser-rtc, used by
-          // simple-peer). Nothing in the initial bundle may import
-          // these — if it does, the entry chunk ends up importing
-          // peer-polyfills.
-          if (
-            id.includes("node_modules/simple-peer/") ||
-            id.includes("node_modules/recordrtc/") ||
-            id.includes("node_modules/get-browser-rtc/")
-          ) {
-            return "peer-polyfills";
-          }
           if (
             id.includes("node_modules/react-dom/") ||
             id.includes("node_modules/react/") ||
@@ -119,27 +105,14 @@ export default defineConfig({
             return "icons-vendor";
           }
           if (
-            id.includes("node_modules/socket.io-client/") ||
-            id.includes("node_modules/socket.io-parser/") ||
-            id.includes("node_modules/engine.io-client/") ||
-            id.includes("node_modules/engine.io-parser/") ||
-            id.includes("node_modules/@socket.io/component-emitter/") ||
-            // engine.io-client's debug logging.
-            id.includes("node_modules/debug/") ||
-            id.includes("node_modules/ms/")
-          ) {
-            return "socket-vendor";
-          }
-          if (
             id.includes("node_modules/axios/") ||
             id.includes("node_modules/crypto-js/") ||
             id.includes("node_modules/date-fns/") ||
             id.includes("node_modules/jwt-decode/") ||
             id.includes("node_modules/@react-oauth/") ||
-            // The stream/buffer/util helpers are shared between the
-            // initial crypto path and the lazy StreamRoom tree — they
-            // live here (initial) so the lazy chunk imports this
-            // chunk, never the reverse.
+            // The stream/buffer/util helpers are shared by the
+            // initial crypto path — they live here (initial) so the
+            // lazy chunk imports this chunk, never the reverse.
             id.includes("node_modules/readable-stream/") ||
             id.includes("node_modules/stream-browserify/") ||
             id.includes("node_modules/events/") ||

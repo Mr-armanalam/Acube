@@ -6,8 +6,8 @@
 //   pnpm --filter @acube/web test:e2e
 //
 // That script rebuilds the web app first with VITE_BACKEND_URL pointed
-// at the e2e API and a dummy VITE_ENCRYPTED_KEY (used by the StreamRoom
-// test to build a room URL). No real credentials are involved: Google
+// at the e2e API and a dummy VITE_ENCRYPTED_KEY (used by the OTP
+// flow). No real credentials are involved: Google
 // sign-in, Stripe Checkout, Cloudinary upload, and actual video
 // playback with sound are NOT covered here — see PHASE3_REPORT.md.
 import { defineConfig } from "@playwright/test";

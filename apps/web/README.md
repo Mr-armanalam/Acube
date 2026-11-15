@@ -2,10 +2,10 @@
 
 Vite 7 + React 19 + React Router 8. TypeScript is strict and incremental
 (`src/tsconfig.json`, `allowJs` / `checkJs: false`): the store, query
-hooks, API layer, most pages/components, and (Phase 3c) `StreamRoom` and
+hooks, API layer, most pages/components, and (Phase 3c)
 `PaymentStatus` are `.ts`/`.tsx`. A few legacy files are still plain
-JS/JSX (`RoomContext`, `LoadingCard`, `Showvideo`, `CreateButton`,
-utils); converting them is separate work. (Phase 5 match-preview: the
+JS/JSX (`LoadingCard`, `Showvideo`, utils); converting them is
+separate work. (Phase 5 match-preview: the
 legacy Navbar / Leftsidebar / Searchbar / ProgressRing / WHL /
 Showvideolist components and the Likedvideo / Watchlater /
 Watchhistory / Yourvideo / Videoupload pages are deleted; the watch
@@ -30,9 +30,9 @@ JS sent to the browser — never put server secrets here.
 
 ## Notes
 
-- `simple-peer` (video calls in `StreamRoom`) needs Node built-ins
-  (`buffer`, `stream`, `process`); `vite-plugin-node-polyfills`
-  provides them — see `vite.config.ts`.
+- `crypto-js` (OTP/location payloads in `src/utils/toEncrypt.js`)
+  needs Node built-ins (`buffer`, `stream`, `process`);
+  `vite-plugin-node-polyfills` provides them — see `vite.config.ts`.
 - The upload progress bar is rendered by the Studio UploadWizard
   (the old custom-SVG `ProgressRing` component was deleted in the
   Phase 5 match-preview pass).

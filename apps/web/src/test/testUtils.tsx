@@ -12,7 +12,6 @@ import { MemoryRouter } from "react-router";
 import authReducer from "../store/slices/authSlice";
 import themeReducer from "../store/slices/themeSlice";
 import playerReducer from "../store/slices/playerSlice";
-import chatUiReducer from "../store/slices/chatUiSlice";
 import uploadReducer, {
   type UploadState,
 } from "../store/slices/uploadSlice";
@@ -45,7 +44,6 @@ export function createTestStore(options: {
       auth: authReducer,
       theme: themeReducer,
       player: playerReducer,
-      chatUi: chatUiReducer,
       upload: uploadReducer,
     },
     preloadedState: {

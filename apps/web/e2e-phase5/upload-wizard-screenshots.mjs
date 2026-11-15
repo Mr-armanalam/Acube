@@ -101,12 +101,9 @@ for (const mode of ["desktop", "mobile"]) {
   const errors = [];
   page.on("pageerror", (err) => errors.push(String(err)));
   page.on("response", (res) => {
-    // socket.io polling 404s are expected noise: the e2e server does
-    // not mount socket.io (chat), and the app polls it regardless.
     if (
       res.status() >= 400 &&
-      res.url().startsWith("http://localhost:") &&
-      !res.url().includes("/socket.io/")
+      res.url().startsWith("http://localhost:")
     ) {
       errors.push(`HTTP ${res.status()} ${res.url()}`);
     }

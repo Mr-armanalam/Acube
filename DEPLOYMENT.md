@@ -32,7 +32,7 @@ Cloudinary / Stripe / Twilio / Gmail SMTP ──► apps/api
 | Service | Host | Why |
 |---|---|---|
 | `apps/web` | **Vercel** (existing project already serves https://accube.vercel.app/) | Static Vite build; the project already exists, so this is a redeploy/repoint, not a new setup. See §3. |
-| `apps/api` | **Render** (Web Service), **Railway**, **Fly.io**, or a **VPS** | Long-running Node process with Socket.io; needs a persistent port and env vars. Any of these works — no repo config exists for any of them yet (no `render.yaml`, `Procfile`, or `Dockerfile` in the repo; hosting config is dashboard-side — **to confirm** which host Arman prefers). |
+| `apps/api` | **Render** (Web Service), **Railway**, **Fly.io**, or a **VPS** | Long-running Node process; needs a persistent port and env vars. Any of these works — no repo config exists for any of them yet (no `render.yaml`, `Procfile`, or `Dockerfile` in the repo; hosting config is dashboard-side — **to confirm** which host Arman prefers). |
 | Database | **MongoDB Atlas** | `DB_URL` is a standard `mongodb+srv://` connection string. |
 
 ### 3. Vercel (web) — redeploy / repoint
@@ -118,7 +118,6 @@ Never commit a real `.env`. Placeholders only live in
 | `CLOUDINARY_CLOUD_NAME` | Required for uploads | Cloudinary cloud name. |
 | `CLOUDINARY_API_KEY` | Required for uploads | Cloudinary API key. |
 | `CLOUDINARY_API_SECRET` | Required for uploads | Cloudinary API secret. |
-| `SECRETKEY_CRYPTO` | Required for chat | Shared server-side key for chat-message AES. Long random string. Note: this is **TLS + server-side encryption at rest, NOT end-to-end encryption** — the UI no longer claims otherwise. |
 | `ACCOUNT_SID` | Required for SMS OTP | Twilio account SID. |
 | `ACCOUNT_TOKEN` | Required for SMS OTP | Twilio auth token. |
 | `TWILIO_NUMBER` | Required for SMS OTP | Twilio phone number that sends SMS OTPs. |
@@ -259,7 +258,7 @@ Then click through in a browser (logged-out, then signed in with a real
 Google account): Home feed renders → search → video page plays →
 `/Library` redirects to Home when logged out → sign in → upload a video →
 premium upgrade via Stripe test Checkout → webhook grants premium
-(check `isPremium` / download works) → chat loads → StreamRoom loads.
+(check `isPremium` / download works).
 The full live-browser click-through has **not** been done yet for the
 rebuild (Phase 3 verified headlessly with Playwright 6/6 against local
 servers only) — do it on the preview/staging deploy before calling the
@@ -342,8 +341,8 @@ but deploy with eyes open:
    Arman before taking real payments.
 8. **Known non-blockers:** 9 web lint warnings in untouched legacy
    files; remaining unconverted `.jsx` files in the web app
-   (`RoomContext`, `LoadingCard`, `Drawersliderbar`, `Leftsidebar`,
-   `Showvideo`, `ProgressRing`, `Searchlist`, `CreateButton`, utils);
+   (`LoadingCard`, `Drawersliderbar`, `Leftsidebar`,
+   `Showvideo`, `ProgressRing`, `Searchlist`, utils);
    `apps/api/package.json` licence still says `ISC` vs repo MIT.
 
 ## 10. Pre-deploy checklist
